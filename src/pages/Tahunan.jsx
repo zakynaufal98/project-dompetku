@@ -1,0 +1,154 @@
+import { useMemo, useState } from 'react'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts'
+import { useData } from '../context/DataContext'
+import { fmt, fmtShort, MONTHS, CHART_COLORS } from '../lib/utils'
+import { Empty, PanelHeader, DonutLegend } from '../components/UI'
+import { CalendarDays, PieChart as PieChartIcon } from 'lucide-react'
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-3 text-xs shadow-lg">
+      <p className="text-slate-500 font-semibold mb-1">{label}</p>
+      {payload.map((p, i) => (
+        <p key={i} className="font-syne font-bold text-slate-800">
+          {p.name}: <span style={{ color: p.color }}>{fmtShort(p.value)}</span>
+        </p>
+      ))}
+    </div>
+  )
+}
+
+export default function Tahunan() {
+  const { txData, invData } = useData()
+  const now = new Date()
+  
+  const years = useMemo(() => {
+    const all = [...txData, ...invData].map(t => t.date?.split('-')[0]).filter(Boolean)
+    const s = [...new Set(all)].sort().reverse()
+    return s.length ? s : [now.getFullYear().toString()]
+  }, [txData, invData])
+  
+  const [year, setYear] = useState(years[0] || now.getFullYear().toString())
+
+  const txT   = txData.filter(t => t.date?.startsWith(year))
+  const invT  = invData.filter(t => t.date?.startsWith(year))
+  const totalIn  = txT.filter(t => t.type === 'in').reduce((s,t) => s + t.amount, 0)
+  const totalOut = txT.filter(t => t.type === 'out').reduce((s,t) => s + t.amount, 0)
+  const invBuy   = invT.filter(t => t.action === 'beli').reduce((s,t) => s + t.amount, 0)
+
+  const monthData = useMemo(() => MONTHS.map((name, i) => {
+    const ym = `${year}-${String(i + 1).padStart(2, '0')}`
+    const masuk  = txData.filter(t => t.type === 'in' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0)
+    const keluar = txData.filter(t => t.type === 'out' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0)
+    return { name, masuk, keluar, net: masuk - keluar }
+  }), [txData, year])
+
+  const catOut = useMemo(() => {
+    const m = {}
+    txT.filter(t => t.type === 'out').forEach(t => { m[t.cat] = (m[t.cat] || 0) + t.amount })
+    return m
+  }, [txT])
+  
+  const donutD = Object.entries(catOut).filter(([,v]) => v > 0).sort((a,b) => b[1] - a[1]).slice(0, 10).map(([name, value], i) => ({ name, value, fill: CHART_COLORS[i] }))
+  const saldo = totalIn - totalOut
+
+  return (
+    <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
+      
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 className="font-syne font-bold text-2xl text-slate-800 tracking-tight">Laporan Tahunan</h1>
+          <p className="text-slate-500 text-sm font-medium mt-1">Performa keuangan sepanjang tahun</p>
+        </div>
+
+        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-full p-1.5 shadow-sm px-4">
+          <CalendarDays size={16} className="text-indigo-500" />
+          <select className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer appearance-none ml-1 pr-2" value={year} onChange={e => setYear(e.target.value)}>
+            {years.map(y => <option key={y} value={y}>Tahun {y}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm col-span-2 md:col-span-1">
+          <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Netto {year}</p>
+          <p className={`font-syne font-bold text-3xl tracking-tight ${saldo >= 0 ? 'text-slate-800' : 'text-rose-500'}`}>{fmt(saldo)}</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
+          <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Pemasukan</p>
+          <p className="font-syne font-bold text-2xl text-indigo-600 tracking-tight">{fmtShort(totalIn)}</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
+          <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Pengeluaran</p>
+          <p className="font-syne font-bold text-2xl text-orange-500 tracking-tight">{fmtShort(totalOut)}</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
+          <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Investasi</p>
+          <p className="font-syne font-bold text-2xl text-emerald-500 tracking-tight">{fmtShort(invBuy)}</p>
+        </div>
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-[24px] p-6 md:p-8 shadow-sm">
+        <PanelHeader title="Pemasukan vs Pengeluaran per Bulan" />
+        <div className="mt-6">
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={monthData} barGap={4} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="#f1f5f9" />
+              <XAxis dataKey="name" tick={{fontSize:12, fill:'#94a3b8'}} axisLine={false} tickLine={false} dy={10} />
+              <YAxis width={60} tickFormatter={fmtShort} tick={{fontSize:12, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
+              <Tooltip content={<CustomTooltip />} cursor={{fill: '#f8fafc'}} />
+              <Bar dataKey="masuk" name="Pemasukan" fill="#4F46E5" radius={[6,6,0,0]} maxBarSize={24} />
+              <Bar dataKey="keluar" name="Pengeluaran" fill="#FF8A00" radius={[6,6,0,0]} maxBarSize={24} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div className="bg-white border border-slate-200 rounded-[24px] p-6 md:p-8 shadow-sm lg:col-span-2 flex flex-col">
+          <PanelHeader title="Top Pengeluaran" />
+          <div className="flex-1 flex flex-col justify-center mt-4">
+            {donutD.length > 0 ? (
+              <>
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie data={donutD} cx="50%" cy="50%" innerRadius={70} outerRadius={90} dataKey="value" stroke="none">
+                      {donutD.map((_, i) => <Cell key={i} fill={CHART_COLORS[i]} />)}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="mt-6"><DonutLegend data={catOut} /></div>
+              </>
+            ) : <div className="h-full flex flex-col justify-center items-center opacity-50"><PieChartIcon size={48} className="text-slate-300 mb-2"/><p className="text-sm font-medium">Belum ada data</p></div>}
+          </div>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-[24px] p-6 md:p-8 shadow-sm lg:col-span-3 overflow-x-auto">
+          <PanelHeader title="Rekapitulasi" />
+          <table className="w-full text-sm mt-4 text-left">
+            <thead>
+              <tr className="border-b border-slate-100 text-slate-400 text-xs uppercase tracking-wider">
+                <th className="py-3 font-semibold">Bulan</th>
+                <th className="py-3 font-semibold text-right">Masuk</th>
+                <th className="py-3 font-semibold text-right">Keluar</th>
+                <th className="py-3 font-semibold text-right">Netto</th>
+              </tr>
+            </thead>
+            <tbody>
+              {monthData.map(row => (
+                <tr key={row.name} className="border-b border-slate-50 hover:bg-slate-50/50">
+                  <td className="py-4 text-slate-700 font-bold">{row.name}</td>
+                  <td className="py-4 text-right text-indigo-600 font-syne font-semibold">{fmtShort(row.masuk)}</td>
+                  <td className="py-4 text-right text-orange-500 font-syne font-semibold">{fmtShort(row.keluar)}</td>
+                  <td className={`py-4 text-right font-syne font-bold ${row.net >= 0 ? 'text-slate-800' : 'text-rose-500'}`}>{fmtShort(row.net)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
