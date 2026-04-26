@@ -22,8 +22,22 @@ export default function BillTracker() {
     setName(''); setAmount(''); setDate(''); setShowForm(false)
   }
 
-  // Hitung ringkasan
-  const pendingBills = billData.filter(b => !b.is_lunas)
+  // LOGIKA BARU: Filter tagihan belum lunas HANYA untuk bulan ini (atau bulan-bulan sebelumnya yang nunggak)
+  const pendingBills = billData.filter(b => {
+    if (b.is_lunas) return false; // Sembunyikan yang sudah lunas
+
+    const billDate = new Date(b.jatuh_tempo);
+    const now = new Date();
+    
+    // Cek apakah tagihan ini untuk bulan ini atau bulan lalu (menunggak)
+    const isPastOrCurrentMonth = 
+      (billDate.getFullYear() < now.getFullYear()) || 
+      (billDate.getFullYear() === now.getFullYear() && billDate.getMonth() <= now.getMonth());
+
+    return isPastOrCurrentMonth;
+  })
+
+  // Hitung total dari tagihan yang tertampil saja
   const totalPending = pendingBills.reduce((sum, b) => sum + Number(b.amount), 0)
 
   return (
@@ -82,27 +96,26 @@ export default function BillTracker() {
 
       {/* DAFTAR TAGIHAN */}
       <div className="flex-1 overflow-y-auto pr-1 space-y-2 custom-scrollbar max-h-[300px]">
-        {billData.length === 0 ? (
+        {pendingBills.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-slate-400">
-            <Calendar size={32} className="mb-2 opacity-50" />
-            <p className="text-sm font-medium">Belum ada tagihan dicatat</p>
+            <CheckCircle2 size={32} className="mb-2 text-emerald-400 opacity-50" />
+            <p className="text-sm font-medium">Hore! Semua tagihan beres 🎉</p>
           </div>
         ) : (
-          billData.map(bill => {
+          pendingBills.map(bill => {
             const isLunas = bill.is_lunas;
-            // Format tanggal (contoh: 24 Apr)
             const d = new Date(bill.jatuh_tempo);
             const dateStr = `${d.getDate()} ${d.toLocaleString('id-ID', { month: 'short' })}`;
 
             return (
-              <div key={bill.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${isLunas ? 'bg-slate-50 border-slate-100 opacity-60' : 'bg-white border-slate-200 hover:border-indigo-200'}`}>
+              <div key={bill.id} className="flex items-center justify-between p-3 rounded-xl border transition-all bg-white border-slate-200 hover:border-indigo-200">
                 
                 <div className="flex items-center gap-3 overflow-hidden">
-                  <button onClick={() => toggleBill(bill.id, isLunas)} className={`flex-shrink-0 transition-colors ${isLunas ? 'text-emerald-500' : 'text-slate-300 hover:text-indigo-400'}`}>
-                    {isLunas ? <CheckCircle2 size={24} /> : <Circle size={24} />}
+                  <button onClick={() => toggleBill(bill.id, isLunas)} className="flex-shrink-0 transition-colors text-slate-300 hover:text-indigo-400">
+                    <Circle size={24} />
                   </button>
                   <div className="overflow-hidden">
-                    <p className={`text-sm font-bold truncate ${isLunas ? 'text-slate-500 line-through' : 'text-slate-700'}`}>
+                    <p className="text-sm font-bold truncate text-slate-700">
                       {bill.nama_tagihan}
                     </p>
                     <p className="text-[11px] font-semibold text-slate-400 flex items-center gap-1 mt-0.5">
@@ -112,14 +125,12 @@ export default function BillTracker() {
                 </div>
 
                 <div className="flex items-center gap-3 pl-3">
-                  <span className={`text-sm font-bold tabular-nums ${isLunas ? 'text-slate-400' : 'text-slate-700'}`}>
+                  <span className="text-sm font-bold tabular-nums text-slate-700">
                     {fmtShort(bill.amount)}
                   </span>
-                  {!isLunas && (
-                    <button onClick={() => deleteBill(bill.id)} className="text-slate-300 hover:text-rose-500 transition-colors">
-                        <Trash2 size={16} />
-                    </button>
-                    )}
+                  <button onClick={() => deleteBill(bill.id)} className="text-slate-300 hover:text-rose-500 transition-colors">
+                    <Trash2 size={16} />
+                  </button>
                 </div>
               </div>
             )

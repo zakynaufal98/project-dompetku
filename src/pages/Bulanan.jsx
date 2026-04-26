@@ -10,7 +10,7 @@ const CustomTooltip = ({ active, payload, label }) => {
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-3 text-xs shadow-lg">
       {payload.map((p, i) => (
-        <p key={i} className="tabular-nums  font-bold text-slate-800">
+        <p key={i} className="tabular-nums font-bold text-slate-800">
           {p.name}: <span style={{ color: p.color }}>{fmtShort(p.value)}</span>
         </p>
       ))}
@@ -31,13 +31,29 @@ export default function Bulanan() {
   },[txData,invData])
 
   const ym = `${year}-${String(month).padStart(2,'0')}`
+  
+  // Data Bulan Ini
   const txBln  = txData.filter(t=>t.date?.startsWith(ym))
   const invBln = invData.filter(t=>t.date?.startsWith(ym))
-  const totalIn  = txBln.filter(t=>t.type==='in').reduce((s,t)=>s+t.amount,0)
-  const totalOut = txBln.filter(t=>t.type==='out').reduce((s,t)=>s+t.amount,0)
-  const invBuy   = invBln.filter(t=>t.action==='beli').reduce((s,t)=>s+t.amount,0)
-  const saldo    = totalIn-totalOut
+  
+  // PERBAIKAN LOGIKA: Hitung Pemasukan dan Pengeluaran Total
+  const txIn   = txBln.filter(t=>t.type==='in').reduce((s,t)=>s+t.amount,0)
+  const txOut  = txBln.filter(t=>t.type==='out').reduce((s,t)=>s+t.amount,0)
+  
+  const invBuy = invBln.filter(t=>t.action==='beli').reduce((s,t)=>s+t.amount,0)
+  const invSell= invBln.filter(t=>t.action==='jual').reduce((s,t)=>s+t.amount,0)
 
+  // Total Arus Kas
+  const totalIn  = txIn + invSell
+  const totalOut = txOut + invBuy
+  
+  // Netto Investasi
+  const invNet = invBuy - invSell
+
+  // Saldo
+  const saldo = totalIn - totalOut
+
+  // Data Distribusi Pengeluaran (Hanya dari Kategori Transaksi)
   const catOut = useMemo(()=>{
     const m={}
     txBln.filter(t=>t.type==='out').forEach(t=>{m[t.cat]=(m[t.cat]||0)+t.amount})
@@ -48,12 +64,26 @@ export default function Bulanan() {
   const maxCat  = sorted[0]?.[1]||1
   const donutD  = sorted.filter(([,v])=>v>0).map(([name,value],i)=>({name,value,fill:CHART_COLORS[i]}))
 
+  // Gabungkan semua riwayat transaksi & investasi bulan ini untuk ditampilkan di bawah
+  const allHistory = useMemo(() => {
+    const combined = [
+      ...txBln,
+      ...invBln.map(i => ({
+        ...i,
+        type: i.action === 'beli' ? 'out' : 'in',
+        cat: 'Investasi'
+      }))
+    ];
+    // Urutkan dari yang terbaru
+    return combined.sort((a, b) => new Date(b.date) - new Date(a.date));
+  }, [txBln, invBln]);
+
   return (
     <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
       
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="tabular-nums  font-bold text-2xl text-slate-800 tracking-tight">Ringkasan Bulanan</h1>
+          <h1 className="tabular-nums font-bold text-2xl text-slate-800 tracking-tight">Ringkasan Bulanan</h1>
           <p className="text-slate-500 text-sm font-medium mt-1">Analisis arus kas per bulan</p>
         </div>
 
@@ -73,19 +103,19 @@ export default function Bulanan() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm col-span-2 md:col-span-1">
           <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Netto Bulan Ini</p>
-          <p className={`tabular-nums  font-bold text-3xl tracking-tight ${saldo >= 0 ? 'text-slate-800' : 'text-rose-500'}`}>{fmt(saldo)}</p>
+          <p className={`tabular-nums font-bold text-3xl tracking-tight ${saldo >= 0 ? 'text-slate-800' : 'text-rose-500'}`}>{fmt(saldo)}</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
           <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Pemasukan</p>
-          <p className="tabular-nums  font-bold text-2xl text-indigo-600 tracking-tight">{fmtShort(totalIn)}</p>
+          <p className="tabular-nums font-bold text-2xl text-indigo-600 tracking-tight">{fmtShort(totalIn)}</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
           <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Pengeluaran</p>
-          <p className="tabular-nums  font-bold text-2xl text-orange-500 tracking-tight">{fmtShort(totalOut)}</p>
+          <p className="tabular-nums font-bold text-2xl text-orange-500 tracking-tight">{fmtShort(totalOut)}</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
           <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Investasi</p>
-          <p className="tabular-nums  font-bold text-2xl text-emerald-500 tracking-tight">{fmtShort(invBuy)}</p>
+          <p className="tabular-nums font-bold text-2xl text-emerald-500 tracking-tight">{fmtShort(Math.max(0, invNet))}</p>
         </div>
       </div>
 
@@ -117,7 +147,7 @@ export default function Bulanan() {
                 <div key={cat} className="group">
                   <div className="flex justify-between items-end mb-1.5">
                     <span className="text-sm font-semibold text-slate-700 flex items-center gap-2"><span className="opacity-70 scale-90">{CAT_ICONS[cat]}</span> {cat}</span>
-                    <span className="text-slate-800 tabular-nums  font-bold">{fmtShort(val)}</span>
+                    <span className="text-slate-800 tabular-nums font-bold">{fmtShort(val)}</span>
                   </div>
                   <ProgressBar value={val} max={maxCat} color={CHART_COLORS[i % CHART_COLORS.length]} />
                 </div>
@@ -128,9 +158,9 @@ export default function Bulanan() {
       </div>
 
       <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
-        <PanelHeader title="Transaksi Bulan Ini" badge={`${txBln.length} transaksi`}/>
+        <PanelHeader title="Transaksi Bulan Ini" badge={`${allHistory.length} transaksi`}/>
         <div className="space-y-1.5 mt-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-          {txBln.length > 0 ? txBln.map(t => <TxItem key={t.id} t={t} />) : <div className="py-8"><Empty icon={<CalendarX size={40} className="text-slate-300 mb-2" strokeWidth={1.5} />} text="Tidak ada transaksi bulan ini" /></div>}
+          {allHistory.length > 0 ? allHistory.map(t => <TxItem key={t.id} t={t} isInv={t.action !== undefined} />) : <div className="py-8"><Empty icon={<CalendarX size={40} className="text-slate-300 mb-2" strokeWidth={1.5} />} text="Tidak ada transaksi bulan ini" /></div>}
         </div>
       </div>
     </div>

@@ -11,7 +11,7 @@ const CustomTooltip = ({ active, payload, label }) => {
     <div className="bg-white border border-slate-200 rounded-xl p-3 text-xs shadow-lg">
       <p className="text-slate-500 font-semibold mb-1">{label}</p>
       {payload.map((p, i) => (
-        <p key={i} className="tabular-nums  font-bold text-slate-800">
+        <p key={i} className="tabular-nums font-bold text-slate-800">
           {p.name}: <span style={{ color: p.color }}>{fmtShort(p.value)}</span>
         </p>
       ))}
@@ -31,19 +31,43 @@ export default function Tahunan() {
   
   const [year, setYear] = useState(years[0] || now.getFullYear().toString())
 
-  const txT   = txData.filter(t => t.date?.startsWith(year))
-  const invT  = invData.filter(t => t.date?.startsWith(year))
-  const totalIn  = txT.filter(t => t.type === 'in').reduce((s,t) => s + t.amount, 0)
-  const totalOut = txT.filter(t => t.type === 'out').reduce((s,t) => s + t.amount, 0)
-  const invBuy   = invT.filter(t => t.action === 'beli').reduce((s,t) => s + t.amount, 0)
+  const txT  = txData.filter(t => t.date?.startsWith(year))
+  const invT = invData.filter(t => t.date?.startsWith(year))
+  
+  // PERBAIKAN: Menghitung Pemasukan & Pengeluaran secara menyeluruh (Termasuk Investasi)
+  const txIn   = txT.filter(t => t.type === 'in').reduce((s,t) => s + t.amount, 0)
+  const txOut  = txT.filter(t => t.type === 'out').reduce((s,t) => s + t.amount, 0)
+  
+  const invBuy  = invT.filter(t => t.action === 'beli').reduce((s,t) => s + t.amount, 0)
+  const invSell = invT.filter(t => t.action === 'jual').reduce((s,t) => s + t.amount, 0)
 
+  // Total Pemasukan = Transaksi Masuk + Jual Investasi
+  const totalIn  = txIn + invSell
+  // Total Pengeluaran = Transaksi Keluar + Beli Investasi
+  const totalOut = txOut + invBuy
+  
+  // Netto Investasi = Uang yang masih nyangkut di instrumen (Belum dijual)
+  const invNet = invBuy - invSell
+
+  // Saldo Tahunan = Total Uang Masuk - Total Uang Keluar
+  const saldo = totalIn - totalOut
+
+  // PERBAIKAN: Perhitungan per Bulan (Digabung dengan Investasi)
   const monthData = useMemo(() => MONTHS.map((name, i) => {
     const ym = `${year}-${String(i + 1).padStart(2, '0')}`
-    const masuk  = txData.filter(t => t.type === 'in' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0)
-    const keluar = txData.filter(t => t.type === 'out' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0)
-    return { name, masuk, keluar, net: masuk - keluar }
-  }), [txData, year])
+    
+    const mTxIn   = txData.filter(t => t.type === 'in' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0)
+    const mInvSell= invData.filter(t => t.action === 'jual' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0)
+    const masuk   = mTxIn + mInvSell
 
+    const mTxOut  = txData.filter(t => t.type === 'out' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0)
+    const mInvBuy = invData.filter(t => t.action === 'beli' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0)
+    const keluar  = mTxOut + mInvBuy
+
+    return { name, masuk, keluar, net: masuk - keluar }
+  }), [txData, invData, year])
+
+  // Donut Chart Top Pengeluaran (Hanya dari Kategori Transaksi biasa, bukan investasi)
   const catOut = useMemo(() => {
     const m = {}
     txT.filter(t => t.type === 'out').forEach(t => { m[t.cat] = (m[t.cat] || 0) + t.amount })
@@ -51,14 +75,13 @@ export default function Tahunan() {
   }, [txT])
   
   const donutD = Object.entries(catOut).filter(([,v]) => v > 0).sort((a,b) => b[1] - a[1]).slice(0, 10).map(([name, value], i) => ({ name, value, fill: CHART_COLORS[i] }))
-  const saldo = totalIn - totalOut
-
+  
   return (
     <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
       
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="tabular-nums  font-bold text-2xl text-slate-800 tracking-tight">Laporan Tahunan</h1>
+          <h1 className="tabular-nums font-bold text-2xl text-slate-800 tracking-tight">Laporan Tahunan</h1>
           <p className="text-slate-500 text-sm font-medium mt-1">Performa keuangan sepanjang tahun</p>
         </div>
 
@@ -73,19 +96,19 @@ export default function Tahunan() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm col-span-2 md:col-span-1">
           <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Netto {year}</p>
-          <p className={`tabular-nums  font-bold text-3xl tracking-tight ${saldo >= 0 ? 'text-slate-800' : 'text-rose-500'}`}>{fmt(saldo)}</p>
+          <p className={`tabular-nums font-bold text-3xl tracking-tight ${saldo >= 0 ? 'text-slate-800' : 'text-rose-500'}`}>{fmt(saldo)}</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
           <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Pemasukan</p>
-          <p className="tabular-nums  font-bold text-2xl text-indigo-600 tracking-tight">{fmtShort(totalIn)}</p>
+          <p className="tabular-nums font-bold text-2xl text-indigo-600 tracking-tight">{fmtShort(totalIn)}</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
           <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Pengeluaran</p>
-          <p className="tabular-nums  font-bold text-2xl text-orange-500 tracking-tight">{fmtShort(totalOut)}</p>
+          <p className="tabular-nums font-bold text-2xl text-orange-500 tracking-tight">{fmtShort(totalOut)}</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
           <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Investasi</p>
-          <p className="tabular-nums  font-bold text-2xl text-emerald-500 tracking-tight">{fmtShort(invBuy)}</p>
+          <p className="tabular-nums font-bold text-2xl text-emerald-500 tracking-tight">{fmtShort(Math.max(0, invNet))}</p>
         </div>
       </div>
 
@@ -140,9 +163,9 @@ export default function Tahunan() {
               {monthData.map(row => (
                 <tr key={row.name} className="border-b border-slate-50 hover:bg-slate-50/50">
                   <td className="py-4 text-slate-700 font-bold">{row.name}</td>
-                  <td className="py-4 text-right text-indigo-600 tabular-nums  font-semibold">{fmtShort(row.masuk)}</td>
-                  <td className="py-4 text-right text-orange-500 tabular-nums  font-semibold">{fmtShort(row.keluar)}</td>
-                  <td className={`py-4 text-right tabular-nums  font-bold ${row.net >= 0 ? 'text-slate-800' : 'text-rose-500'}`}>{fmtShort(row.net)}</td>
+                  <td className="py-4 text-right text-indigo-600 tabular-nums font-semibold">{fmtShort(row.masuk)}</td>
+                  <td className="py-4 text-right text-orange-500 tabular-nums font-semibold">{fmtShort(row.keluar)}</td>
+                  <td className={`py-4 text-right tabular-nums font-bold ${row.net >= 0 ? 'text-slate-800' : 'text-rose-500'}`}>{fmtShort(row.net)}</td>
                 </tr>
               ))}
             </tbody>
