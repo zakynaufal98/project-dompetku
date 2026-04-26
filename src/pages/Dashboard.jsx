@@ -15,7 +15,7 @@ const CustomTooltip = ({ active, payload, label }) => {
     <div className="bg-white border border-slate-200 rounded-xl p-3 text-xs shadow-lg">
       <p className="text-slate-500 font-semibold mb-1">{label}</p>
       {payload.map((p, i) => (
-        <p key={i} className="font-syne font-bold text-slate-800">
+        <p key={i} className="tabular-nums  font-bold text-slate-800">
           {p.name}: <span style={{ color: p.color }}>{fmtShort(p.value)}</span>
         </p>
       ))}
@@ -24,23 +24,38 @@ const CustomTooltip = ({ active, payload, label }) => {
 }
 
 export default function Dashboard() {
-  const { txData, loading, totals } = useData()
+  // PERBAIKAN 1: Pastikan invData ikut dipanggil dari useData
+  const { txData, invData, loading, totals } = useData() 
   const now = new Date()
   
-  // 1. HITUNGAN SPESIFIK BULAN INI & BULAN LALU
+  // 1. HITUNGAN SPESIFIK BULAN INI & BULAN LALU (Digabung dengan Investasi)
   const { currIn, currOut, trends } = useMemo(() => {
     const currYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
     const lastDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
     const lastYM = `${lastDate.getFullYear()}-${String(lastDate.getMonth() + 1).padStart(2, '0')}`
 
-    const cIn = txData.filter(t => t.type === 'in' && t.date?.startsWith(currYM)).reduce((s, t) => s + t.amount, 0)
-    const cOut = txData.filter(t => t.type === 'out' && t.date?.startsWith(currYM)).reduce((s, t) => s + t.amount, 0)
+    // Pemasukan = Transaksi 'in' + Investasi 'jual'
+    const cInTx = txData.filter(t => t.type === 'in' && t.date?.startsWith(currYM)).reduce((s, t) => s + t.amount, 0)
+    const cInInv = invData.filter(t => t.action === 'jual' && t.date?.startsWith(currYM)).reduce((s, t) => s + t.amount, 0)
+    const cIn = cInTx + cInInv
     
-    const lIn = txData.filter(t => t.type === 'in' && t.date?.startsWith(lastYM)).reduce((s, t) => s + t.amount, 0)
-    const lOut = txData.filter(t => t.type === 'out' && t.date?.startsWith(lastYM)).reduce((s, t) => s + t.amount, 0)
+    // Pengeluaran = Transaksi 'out' + Investasi 'beli'
+    const cOutTx = txData.filter(t => t.type === 'out' && t.date?.startsWith(currYM)).reduce((s, t) => s + t.amount, 0)
+    const cOutInv = invData.filter(t => t.action === 'beli' && t.date?.startsWith(currYM)).reduce((s, t) => s + t.amount, 0)
+    const cOut = cOutTx + cOutInv
 
+    // Lakukan hal yang sama untuk data bulan lalu
+    const lInTx = txData.filter(t => t.type === 'in' && t.date?.startsWith(lastYM)).reduce((s, t) => s + t.amount, 0)
+    const lInInv = invData.filter(t => t.action === 'jual' && t.date?.startsWith(lastYM)).reduce((s, t) => s + t.amount, 0)
+    const lIn = lInTx + lInInv
+
+    const lOutTx = txData.filter(t => t.type === 'out' && t.date?.startsWith(lastYM)).reduce((s, t) => s + t.amount, 0)
+    const lOutInv = invData.filter(t => t.action === 'beli' && t.date?.startsWith(lastYM)).reduce((s, t) => s + t.amount, 0)
+    const lOut = lOutTx + lOutInv
+
+    // Saldo historis
     const currSaldo = totals.saldo
-    const lastSaldo = currSaldo - cIn + cOut // Mundur 1 bulan untuk tahu saldo bulan lalu
+    const lastSaldo = currSaldo - cIn + cOut
 
     const calcPct = (curr, last) => {
       if (last === 0) return curr > 0 ? 100 : 0
@@ -56,7 +71,7 @@ export default function Dashboard() {
         keluar: calcPct(cOut, lOut)
       }
     }
-  }, [txData, totals.saldo, now])
+  }, [txData, invData, totals.saldo, now])
 
   // 2. DATA GRAFIK 6 BULAN
   const tren6 = useMemo(() => Array.from({length: 6}, (_, i) => {
@@ -105,7 +120,7 @@ export default function Dashboard() {
       
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
         <div>
-          <h1 className="font-syne font-bold text-2xl text-slate-800 tracking-tight">Overview</h1>
+          <h1 className="tabular-nums  font-bold text-2xl text-slate-800 tracking-tight">Overview</h1>
           <p className="text-slate-500 text-sm font-medium mt-1">Selamat datang kembali, mari pantau keuanganmu.</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-full px-4 py-2.5 text-sm text-slate-400 shadow-sm w-full md:w-64 flex items-center">
@@ -121,7 +136,7 @@ export default function Dashboard() {
             <span className="text-[11px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-md uppercase tracking-wider">Total</span>
           </div>
           <div>
-            <p className="font-syne font-bold text-3xl xl:text-4xl text-[#2F3241] tracking-tight truncate">{fmt(totals.saldo)}</p>
+            <p className="tabular-nums  font-bold text-3xl xl:text-4xl text-[#2F3241] tracking-tight truncate">{fmt(totals.saldo)}</p>
             <div className="flex items-center gap-2 mt-3 text-sm">
               {renderTrendBadge(trends.saldo, false)}
               <span className="text-slate-400 text-xs font-medium">vs bulan lalu</span>
@@ -136,7 +151,7 @@ export default function Dashboard() {
             <span className="text-[11px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-md uppercase tracking-wider">Bulan Ini</span>
           </div>
           <div>
-            <p className="font-syne font-bold text-3xl xl:text-4xl text-[#FF8A00] tracking-tight truncate">{currOut > 0 ? `-${fmt(currOut)}` : fmt(currOut)}</p>
+            <p className="tabular-nums  font-bold text-3xl xl:text-4xl text-[#FF8A00] tracking-tight truncate">{currOut > 0 ? `-${fmt(currOut)}` : fmt(currOut)}</p>
             <div className="flex items-center gap-2 mt-3 text-sm">
               {renderTrendBadge(trends.keluar, true)}
               <span className="text-slate-400 text-xs font-medium">vs bulan lalu</span>
@@ -151,7 +166,7 @@ export default function Dashboard() {
             <span className="text-[11px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-md uppercase tracking-wider">Bulan Ini</span>
           </div>
           <div>
-            <p className="font-syne font-bold text-3xl xl:text-4xl text-[#10B981] tracking-tight truncate">{currIn > 0 ? `+${fmt(currIn)}` : fmt(currIn)}</p>
+            <p className="tabular-nums  font-bold text-3xl xl:text-4xl text-[#10B981] tracking-tight truncate">{currIn > 0 ? `+${fmt(currIn)}` : fmt(currIn)}</p>
             <div className="flex items-center gap-2 mt-3 text-sm">
               {renderTrendBadge(trends.masuk, false)}
               <span className="text-slate-400 text-xs font-medium">vs bulan lalu</span>
@@ -220,7 +235,7 @@ export default function Dashboard() {
                   </ResponsiveContainer>
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                     <span className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-1">Total</span>
-                    <span className="font-syne font-bold text-2xl text-[#FF8A00] tracking-tight">{fmtShort(currOut)}</span>
+                    <span className="tabular-nums  font-bold text-2xl text-[#FF8A00] tracking-tight">{fmtShort(currOut)}</span>
                   </div>
                 </div>
                 <div className="mt-4"><DonutLegend data={catOut} /></div>

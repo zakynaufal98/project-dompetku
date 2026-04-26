@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './AuthContext'
 
@@ -32,7 +32,7 @@ export function DataProvider({ children }) {
       supabase.from('investasi').select('*').eq('user_id', user.id)
         .order('tgl', { ascending: false }).order('created_at', { ascending: false }),
     ])
-    if (!txRes.error)  setTxData((txRes.data   || []).map(mapTx))
+    if (!txRes.error)  setTxData((txRes.data  || []).map(mapTx))
     if (!invRes.error) setInvData((invRes.data  || []).map(mapInv))
     setLoading(false)
   }, [user])
@@ -69,14 +69,28 @@ export function DataProvider({ children }) {
     return error
   }
 
-  const totals = {
-    totalIn: txData.filter(t => t.type === 'in').reduce((s, t) => s + t.amount, 0),
-    totalOut: txData.filter(t => t.type === 'out').reduce((s, t) => s + t.amount, 0),
-    invBuy:   invData.filter(t => t.action === 'beli').reduce((s, t) => s + t.amount, 0),
-    invSell:  invData.filter(t => t.action === 'jual').reduce((s, t) => s + t.amount, 0),
-  }
-  totals.saldo  = totals.totalIn - totals.totalOut
-  totals.invNet = totals.invBuy - totals.invSell
+  // PERBAIKAN: Menggunakan useMemo dan Logika Saldo yang Benar
+  const totals = useMemo(() => {
+    const totalIn = txData.filter(t => t.type === 'in').reduce((s, t) => s + t.amount, 0)
+    const totalOut = txData.filter(t => t.type === 'out').reduce((s, t) => s + t.amount, 0)
+    const invBuy = invData.filter(t => t.action === 'beli').reduce((s, t) => s + t.amount, 0)
+    const invSell = invData.filter(t => t.action === 'jual').reduce((s, t) => s + t.amount, 0)
+
+    // Saldo = (Semua Pemasukan Kas) - (Semua Pengeluaran Kas)
+    const saldo = (totalIn + invSell) - (totalOut + invBuy)
+    
+    // Nilai aset investasi yang masih tertahan (belum dijual)
+    const invNet = invBuy - invSell
+
+    return {
+      totalIn,
+      totalOut,
+      invBuy,
+      invSell,
+      invNet,
+      saldo
+    }
+  }, [txData, invData])
 
   return (
     <DataContext.Provider value={{ txData, invData, loading, loadAll, addTx, deleteTx, addInv, deleteInv, totals }}>

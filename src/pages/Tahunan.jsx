@@ -11,7 +11,7 @@ const CustomTooltip = ({ active, payload, label }) => {
     <div className="bg-white border border-slate-200 rounded-xl p-3 text-xs shadow-lg">
       <p className="text-slate-500 font-semibold mb-1">{label}</p>
       {payload.map((p, i) => (
-        <p key={i} className="font-syne font-bold text-slate-800">
+        <p key={i} className="tabular-nums  font-bold text-slate-800">
           {p.name}: <span style={{ color: p.color }}>{fmtShort(p.value)}</span>
         </p>
       ))}
@@ -58,7 +58,7 @@ export default function Tahunan() {
       
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="font-syne font-bold text-2xl text-slate-800 tracking-tight">Laporan Tahunan</h1>
+          <h1 className="tabular-nums  font-bold text-2xl text-slate-800 tracking-tight">Laporan Tahunan</h1>
           <p className="text-slate-500 text-sm font-medium mt-1">Performa keuangan sepanjang tahun</p>
         </div>
 
@@ -73,19 +73,19 @@ export default function Tahunan() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm col-span-2 md:col-span-1">
           <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Netto {year}</p>
-          <p className={`font-syne font-bold text-3xl tracking-tight ${saldo >= 0 ? 'text-slate-800' : 'text-rose-500'}`}>{fmt(saldo)}</p>
+          <p className={`tabular-nums  font-bold text-3xl tracking-tight ${saldo >= 0 ? 'text-slate-800' : 'text-rose-500'}`}>{fmt(saldo)}</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
           <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Pemasukan</p>
-          <p className="font-syne font-bold text-2xl text-indigo-600 tracking-tight">{fmtShort(totalIn)}</p>
+          <p className="tabular-nums  font-bold text-2xl text-indigo-600 tracking-tight">{fmtShort(totalIn)}</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
           <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Pengeluaran</p>
-          <p className="font-syne font-bold text-2xl text-orange-500 tracking-tight">{fmtShort(totalOut)}</p>
+          <p className="tabular-nums  font-bold text-2xl text-orange-500 tracking-tight">{fmtShort(totalOut)}</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
           <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Investasi</p>
-          <p className="font-syne font-bold text-2xl text-emerald-500 tracking-tight">{fmtShort(invBuy)}</p>
+          <p className="tabular-nums  font-bold text-2xl text-emerald-500 tracking-tight">{fmtShort(invBuy)}</p>
         </div>
       </div>
 
@@ -140,9 +140,9 @@ export default function Tahunan() {
               {monthData.map(row => (
                 <tr key={row.name} className="border-b border-slate-50 hover:bg-slate-50/50">
                   <td className="py-4 text-slate-700 font-bold">{row.name}</td>
-                  <td className="py-4 text-right text-indigo-600 font-syne font-semibold">{fmtShort(row.masuk)}</td>
-                  <td className="py-4 text-right text-orange-500 font-syne font-semibold">{fmtShort(row.keluar)}</td>
-                  <td className={`py-4 text-right font-syne font-bold ${row.net >= 0 ? 'text-slate-800' : 'text-rose-500'}`}>{fmtShort(row.net)}</td>
+                  <td className="py-4 text-right text-indigo-600 tabular-nums  font-semibold">{fmtShort(row.masuk)}</td>
+                  <td className="py-4 text-right text-orange-500 tabular-nums  font-semibold">{fmtShort(row.keluar)}</td>
+                  <td className={`py-4 text-right tabular-nums  font-bold ${row.net >= 0 ? 'text-slate-800' : 'text-rose-500'}`}>{fmtShort(row.net)}</td>
                 </tr>
               ))}
             </tbody>

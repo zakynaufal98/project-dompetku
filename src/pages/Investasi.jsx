@@ -57,14 +57,14 @@ export default function Investasi() {
     <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
       
       <div>
-        <h1 className="font-syne font-bold text-2xl text-slate-800 tracking-tight">Portofolio Investasi</h1>
+        <h1 className="tabular-nums  font-bold text-2xl text-slate-800 tracking-tight">Portofolio Investasi</h1>
         <p className="text-slate-500 text-sm font-medium mt-1">Kelola dan pantau aset kekayaanmu.</p>
       </div>
 
       {/* PORTFOLIO SUMMARY HEADER (Clean Style) */}
       <div className="bg-white border border-slate-200 rounded-[24px] p-6 lg:p-8 shadow-sm">
         <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-1">Total Aset</p>
-        <p className="font-syne font-bold text-4xl md:text-5xl mb-6 tracking-tight text-emerald-500">{fmt(totalPortfolio)}</p>
+        <p className="tabular-nums  font-bold text-4xl md:text-5xl mb-6 tracking-tight text-emerald-500">{fmt(totalPortfolio)}</p>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-slate-100">
           {INV_KEYS.map(k => (
@@ -72,7 +72,7 @@ export default function Investasi() {
               <p className="text-slate-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
                 <span className="scale-75 grayscale opacity-70">{INV_TYPES[k].icon}</span> {k}
               </p>
-              <p className="font-syne font-bold text-lg text-slate-700">{fmtShort(Math.max(0,byType[k]))}</p>
+              <p className="tabular-nums  font-bold text-lg text-slate-700">{fmtShort(Math.max(0,byType[k]))}</p>
             </div>
           ))}
         </div>
@@ -188,7 +188,7 @@ export default function Investasi() {
                         <div className="w-3.5 h-3.5 rounded-full" style={{background: d.fill}} />
                         <span className="text-sm font-semibold text-slate-600">{d.name}</span>
                       </div>
-                      <span className="font-syne font-bold text-sm text-slate-800">{fmtShort(d.value)}</span>
+                      <span className="tabular-nums  font-bold text-sm text-slate-800">{fmtShort(d.value)}</span>
                     </div>
                   ))}
                 </div>
@@ -221,7 +221,7 @@ export default function Investasi() {
                   <tr key={sub} className="border-b border-slate-50 hover:bg-slate-50/50">
                     <td className="py-3 font-bold text-slate-700">{sub}</td>
                     <td className="py-3 text-right font-medium text-slate-500">{v.qty > 0 ? v.qty : '—'}</td>
-                    <td className={`py-3 text-right font-syne font-bold ${(v.buy-v.sell)>=0?'text-emerald-500':'text-orange-500'}`}>{fmtShort(v.buy-v.sell)}</td>
+                    <td className={`py-3 text-right tabular-nums  font-bold ${(v.buy-v.sell)>=0?'text-emerald-500':'text-orange-500'}`}>{fmtShort(v.buy-v.sell)}</td>
                   </tr>
                 ))}
               </tbody>

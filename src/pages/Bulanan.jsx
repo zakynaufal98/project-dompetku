@@ -10,7 +10,7 @@ const CustomTooltip = ({ active, payload, label }) => {
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-3 text-xs shadow-lg">
       {payload.map((p, i) => (
-        <p key={i} className="font-syne font-bold text-slate-800">
+        <p key={i} className="tabular-nums  font-bold text-slate-800">
           {p.name}: <span style={{ color: p.color }}>{fmtShort(p.value)}</span>
         </p>
       ))}
@@ -53,7 +53,7 @@ export default function Bulanan() {
       
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="font-syne font-bold text-2xl text-slate-800 tracking-tight">Ringkasan Bulanan</h1>
+          <h1 className="tabular-nums  font-bold text-2xl text-slate-800 tracking-tight">Ringkasan Bulanan</h1>
           <p className="text-slate-500 text-sm font-medium mt-1">Analisis arus kas per bulan</p>
         </div>
 
@@ -73,19 +73,19 @@ export default function Bulanan() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm col-span-2 md:col-span-1">
           <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Netto Bulan Ini</p>
-          <p className={`font-syne font-bold text-3xl tracking-tight ${saldo >= 0 ? 'text-slate-800' : 'text-rose-500'}`}>{fmt(saldo)}</p>
+          <p className={`tabular-nums  font-bold text-3xl tracking-tight ${saldo >= 0 ? 'text-slate-800' : 'text-rose-500'}`}>{fmt(saldo)}</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
           <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Pemasukan</p>
-          <p className="font-syne font-bold text-2xl text-indigo-600 tracking-tight">{fmtShort(totalIn)}</p>
+          <p className="tabular-nums  font-bold text-2xl text-indigo-600 tracking-tight">{fmtShort(totalIn)}</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
           <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Pengeluaran</p>
-          <p className="font-syne font-bold text-2xl text-orange-500 tracking-tight">{fmtShort(totalOut)}</p>
+          <p className="tabular-nums  font-bold text-2xl text-orange-500 tracking-tight">{fmtShort(totalOut)}</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
           <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Investasi</p>
-          <p className="font-syne font-bold text-2xl text-emerald-500 tracking-tight">{fmtShort(invBuy)}</p>
+          <p className="tabular-nums  font-bold text-2xl text-emerald-500 tracking-tight">{fmtShort(invBuy)}</p>
         </div>
       </div>
 
@@ -117,7 +117,7 @@ export default function Bulanan() {
                 <div key={cat} className="group">
                   <div className="flex justify-between items-end mb-1.5">
                     <span className="text-sm font-semibold text-slate-700 flex items-center gap-2"><span className="opacity-70 scale-90">{CAT_ICONS[cat]}</span> {cat}</span>
-                    <span className="text-slate-800 font-syne font-bold">{fmtShort(val)}</span>
+                    <span className="text-slate-800 tabular-nums  font-bold">{fmtShort(val)}</span>
                   </div>
                   <ProgressBar value={val} max={maxCat} color={CHART_COLORS[i % CHART_COLORS.length]} />
                 </div>

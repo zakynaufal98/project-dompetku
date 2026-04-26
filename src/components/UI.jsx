@@ -9,7 +9,7 @@ export function StatCard({ label, value, sub, icon, accent, light }) {
         {icon}
       </div>
       <p className="text-xs text-muted font-bold uppercase tracking-wider">{label}</p>
-      <p className={`font-syne font-bold text-2xl ${accent}`}>{value}</p>
+      <p className={`tabular-nums  font-bold text-2xl ${accent}`}>{value}</p>
       {sub && <p className="text-sm text-muted font-medium mt-1">{sub}</p>}
     </div>
   )
@@ -57,7 +57,7 @@ export function TxItem({ t, onDelete, isInv }) {
 
       <div className="flex items-center gap-3 flex-shrink-0 pl-2">
         <div className="text-right">
-          <p className={`font-syne font-bold text-sm sm:text-base ${amtColor}`}>
+          <p className={`tabular-nums  font-bold text-sm sm:text-base ${amtColor}`}>
             {sign}{fmtShort(t.amount)}
           </p>
         </div>
@@ -109,7 +109,7 @@ export function DonutLegend({ data }) {
           <div className="w-3 h-3 rounded-md flex-shrink-0 shadow-sm" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
           <span className="flex-1 font-semibold text-text-2 truncate">{cat}</span>
           <span className="text-muted font-medium w-8 text-right">{total ? (val/total*100).toFixed(0) : 0}%</span>
-          <span className="font-syne font-bold text-text w-20 text-right">{fmtShort(val)}</span>
+          <span className="tabular-nums  font-bold text-text w-20 text-right">{fmtShort(val)}</span>
         </div>
       ))}
     </div>
@@ -131,7 +131,7 @@ export function ProgressBar({ value, max, color }) {
 export function PanelHeader({ title, badge, action }) {
   return (
     <div className="flex items-center justify-between mb-5">
-      <h3 className="font-syne font-bold text-base md:text-lg text-text tracking-tight">{title}</h3>
+      <h3 className="tabular-nums  font-bold text-base md:text-lg text-text tracking-tight">{title}</h3>
       <div className="flex items-center gap-2">
         {badge !== undefined && (
           <span className="text-xs text-primary bg-primary/10 px-3 py-1.5 rounded-lg font-bold tracking-wide uppercase">{badge}</span>
@@ -197,7 +197,7 @@ export function SummaryRow({ label, value, valueClass = 'text-text', sub }) {
     <div className="flex items-center justify-between py-3.5 border-b border-border/50 last:border-0 hover:bg-slate-50 transition-colors rounded-xl px-2">
       <span className="text-sm font-semibold text-text-2">{label}</span>
       <div className="text-right">
-        <span className={`text-base font-syne ${valueClass}`}>{value}</span>
+        <span className={`text-base tabular-nums  ${valueClass}`}>{value}</span>
         {sub && <p className="text-xs text-muted font-medium mt-0.5">{sub}</p>}
       </div>
     </div>

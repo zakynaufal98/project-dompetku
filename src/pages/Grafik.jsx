@@ -11,7 +11,7 @@ const CustomTooltip = ({ active, payload, label }) => {
     <div className="bg-white border border-slate-200 rounded-xl p-3 text-xs shadow-lg">
       <p className="text-slate-500 font-semibold mb-1">{label}</p>
       {payload.map((p, i) => (
-        <p key={i} className="font-syne font-bold text-slate-800">
+        <p key={i} className="tabular-nums  font-bold text-slate-800">
           {p.name}: <span style={{ color: p.color }}>{fmtShort(p.value)}</span>
         </p>
       ))}
@@ -70,7 +70,7 @@ export default function Grafik() {
   return(
     <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
       <div>
-        <h1 className="font-syne font-bold text-2xl text-slate-800 tracking-tight">Grafik & Analisis</h1>
+        <h1 className="tabular-nums  font-bold text-2xl text-slate-800 tracking-tight">Grafik & Analisis</h1>
         <p className="text-slate-500 text-sm font-medium mt-1">Visualisasi mendalam arus kasmu</p>
       </div>
 
@@ -156,7 +156,7 @@ export default function Grafik() {
                     <div key={d.name}>
                       <div className="flex justify-between items-end mb-2">
                         <span className="flex items-center gap-2 text-sm font-semibold text-slate-600"><span className="w-3.5 h-3.5 rounded-full" style={{background: d.fill}} />{d.name}</span>
-                        <span className="font-syne font-bold text-slate-800">{fmtShort(d.value)}</span>
+                        <span className="tabular-nums  font-bold text-slate-800">{fmtShort(d.value)}</span>
                       </div>
                       <ProgressBar value={d.value} max={total} color={d.fill} />
                     </div>

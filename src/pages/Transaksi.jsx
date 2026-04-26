@@ -31,7 +31,7 @@ export default function Transaksi() {
     <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
       
       <div>
-        <h1 className="font-syne font-bold text-2xl text-slate-800 tracking-tight">Transaksi</h1>
+        <h1 className="tabular-nums  font-bold text-2xl text-slate-800 tracking-tight">Transaksi</h1>
         <p className="text-slate-500 text-sm font-medium mt-1">Catat dan pantau arus kas harianmu.</p>
       </div>
 
@@ -117,7 +117,7 @@ export default function Transaksi() {
             <SummaryRow label="Investasi" value={fmt(Math.max(0,totals.invNet))} valueClass="text-emerald-500 font-bold" />
             <div className="mt-4 pt-5 border-t border-slate-100 flex justify-between items-center">
               <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">Saldo Bersih</span>
-              <span className={`font-syne font-black text-2xl tracking-tight ${totals.saldo>=0?'text-slate-800':'text-rose-500'}`}>{fmt(totals.saldo)}</span>
+              <span className={`tabular-nums  font-black text-2xl tracking-tight ${totals.saldo>=0?'text-slate-800':'text-rose-500'}`}>{fmt(totals.saldo)}</span>
             </div>
           </div>
         </div>

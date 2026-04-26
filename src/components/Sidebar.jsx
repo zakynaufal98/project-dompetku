@@ -63,7 +63,7 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
             </div>
             {!collapsed && (
               <div className="flex flex-col overflow-hidden whitespace-nowrap">
-                <span className="font-syne font-black text-xl text-slate-800 leading-none tracking-tight">DompetKu</span>
+                <span className="tabular-nums  font-black text-xl text-slate-800 leading-none tracking-tight">DompetKu</span>
                 <span className="text-[10px] font-bold text-indigo-500 tracking-widest uppercase mt-0.5">Pro Edition</span>
               </div>
             )}
@@ -78,13 +78,15 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
           </button>
         </div>
 
-        {/* ── TOMBOL COLLAPSE (Hanya Desktop) ─────────────── */}
-        <button 
-          onClick={() => setCollapsed(!collapsed)}
-          className="hidden lg:flex absolute -right-3 top-24 w-6 h-6 bg-white border border-slate-200 rounded-full items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:shadow-sm transition-all z-10"
-        >
-          {collapsed ? <ChevronRight size={14} strokeWidth={3} /> : <ChevronLeft size={14} strokeWidth={3} />}
-        </button>
+        {/* ── TOMBOL COLLAPSE (Hanya Muncul di Desktop / lg) ─────────────── */}
+        <div className="hidden lg:block absolute -right-3 top-24 z-10">
+          <button 
+            onClick={() => setCollapsed(!collapsed)}
+            className="flex w-6 h-6 bg-white border border-slate-200 rounded-full items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:shadow-sm transition-all"
+          >
+            {collapsed ? <ChevronRight size={14} strokeWidth={3} /> : <ChevronLeft size={14} strokeWidth={3} />}
+          </button>
+        </div>
 
         {/* ── MENU UTAMA ──────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1.5 custom-scrollbar">
