@@ -2,7 +2,10 @@ import { useState } from 'react'
 import { useData } from '../context/DataContext'
 import { fmt, fmtShort, today, CATEGORIES, CAT_ICONS } from '../lib/utils'
 import { TxItem, Empty, Tabs, Field, PanelHeader, SummaryRow } from '../components/UI'
-import { ArrowDownLeft, ArrowUpRight, Pencil, Banknote, Calendar, PlusCircle, ReceiptText, Loader2, Tag } from 'lucide-react'
+import { 
+  ArrowDownLeft, ArrowUpRight, Pencil, Banknote, 
+  Calendar, PlusCircle, ReceiptText, Loader2, Tag, Search 
+} from 'lucide-react'
 
 export default function Transaksi() {
   const { txData, addTx, deleteTx, totals } = useData()
@@ -14,6 +17,9 @@ export default function Transaksi() {
   const [filter, setFilter] = useState('semua')
   const [busy,   setBusy]   = useState(false)
   const [err,    setErr]    = useState('')
+  
+  // State untuk pencarian
+  const [searchQuery, setSearchQuery] = useState('')
 
   const handleAdd = async () => {
     if (!desc.trim())       { setErr('Keterangan wajib diisi'); return }
@@ -25,13 +31,20 @@ export default function Transaksi() {
     else { setDesc(''); setAmount('') }
   }
 
-  const filtered = filter === 'semua' ? txData : txData.filter(t => t.type === filter)
+  // Logika Filter Ganda (Tab Kategori + Kolom Pencarian)
+  const filtered = txData.filter(t => {
+    const matchTab = filter === 'semua' || t.type === filter
+    const q = searchQuery.toLowerCase()
+    const matchSearch = (t.desc && t.desc.toLowerCase().includes(q)) || 
+                        (t.cat && t.cat.toLowerCase().includes(q))
+    return matchTab && matchSearch
+  })
 
   return (
     <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
       
       <div>
-        <h1 className="tabular-nums  font-bold text-2xl text-slate-800 tracking-tight">Transaksi</h1>
+        <h1 className="tabular-nums font-bold text-2xl text-slate-800 tracking-tight">Transaksi</h1>
         <p className="text-slate-500 text-sm font-medium mt-1">Catat dan pantau arus kas harianmu.</p>
       </div>
 
@@ -117,7 +130,7 @@ export default function Transaksi() {
             <SummaryRow label="Investasi" value={fmt(Math.max(0,totals.invNet))} valueClass="text-emerald-500 font-bold" />
             <div className="mt-4 pt-5 border-t border-slate-100 flex justify-between items-center">
               <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">Saldo Bersih</span>
-              <span className={`tabular-nums  font-black text-2xl tracking-tight ${totals.saldo>=0?'text-slate-800':'text-rose-500'}`}>{fmt(totals.saldo)}</span>
+              <span className={`tabular-nums font-black text-2xl tracking-tight ${totals.saldo>=0?'text-slate-800':'text-rose-500'}`}>{fmt(totals.saldo)}</span>
             </div>
           </div>
         </div>
@@ -126,6 +139,7 @@ export default function Transaksi() {
       {/* ── LIST RIWAYAT ─────────────────────────────── */}
       <div className="bg-white border border-slate-200 rounded-[24px] p-6 md:p-8 shadow-sm">
         <PanelHeader title="Riwayat Transaksi" badge={`${filtered.length} total`} />
+        
         <div className="mb-4">
           <Tabs value={filter} onChange={setFilter} options={[
             { value: 'semua', label: 'Semua' },
@@ -133,10 +147,25 @@ export default function Transaksi() {
             { value: 'out',   label: 'Pengeluaran' },
           ]} />
         </div>
+
+        {/* BAR PENCARIAN (SEARCH BAR) */}
+        <div className="relative mb-4">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+            <Search size={18} />
+          </div>
+          <input 
+            type="text" 
+            placeholder="Cari transaksi berdasarkan nama atau kategori..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:border-indigo-500 focus:bg-white outline-none transition-all"
+          />
+        </div>
+
         <div className="space-y-1.5 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
           {filtered.length > 0
             ? filtered.map(t => <TxItem key={t.id} t={t} onDelete={deleteTx} />)
-            : <div className="py-8"><Empty icon={<ReceiptText size={40} className="text-slate-300 mb-3" strokeWidth={1} />} text="Belum ada transaksi" /></div>}
+            : <div className="py-8"><Empty icon={<ReceiptText size={40} className="text-slate-300 mb-3" strokeWidth={1} />} text="Transaksi tidak ditemukan" /></div>}
         </div>
       </div>
     </div>

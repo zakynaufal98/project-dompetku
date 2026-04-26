@@ -32,6 +32,7 @@ export const fmt = (n) => {
 }
 
 // Fungsi untuk format Rupiah singkatan
+// Fungsi untuk format Rupiah singkatan (SUDAH DIPERBAIKI UNTUK PECAHAN)
 export const fmtShort = (n) => {
   // Gunakan \u00A0 sebagai ganti spasi biasa
   if (!n) return 'Rp\u00A00'; 
@@ -40,13 +41,26 @@ export const fmtShort = (n) => {
   const a = Math.abs(n);
   
   let val = '';
-  if (a >= 1e9) val = (a / 1e9).toFixed(1) + 'M';
-  else if (a >= 1e6) val = (a / 1e6).toFixed(1) + 'jt';
-  else if (a >= 1e3) val = (a / 1e3).toFixed(0) + 'rb';
-  else val = a.toString();
+  // parseFloat akan membuang nol ekstra (misal 1.0 jadi 1)
+  // replace('.', ',') untuk mengubah desimal Inggris ke format Indonesia
+  if (a >= 1e9) {
+    val = parseFloat((a / 1e9).toFixed(2)).toString().replace('.', ',') + 'M';
+  } else if (a >= 1e6) {
+    val = parseFloat((a / 1e6).toFixed(2)).toString().replace('.', ',') + 'jt';
+  } else if (a >= 1e3) {
+    val = parseFloat((a / 1e3).toFixed(2)).toString().replace('.', ',') + 'rb';
+  } else {
+    val = a.toLocaleString('id-ID');
+  }
 
   // Gabungkan tanda minus, Rp, dan angkanya menggunakan \u00A0
   return (isNegative ? '-' : '') + 'Rp\u00A0' + val;
+}
+
+// TAMBAHAN BARU: Fungsi untuk memformat Unit/Qty investasi (maks 4 desimal, otomatis rapi)
+export const fmtUnit = (num) => {
+  if (!num) return '0';
+  return Number(num.toFixed(4)).toString();
 }
 
 export const today = () => new Date().toISOString().split('T')[0]
@@ -59,7 +73,7 @@ export const CATEGORIES = [
   'Transportasi','Kewajiban','Tabungan & Investasi',
   'Kesehatan','Pakaian','Kejadian Tak Terduga',
   'Pelatihan & Lainnya','Jajan Adek','Belanja Lainnya',
-  'Kosmetik','Laundry','Parkir',
+  'Kosmetik','Laundry','Parkir','Lainnya'
 ]
 
 export const CHART_COLORS = [
@@ -86,6 +100,7 @@ export const CAT_ICONS = {
   'Laundry':               <Droplets size={16} className="inline-block mr-1.5 text-sky-400" />,
   'Parkir':                <CircleParking size={16} className="inline-block mr-1.5 text-slate-400" />,
   'Pemasukan':             <Banknote size={16} className="inline-block mr-1.5 text-emerald-600" />,
+  'lainnya':               <Sparkles size={16} className="inline-block mr-1.5 text-gray-400" />,
 }
 
 // Investasi types dengan sub-jenis dan satuan (Ikon diupdate)

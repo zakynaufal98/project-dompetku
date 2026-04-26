@@ -3,7 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { DataProvider } from './context/DataContext'
 import Sidebar from './components/Sidebar'
-import BottomNav from './components/BottomNav' // <-- Import komponen baru
+import BottomNav from './components/BottomNav' 
+import Navbar from './components/Navbar' // <-- 1. Import Navbar baru di sini
 import AuthPage from './pages/AuthPage'
 import Dashboard from './pages/Dashboard'
 import Transaksi from './pages/Transaksi'
@@ -43,13 +44,9 @@ function AppLayout() {
         {/* Tambahkan pb-24 agar konten bawah tidak tertutup menu mobile */}
         <main className="flex-1 h-full overflow-y-auto w-full relative pb-24 lg:pb-0">
           
-          {/* HEADER MOBILE YANG BERSIH */}
-          <div className="lg:hidden sticky top-0 z-30 bg-white border-b border-slate-200 px-5 py-4 flex items-center gap-3 shadow-sm">
-            <div className="w-8 h-8 rounded-lg bg-[#E8353A] text-white flex items-center justify-center font-bold text-sm shadow-sm">
-              D
-            </div>
-            <span className="tabular-nums  font-black text-lg text-slate-800 tracking-tight">DompetKu</span>
-          </div>
+          {/* NAVBAR ATAS (Menggantikan Header Mobile lama) */}
+          {/* <-- 2. Panggil Navbar di sini agar menempel di atas semua halaman */}
+          <Navbar />
 
           <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
             <Routes>

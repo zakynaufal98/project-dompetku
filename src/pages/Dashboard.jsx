@@ -8,6 +8,7 @@ import { useData } from '../context/DataContext'
 import { fmt, fmtShort, MONTHS, CHART_COLORS } from '../lib/utils'
 import { Empty, Spinner, DonutLegend } from '../components/UI'
 import { TrendingUp, TrendingDown, PieChart as PieChartIcon } from 'lucide-react'
+import BillTracker from '../components/BillTracker'
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null
@@ -15,7 +16,7 @@ const CustomTooltip = ({ active, payload, label }) => {
     <div className="bg-white border border-slate-200 rounded-xl p-3 text-xs shadow-lg">
       <p className="text-slate-500 font-semibold mb-1">{label}</p>
       {payload.map((p, i) => (
-        <p key={i} className="tabular-nums  font-bold text-slate-800">
+        <p key={i} className="tabular-nums font-bold text-slate-800">
           {p.name}: <span style={{ color: p.color }}>{fmtShort(p.value)}</span>
         </p>
       ))}
@@ -24,7 +25,6 @@ const CustomTooltip = ({ active, payload, label }) => {
 }
 
 export default function Dashboard() {
-  // PERBAIKAN 1: Pastikan invData ikut dipanggil dari useData
   const { txData, invData, loading, totals } = useData() 
   const now = new Date()
   
@@ -120,7 +120,7 @@ export default function Dashboard() {
       
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
         <div>
-          <h1 className="tabular-nums  font-bold text-2xl text-slate-800 tracking-tight">Overview</h1>
+          <h1 className="tabular-nums font-bold text-2xl text-slate-800 tracking-tight">Overview</h1>
           <p className="text-slate-500 text-sm font-medium mt-1">Selamat datang kembali, mari pantau keuanganmu.</p>
         </div>
         <div className="bg-white border border-slate-200 rounded-full px-4 py-2.5 text-sm text-slate-400 shadow-sm w-full md:w-64 flex items-center">
@@ -136,7 +136,7 @@ export default function Dashboard() {
             <span className="text-[11px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-md uppercase tracking-wider">Total</span>
           </div>
           <div>
-            <p className="tabular-nums  font-bold text-3xl xl:text-4xl text-[#2F3241] tracking-tight truncate">{fmt(totals.saldo)}</p>
+            <p className="tabular-nums font-bold text-3xl xl:text-4xl text-[#2F3241] tracking-tight truncate">{fmt(totals.saldo)}</p>
             <div className="flex items-center gap-2 mt-3 text-sm">
               {renderTrendBadge(trends.saldo, false)}
               <span className="text-slate-400 text-xs font-medium">vs bulan lalu</span>
@@ -151,7 +151,7 @@ export default function Dashboard() {
             <span className="text-[11px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-md uppercase tracking-wider">Bulan Ini</span>
           </div>
           <div>
-            <p className="tabular-nums  font-bold text-3xl xl:text-4xl text-[#FF8A00] tracking-tight truncate">{currOut > 0 ? `-${fmt(currOut)}` : fmt(currOut)}</p>
+            <p className="tabular-nums font-bold text-3xl xl:text-4xl text-[#FF8A00] tracking-tight truncate">{currOut > 0 ? `-${fmt(currOut)}` : fmt(currOut)}</p>
             <div className="flex items-center gap-2 mt-3 text-sm">
               {renderTrendBadge(trends.keluar, true)}
               <span className="text-slate-400 text-xs font-medium">vs bulan lalu</span>
@@ -166,7 +166,7 @@ export default function Dashboard() {
             <span className="text-[11px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-md uppercase tracking-wider">Bulan Ini</span>
           </div>
           <div>
-            <p className="tabular-nums  font-bold text-3xl xl:text-4xl text-[#10B981] tracking-tight truncate">{currIn > 0 ? `+${fmt(currIn)}` : fmt(currIn)}</p>
+            <p className="tabular-nums font-bold text-3xl xl:text-4xl text-[#10B981] tracking-tight truncate">{currIn > 0 ? `+${fmt(currIn)}` : fmt(currIn)}</p>
             <div className="flex items-center gap-2 mt-3 text-sm">
               {renderTrendBadge(trends.masuk, false)}
               <span className="text-slate-400 text-xs font-medium">vs bulan lalu</span>
@@ -175,14 +175,16 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* --- GRID UTAMA BAWAH --- */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* KIRI: CHART KEUANGAN (Mengambil 2 Kolom) */}
         <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm lg:col-span-2 flex flex-col">
           <div className="flex justify-between items-center mb-6">
             <h3 className="font-bold text-lg text-slate-800">Total Keuangan (6 Bulan)</h3>
           </div>
           <div className="flex-1 min-h-[250px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              {/* PERBAIKAN: Margin Left dinaikkan agar tidak keluar layar */}
               <AreaChart data={tren6} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorIn" x1="0" y1="0" x2="0" y2="1">
@@ -196,10 +198,7 @@ export default function Dashboard() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" tick={{fontSize:12, fill:'#94a3b8'}} axisLine={false} tickLine={false} dy={10} minTickGap={20} />
-                
-                {/* PERBAIKAN: width=85 memastikan teks "Rp" dan "Angka" dalam 1 baris */}
                 <YAxis width={85} tickFormatter={fmtShort} tick={{fontSize:12, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
-                
                 <Tooltip content={<CustomTooltip />} />
                 <Area type="monotone" dataKey="Pemasukan" stroke="#4F46E5" strokeWidth={3} fillOpacity={1} fill="url(#colorIn)" activeDot={{ r: 6, strokeWidth: 0 }} />
                 <Area type="monotone" dataKey="Pengeluaran" stroke="#FF8A00" strokeWidth={3} fillOpacity={1} fill="url(#colorOut)" activeDot={{ r: 6, strokeWidth: 0 }} />
@@ -216,38 +215,48 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm flex flex-col">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-lg text-slate-800">Total Pengeluaran</h3>
-            <span className="text-[11px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-md uppercase tracking-wider">Bulan Ini</span>
-          </div>
-          <div className="flex-1 flex flex-col justify-center">
-            {donutData.length > 0 ? (
-              <>
-                <div className="relative h-[200px] flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={donutData} cx="50%" cy="50%" innerRadius={70} outerRadius={90} dataKey="value" stroke="none">
-                        {donutData.map((d,i) => <Cell key={i} fill={d.fill} />)}
-                      </Pie>
-                      <Tooltip formatter={v => fmtShort(v)} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-1">Total</span>
-                    <span className="tabular-nums  font-bold text-2xl text-[#FF8A00] tracking-tight">{fmtShort(currOut)}</span>
+        {/* KANAN: STACK TAGIHAN & DONUT CHART (Mengambil 1 Kolom) */}
+        <div className="flex flex-col gap-6">
+          
+          {/* KOMPONEN TAGIHAN BULANAN */}
+          <BillTracker />
+
+          {/* DONUT CHART PENGELUARAN */}
+          <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm flex flex-col flex-1">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-bold text-lg text-slate-800">Total Pengeluaran</h3>
+              <span className="text-[11px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-md uppercase tracking-wider">Bulan Ini</span>
+            </div>
+            <div className="flex-1 flex flex-col justify-center">
+              {donutData.length > 0 ? (
+                <>
+                  <div className="relative h-[200px] flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={donutData} cx="50%" cy="50%" innerRadius={70} outerRadius={90} dataKey="value" stroke="none">
+                          {donutData.map((d,i) => <Cell key={i} fill={d.fill} />)}
+                        </Pie>
+                        <Tooltip formatter={v => fmtShort(v)} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-1">Total</span>
+                      <span className="tabular-nums font-bold text-2xl text-[#FF8A00] tracking-tight">{fmtShort(currOut)}</span>
+                    </div>
                   </div>
+                  <div className="mt-4"><DonutLegend data={catOut} /></div>
+                </>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center opacity-50">
+                  <PieChartIcon size={48} className="text-slate-300 mb-3" strokeWidth={1} />
+                  <p className="text-sm text-slate-400 font-medium">Belum ada pengeluaran</p>
                 </div>
-                <div className="mt-4"><DonutLegend data={catOut} /></div>
-              </>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center opacity-50">
-                <PieChartIcon size={48} className="text-slate-300 mb-3" strokeWidth={1} />
-                <p className="text-sm text-slate-400 font-medium">Belum ada pengeluaran</p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
+
         </div>
+
       </div>
     </div>
   )

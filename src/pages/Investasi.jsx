@@ -1,9 +1,13 @@
 import { useMemo, useState } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { useData } from '../context/DataContext'
-import { fmt, fmtShort, today, INV_TYPES, CHART_COLORS } from '../lib/utils'
+import { fmt, fmtShort, fmtUnit, today, INV_TYPES, CHART_COLORS } from '../lib/utils'
 import { TxItem, Empty, Field, PanelHeader } from '../components/UI'
-import { TrendingUp, TrendingDown, Pencil, Banknote, CalendarDays, PlusCircle, Loader2, BriefcaseBusiness, Hash, Boxes } from 'lucide-react'
+import { 
+  TrendingUp, TrendingDown, Pencil, Banknote, CalendarDays, 
+  PlusCircle, Loader2, BriefcaseBusiness, Hash, Boxes, 
+  PieChart as PieChartIcon, Search 
+} from 'lucide-react'
 
 const INV_KEYS = Object.keys(INV_TYPES)
 
@@ -18,6 +22,9 @@ export default function Investasi() {
   const [date,    setDate]    = useState(today())
   const [busy,    setBusy]    = useState(false)
   const [err,     setErr]     = useState('')
+  
+  // State untuk pencarian
+  const [searchQuery, setSearchQuery] = useState('')
 
   const handleTypeChange = (t) => { setInvType(t); setSubType(INV_TYPES[t].subTypes[0]); setQty(''); setAmount('') }
   const cfg = INV_TYPES[invType]
@@ -53,18 +60,28 @@ export default function Investasi() {
     return m
   }, [invData, invType])
 
+  // Logika filter data pencarian
+  const filteredInv = invData.filter(t => {
+    const q = searchQuery.toLowerCase()
+    return (
+      (t.desc && t.desc.toLowerCase().includes(q)) || 
+      (t.invType && t.invType.toLowerCase().includes(q)) ||
+      (t.subType && t.subType.toLowerCase().includes(q))
+    )
+  })
+
   return (
     <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
       
       <div>
-        <h1 className="tabular-nums  font-bold text-2xl text-slate-800 tracking-tight">Portofolio Investasi</h1>
+        <h1 className="tabular-nums font-bold text-2xl text-slate-800 tracking-tight">Portofolio Investasi</h1>
         <p className="text-slate-500 text-sm font-medium mt-1">Kelola dan pantau aset kekayaanmu.</p>
       </div>
 
-      {/* PORTFOLIO SUMMARY HEADER (Clean Style) */}
+      {/* PORTFOLIO SUMMARY HEADER */}
       <div className="bg-white border border-slate-200 rounded-[24px] p-6 lg:p-8 shadow-sm">
         <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-1">Total Aset</p>
-        <p className="tabular-nums  font-bold text-4xl md:text-5xl mb-6 tracking-tight text-emerald-500">{fmt(totalPortfolio)}</p>
+        <p className="tabular-nums font-bold text-4xl md:text-5xl mb-6 tracking-tight text-emerald-500">{fmt(totalPortfolio)}</p>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-slate-100">
           {INV_KEYS.map(k => (
@@ -72,7 +89,7 @@ export default function Investasi() {
               <p className="text-slate-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
                 <span className="scale-75 grayscale opacity-70">{INV_TYPES[k].icon}</span> {k}
               </p>
-              <p className="tabular-nums  font-bold text-lg text-slate-700">{fmtShort(Math.max(0,byType[k]))}</p>
+              <p className="tabular-nums font-bold text-lg text-slate-700">{fmtShort(Math.max(0,byType[k]))}</p>
             </div>
           ))}
         </div>
@@ -188,14 +205,14 @@ export default function Investasi() {
                         <div className="w-3.5 h-3.5 rounded-full" style={{background: d.fill}} />
                         <span className="text-sm font-semibold text-slate-600">{d.name}</span>
                       </div>
-                      <span className="tabular-nums  font-bold text-sm text-slate-800">{fmtShort(d.value)}</span>
+                      <span className="tabular-nums font-bold text-sm text-slate-800">{fmtShort(d.value)}</span>
                     </div>
                   ))}
                 </div>
               </>
             ) : (
               <div className="h-full flex flex-col items-center justify-center opacity-50">
-                <PieChart size={48} className="text-slate-300 mb-3" strokeWidth={1} />
+                <PieChartIcon size={48} className="text-slate-300 mb-3" strokeWidth={1} />
                 <p className="text-sm text-slate-400 font-medium">Portofolio kosong</p>
               </div>
             )}
@@ -203,7 +220,7 @@ export default function Investasi() {
         </div>
       </div>
 
-      {/* ── DETAIL & HISTORY (Clean Tables) ─────────────── */}
+      {/* ── DETAIL & HISTORY ────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {Object.keys(subBreakdown).length > 0 && (
           <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm overflow-x-auto">
@@ -220,8 +237,8 @@ export default function Investasi() {
                 {Object.entries(subBreakdown).map(([sub,v])=>(
                   <tr key={sub} className="border-b border-slate-50 hover:bg-slate-50/50">
                     <td className="py-3 font-bold text-slate-700">{sub}</td>
-                    <td className="py-3 text-right font-medium text-slate-500">{v.qty > 0 ? v.qty : '—'}</td>
-                    <td className={`py-3 text-right tabular-nums  font-bold ${(v.buy-v.sell)>=0?'text-emerald-500':'text-orange-500'}`}>{fmtShort(v.buy-v.sell)}</td>
+                    <td className="py-3 text-right font-medium text-slate-500 tabular-nums">{v.qty > 0 ? fmtUnit(v.qty) : '—'}</td>
+                    <td className={`py-3 text-right tabular-nums font-bold ${(v.buy-v.sell)>=0?'text-emerald-500':'text-orange-500'}`}>{fmtShort(v.buy-v.sell)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -230,9 +247,30 @@ export default function Investasi() {
         )}
 
         <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
-          <PanelHeader title="Riwayat Investasi" badge={`${invData.length} transaksi`} />
+          <PanelHeader title="Riwayat Investasi" badge={`${filteredInv.length} transaksi`} />
+          
+          {/* BAR PENCARIAN (SEARCH BAR) */}
+          <div className="relative mt-4 mb-3">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+              <Search size={18} />
+            </div>
+            <input 
+              type="text" 
+              placeholder="Cari nama, tipe, atau keterangan aset..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:border-emerald-500 focus:bg-white outline-none transition-all"
+            />
+          </div>
+
           <div className="space-y-1.5 mt-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-            {invData.length > 0 ? invData.map(t => <TxItem key={t.id} t={t} onDelete={deleteInv} isInv />) : <div className="py-8"><Empty icon={<BriefcaseBusiness size={40} className="text-slate-300 mb-3" strokeWidth={1} />} text="Belum ada transaksi" /></div>}
+            {filteredInv.length > 0 ? (
+              filteredInv.map(t => <TxItem key={t.id} t={t} onDelete={deleteInv} isInv />)
+            ) : (
+              <div className="py-8">
+                <Empty icon={<BriefcaseBusiness size={40} className="text-slate-300 mb-3" strokeWidth={1} />} text="Transaksi tidak ditemukan" />
+              </div>
+            )}
           </div>
         </div>
       </div>

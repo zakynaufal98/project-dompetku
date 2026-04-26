@@ -8,6 +8,7 @@ export function DataProvider({ children }) {
   const { user }              = useAuth()
   const [txData,  setTxData]  = useState([])
   const [invData, setInvData] = useState([])
+  const [billData, setBillData] = useState([]) // STATE BARU UNTUK TAGIHAN
   const [loading, setLoading] = useState(false)
 
   const mapTx = (r) => ({
@@ -26,19 +27,24 @@ export function DataProvider({ children }) {
   const loadAll = useCallback(async () => {
     if (!user) return
     setLoading(true)
-    const [txRes, invRes] = await Promise.all([
-      supabase.from('transaksi').select('*').eq('user_id', user.id)
-        .order('tgl', { ascending: false }).order('created_at', { ascending: false }),
-      supabase.from('investasi').select('*').eq('user_id', user.id)
-        .order('tgl', { ascending: false }).order('created_at', { ascending: false }),
+    
+    // FETCH 3 TABEL SEKALIGUS
+    const [txRes, invRes, billRes] = await Promise.all([
+      supabase.from('transaksi').select('*').eq('user_id', user.id).order('tgl', { ascending: false }),
+      supabase.from('investasi').select('*').eq('user_id', user.id).order('tgl', { ascending: false }),
+      supabase.from('tagihan').select('*').eq('user_id', user.id).order('jatuh_tempo', { ascending: true }) // Urutkan dari yang paling dekat
     ])
+    
     if (!txRes.error)  setTxData((txRes.data  || []).map(mapTx))
     if (!invRes.error) setInvData((invRes.data  || []).map(mapInv))
+    if (!billRes.error) setBillData(billRes.data || []) // Simpan data tagihan
+    
     setLoading(false)
   }, [user])
 
   useEffect(() => { loadAll() }, [loadAll])
 
+  // --- FUNGSI TRANSAKSI KAS ---
   const addTx = async ({ desc, amount, type, cat, date }) => {
     const { data, error } = await supabase.from('transaksi')
       .insert({ user_id: user.id, keterangan: desc, amount, tipe: type, cat, tgl: date })
@@ -54,6 +60,7 @@ export function DataProvider({ children }) {
     return error
   }
 
+  // --- FUNGSI INVESTASI ---
   const addInv = async ({ invType, subType, desc, amount, action, unit, qty, date }) => {
     const { data, error } = await supabase.from('investasi')
       .insert({ user_id: user.id, inv_type: invType, sub_type: subType, keterangan: desc, amount, action, unit, qty, tgl: date })
@@ -69,7 +76,67 @@ export function DataProvider({ children }) {
     return error
   }
 
-  // PERBAIKAN: Menggunakan useMemo dan Logika Saldo yang Benar
+  // --- FUNGSI TAGIHAN (BARU) ---
+  const addBill = async ({ nama_tagihan, amount, jatuh_tempo }) => {
+    const { data, error } = await supabase.from('tagihan')
+      .insert({ user_id: user.id, nama_tagihan, amount, jatuh_tempo })
+      .select().single()
+    if (!error) {
+      setBillData(prev => [...prev, data].sort((a,b) => new Date(a.jatuh_tempo) - new Date(b.jatuh_tempo)))
+    }
+    return error
+  }
+
+  // --- FUNGSI CENTANG TAGIHAN (DENGAN SIHIR GANDA) ---
+  const toggleBill = async (id, currentStatus) => {
+    const isLunasNow = !currentStatus; // Status baru (True = Lunas)
+    
+    // 1. Update status tagihan di database
+    const { error } = await supabase.from('tagihan')
+      .update({ is_lunas: isLunasNow })
+      .eq('id', id).eq('user_id', user.id)
+
+    if (!error) {
+      // Update tampilan layar
+      setBillData(prev => prev.map(b => b.id === id ? { ...b, is_lunas: isLunasNow } : b))
+
+      // SIHIR GANDA: Hanya jalan jika dicentang LUNAS (bukan saat di-uncheck)
+      if (isLunasNow) {
+        // Cari data lengkap tagihan ini
+        const bill = billData.find(b => b.id === id);
+        if (bill) {
+          
+          // Sihir 1: Auto-Catat Pengeluaran Kas (Saldo Otomatis Berkurang!)
+          const today = new Date().toISOString().split('T')[0]; // Tanggal hari ini
+          await addTx({
+            desc: `Bayar Tagihan: ${bill.nama_tagihan}`,
+            amount: Number(bill.amount),
+            type: 'out', // Uang keluar
+            cat: 'Tagihan', // Masuk kategori Tagihan
+            date: today
+          });
+
+          // Sihir 2: Auto-Renew untuk Bulan Depan
+          const dateObj = new Date(bill.jatuh_tempo);
+          dateObj.setMonth(dateObj.getMonth() + 1); // Tambah 1 bulan
+          const nextMonthDate = dateObj.toISOString().split('T')[0];
+
+          await addBill({
+            nama_tagihan: bill.nama_tagihan,
+            amount: Number(bill.amount),
+            jatuh_tempo: nextMonthDate
+          });
+        }
+      }
+    }
+  }
+
+  const deleteBill = async (id) => {
+    const { error } = await supabase.from('tagihan').delete().eq('id', id).eq('user_id', user.id)
+    if (!error) setBillData(prev => prev.filter(b => b.id !== id))
+  }
+
+  // --- PERHITUNGAN TOTAL SALDO ---
   const totals = useMemo(() => {
     const totalIn = txData.filter(t => t.type === 'in').reduce((s, t) => s + t.amount, 0)
     const totalOut = txData.filter(t => t.type === 'out').reduce((s, t) => s + t.amount, 0)
@@ -93,7 +160,12 @@ export function DataProvider({ children }) {
   }, [txData, invData])
 
   return (
-    <DataContext.Provider value={{ txData, invData, loading, loadAll, addTx, deleteTx, addInv, deleteInv, totals }}>
+    // JANGAN LUPA: Tambahkan fungsi dan state tagihan ke dalam provider ini
+    <DataContext.Provider value={{ 
+      txData, invData, billData, loading, loadAll, 
+      addTx, deleteTx, addInv, deleteInv, 
+      addBill, toggleBill, deleteBill, totals 
+    }}>
       {children}
     </DataContext.Provider>
   )
