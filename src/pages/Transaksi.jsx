@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useData } from '../context/DataContext'
 import { fmt, fmtShort, today, CATEGORIES, CAT_ICONS } from '../lib/utils'
 import { TxItem, Empty, Tabs, Field, PanelHeader, SummaryRow } from '../components/UI'
@@ -6,6 +6,8 @@ import {
   ArrowDownLeft, ArrowUpRight, Pencil, Banknote, 
   Calendar, PlusCircle, ReceiptText, Loader2, Tag, Search 
 } from 'lucide-react'
+import DescInput from '../components/DescInput'
+import CategoryInput from '../components/CategoryInput'
 
 export default function Transaksi() {
   const { txData, addTx, deleteTx, totals } = useData()
@@ -18,7 +20,6 @@ export default function Transaksi() {
   const [busy,   setBusy]   = useState(false)
   const [err,    setErr]    = useState('')
   
-  // State untuk pencarian
   const [searchQuery, setSearchQuery] = useState('')
 
   const handleAdd = async () => {
@@ -31,14 +32,65 @@ export default function Transaksi() {
     else { setDesc(''); setAmount('') }
   }
 
-  // Logika Filter Ganda (Tab Kategori + Kolom Pencarian)
-  const filtered = txData.filter(t => {
-    const matchTab = filter === 'semua' || t.type === filter
-    const q = searchQuery.toLowerCase()
-    const matchSearch = (t.desc && t.desc.toLowerCase().includes(q)) || 
-                        (t.cat && t.cat.toLowerCase().includes(q))
-    return matchTab && matchSearch
-  })
+  // 1. LOGIKA FILTER & SORTING (Terbaru di atas)
+  // 1. LOGIKA FILTER & SORTING (Terbaru di atas)
+  // 1. LOGIKA FILTER & SORTING (Terbaru selalu di atas - REVISI FINAL)
+  const filtered = txData
+    .filter(t => {
+      const matchTab = filter === 'semua' || t.type === filter
+      const q = searchQuery.toLowerCase()
+      const matchSearch = (t.desc && t.desc.toLowerCase().includes(q)) || 
+                          (t.cat && t.cat.toLowerCase().includes(q))
+      return matchTab && matchSearch
+    })
+    .sort((a, b) => {
+      // 1. Urutkan berdasarkan Tanggal Kalender (Misal: 26 April vs 25 April)
+      const dateA = new Date(a.date).getTime()
+      const dateB = new Date(b.date).getTime()
+      if (dateA !== dateB) return dateB - dateA
+      
+      // 2. JIKA TANGGAL SAMA: Gunakan waktu detail jika tersedia dari database
+      if (a.created_at && b.created_at) {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      }
+      
+      // 3. JURUS PAMUNGKAS (Fallback)
+      // Jika waktu detail kosong, gunakan posisi index asli di database.
+      // Data yang baru diinput selalu punya index lebih besar. Kita balik urutannya (b - a).
+      return txData.indexOf(b) - txData.indexOf(a)
+    })
+
+  // 2. LOGIKA GROUPING (MENGELOMPOKKAN TRANSAKSI PER HARI)
+  const groupedTx = useMemo(() => {
+    const groups = {}
+    filtered.forEach(t => {
+      if (!groups[t.date]) {
+        groups[t.date] = { items: [], totalIn: 0, totalOut: 0 }
+      }
+      groups[t.date].items.push(t)
+      if (t.type === 'in') groups[t.date].totalIn += t.amount
+      if (t.type === 'out') groups[t.date].totalOut += t.amount
+    })
+    return groups
+  }, [filtered])
+
+  // Fungsi untuk mengubah tanggal menjadi "Hari Ini", "Kemarin", dsb.
+  const getDayLabel = (dateStr) => {
+    const d = new Date(dateStr)
+    const todayObj = new Date()
+    const yesterdayObj = new Date(todayObj)
+    yesterdayObj.setDate(yesterdayObj.getDate() - 1)
+
+    const dString = d.toISOString().split('T')[0]
+    const todayString = todayObj.toISOString().split('T')[0]
+    const yesterdayString = yesterdayObj.toISOString().split('T')[0]
+
+    if (dString === todayString) return "Hari Ini"
+    if (dString === yesterdayString) return "Kemarin"
+    
+    // Format: 24 April 2026
+    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+  }
 
   return (
     <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
@@ -71,12 +123,12 @@ export default function Transaksi() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="Keterangan">
-              <div className="relative">
-                <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-slate-100 text-slate-500 rounded-xl flex items-center justify-center pointer-events-none">
-                  <Pencil size={16} strokeWidth={2.5} />
-                </div>
-                <input className="form-input pl-14 py-3 border-slate-200 focus:border-indigo-500" value={desc} onChange={e => setDesc(e.target.value)} placeholder="Mis. Gaji bulanan..." onKeyDown={e => e.key === 'Enter' && handleAdd()} />
-              </div>
+              <DescInput 
+                value={desc} 
+                onChange={setDesc} 
+                txData={txData} 
+                onEnter={handleAdd} 
+              />
             </Field>
 
             <Field label="Jumlah (Rp)">
@@ -90,14 +142,8 @@ export default function Transaksi() {
 
             {type === 'out' && (
               <Field label="Kategori">
-                <div className="relative">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center pointer-events-none bg-white pr-2">
-                    {CAT_ICONS[cat] || <Tag size={18} className="text-slate-400" />}
-                  </div>
-                  <select className="form-input pl-[2.75rem] py-3 cursor-pointer appearance-none border-slate-200 focus:border-indigo-500 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iOCIgdmlld0JveD0iMCAwIDEyIDgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEuNSAxLjVMNiA2TDEwLjUgMS41IiBzdHJva2U9IiM5NDkzQjgiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PC9zdmc+')] bg-no-repeat bg-[position:calc(100%-16px)_center]" value={cat} onChange={e => setCat(e.target.value)}>
-                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
+                 {/* Panggil komponen pintar kita di sini! */}
+                 <CategoryInput value={cat} onChange={setCat} />
               </Field>
             )}
 
@@ -136,7 +182,7 @@ export default function Transaksi() {
         </div>
       </div>
 
-      {/* ── LIST RIWAYAT ─────────────────────────────── */}
+      {/* ── LIST RIWAYAT (SUDAH DI-GROUP PER HARI) ────── */}
       <div className="bg-white border border-slate-200 rounded-[24px] p-6 md:p-8 shadow-sm">
         <PanelHeader title="Riwayat Transaksi" badge={`${filtered.length} total`} />
         
@@ -149,7 +195,7 @@ export default function Transaksi() {
         </div>
 
         {/* BAR PENCARIAN (SEARCH BAR) */}
-        <div className="relative mb-4">
+        <div className="relative mb-6">
           <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
             <Search size={18} />
           </div>
@@ -162,10 +208,37 @@ export default function Transaksi() {
           />
         </div>
 
-        <div className="space-y-1.5 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-          {filtered.length > 0
-            ? filtered.map(t => <TxItem key={t.id} t={t} onDelete={deleteTx} />)
-            : <div className="py-8"><Empty icon={<ReceiptText size={40} className="text-slate-300 mb-3" strokeWidth={1} />} text="Transaksi tidak ditemukan" /></div>}
+        <div className="max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+          {Object.keys(groupedTx).length > 0 ? (
+            Object.keys(groupedTx).map(dateKey => {
+              const group = groupedTx[dateKey];
+              const isToday = getDayLabel(dateKey) === "Hari Ini";
+              
+              return (
+                <div key={dateKey} className="mb-8 last:mb-0 animate-fade-up">
+                  {/* HEADER TANGGAL */}
+                  <div className="flex items-center justify-between border-b-2 border-slate-100 pb-2.5 mb-3 sticky top-0 bg-white z-10">
+                    <h4 className={`font-bold text-sm ${isToday ? 'text-indigo-600' : 'text-slate-700'}`}>
+                      {getDayLabel(dateKey)}
+                    </h4>
+                    <div className="flex gap-4 text-[11px] font-bold uppercase tracking-wider">
+                      {group.totalIn > 0 && <span className="text-indigo-500">+ {fmtShort(group.totalIn)}</span>}
+                      {group.totalOut > 0 && <span className="text-orange-500">- {fmtShort(group.totalOut)}</span>}
+                    </div>
+                  </div>
+                  
+                  {/* DAFTAR TRANSAKSI DI HARI TERSEBUT */}
+                  <div className="space-y-1.5">
+                    {group.items.map(t => <TxItem key={t.id} t={t} onDelete={deleteTx} />)}
+                  </div>
+                </div>
+              )
+            })
+          ) : (
+            <div className="py-8">
+              <Empty icon={<ReceiptText size={40} className="text-slate-300 mb-3" strokeWidth={1} />} text="Transaksi tidak ditemukan" />
+            </div>
+          )}
         </div>
       </div>
     </div>

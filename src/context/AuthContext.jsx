@@ -59,8 +59,14 @@ export function AuthProvider({ children }) {
     };
   }, [user]); // Efek ini bergantung pada state 'user'
 
-  const login = async (email, password) => {
+const login = async (email, password) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
+    
+    // TAMBAHAN: Jika tidak ada error (login berhasil), paksa pindah ke Dashboard
+    if (!error) {
+      window.location.href = '/' 
+    }
+    
     return error
   }
 
@@ -89,8 +95,9 @@ export function AuthProvider({ children }) {
     return null;
   }
 
-  const logout = async () => {
+const logout = async () => {
     await supabase.auth.signOut()
+    window.location.href = '/' // Paksa kembali ke root agar bersih
   }
 
   const loginWithGoogle = async () => {

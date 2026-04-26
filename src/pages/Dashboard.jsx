@@ -28,23 +28,20 @@ export default function Dashboard() {
   const { txData, invData, loading, totals } = useData() 
   const now = new Date()
   
-  // 1. HITUNGAN SPESIFIK BULAN INI & BULAN LALU (Digabung dengan Investasi)
+  // 1. HITUNGAN SPESIFIK BULAN INI & BULAN LALU
   const { currIn, currOut, trends } = useMemo(() => {
     const currYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
     const lastDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
     const lastYM = `${lastDate.getFullYear()}-${String(lastDate.getMonth() + 1).padStart(2, '0')}`
 
-    // Pemasukan = Transaksi 'in' + Investasi 'jual'
     const cInTx = txData.filter(t => t.type === 'in' && t.date?.startsWith(currYM)).reduce((s, t) => s + t.amount, 0)
     const cInInv = invData.filter(t => t.action === 'jual' && t.date?.startsWith(currYM)).reduce((s, t) => s + t.amount, 0)
     const cIn = cInTx + cInInv
     
-    // Pengeluaran = Transaksi 'out' + Investasi 'beli'
     const cOutTx = txData.filter(t => t.type === 'out' && t.date?.startsWith(currYM)).reduce((s, t) => s + t.amount, 0)
     const cOutInv = invData.filter(t => t.action === 'beli' && t.date?.startsWith(currYM)).reduce((s, t) => s + t.amount, 0)
     const cOut = cOutTx + cOutInv
 
-    // Lakukan hal yang sama untuk data bulan lalu
     const lInTx = txData.filter(t => t.type === 'in' && t.date?.startsWith(lastYM)).reduce((s, t) => s + t.amount, 0)
     const lInInv = invData.filter(t => t.action === 'jual' && t.date?.startsWith(lastYM)).reduce((s, t) => s + t.amount, 0)
     const lIn = lInTx + lInInv
@@ -53,7 +50,6 @@ export default function Dashboard() {
     const lOutInv = invData.filter(t => t.action === 'beli' && t.date?.startsWith(lastYM)).reduce((s, t) => s + t.amount, 0)
     const lOut = lOutTx + lOutInv
 
-    // Saldo historis
     const currSaldo = totals.saldo
     const lastSaldo = currSaldo - cIn + cOut
 
@@ -73,7 +69,15 @@ export default function Dashboard() {
     }
   }, [txData, invData, totals.saldo, now])
 
-  // 2. DATA GRAFIK 6 BULAN
+  // 2. HITUNGAN SPESIFIK HARI INI
+  const todayOut = useMemo(() => {
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const tOutTx = txData.filter(t => t.type === 'out' && t.date === todayStr).reduce((s, t) => s + t.amount, 0);
+    const tOutInv = invData.filter(t => t.action === 'beli' && t.date === todayStr).reduce((s, t) => s + t.amount, 0);
+    return tOutTx + tOutInv;
+  }, [txData, invData, now]);
+
+  // 3. DATA GRAFIK 6 BULAN
   const tren6 = useMemo(() => Array.from({length: 6}, (_, i) => {
     const d   = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
@@ -84,7 +88,7 @@ export default function Dashboard() {
     }
   }), [txData, now])
 
-  // 3. DATA DONUT CHART KATEGORI (Khusus bulan ini)
+  // 4. DATA DONUT CHART KATEGORI
   const currYM = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
   const catOut = useMemo(() => {
     const m = {}
@@ -97,11 +101,10 @@ export default function Dashboard() {
     .sort((a,b) => b[1] - a[1])
     .map(([name, value], i) => ({name, value, fill: CHART_COLORS[i]}))
 
-  // Fungsi Badge Tren Dinamis
   const renderTrendBadge = (pct, isExpense = false) => {
     if (pct === 0) return <span className="text-slate-400 bg-slate-50 px-2 py-1 rounded-md font-bold text-[11px] tracking-wide">0%</span>
     const isPositive = pct > 0
-    const isGood = isExpense ? !isPositive : isPositive // Naik untuk pengeluaran = Buruk
+    const isGood = isExpense ? !isPositive : isPositive 
     const colorClass = isGood ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50'
     const Icon = isPositive ? TrendingUp : TrendingDown
 
@@ -123,13 +126,12 @@ export default function Dashboard() {
           <h1 className="tabular-nums font-bold text-2xl text-slate-800 tracking-tight">Overview</h1>
           <p className="text-slate-500 text-sm font-medium mt-1">Selamat datang kembali, mari pantau keuanganmu.</p>
         </div>
-        <div className="bg-white border border-slate-200 rounded-full px-4 py-2.5 text-sm text-slate-400 shadow-sm w-full md:w-64 flex items-center">
-          <span className="mr-2">🔍</span> Cari transaksi...
-        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* CARD SALDO: Menampilkan Saldo Total All-Time */}
+      {/* PERUBAHAN: Grid menjadi 4 kolom untuk menampung widget Hari Ini */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        
+        {/* CARD SALDO TOTAL */}
         <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
             <span className="text-slate-800 font-semibold text-base">Saldo Saat Ini</span>
@@ -139,12 +141,28 @@ export default function Dashboard() {
             <p className="tabular-nums font-bold text-3xl xl:text-4xl text-[#2F3241] tracking-tight truncate">{fmt(totals.saldo)}</p>
             <div className="flex items-center gap-2 mt-3 text-sm">
               {renderTrendBadge(trends.saldo, false)}
-              <span className="text-slate-400 text-xs font-medium">vs bulan lalu</span>
+              <span className="text-slate-400 text-xs font-medium">vs bln lalu</span>
             </div>
           </div>
         </div>
 
-        {/* CARD PENGELUARAN: Hanya bulan ini */}
+        {/* CARD BARU: PENGELUARAN HARI INI (Desain Khusus) */}
+        <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 border border-indigo-600 rounded-[24px] p-6 shadow-sm flex flex-col justify-between text-white transform transition-transform hover:-translate-y-1">
+          <div className="flex justify-between items-start mb-4">
+            <span className="font-semibold text-base text-indigo-50">Keluar Hari Ini</span>
+            <span className="text-[11px] font-bold bg-white/20 px-2 py-1 rounded-md uppercase tracking-wider text-white">HARI INI</span>
+          </div>
+          <div>
+            <p className="tabular-nums font-bold text-3xl xl:text-4xl tracking-tight truncate">
+              {todayOut > 0 ? `-${fmt(todayOut)}` : 'Rp 0'}
+            </p>
+            <div className="mt-3 text-[13px] font-medium text-indigo-100 flex items-center gap-1.5">
+              {todayOut === 0 ? '✨ Hebat! Belum jajan hari ini' : '👀 Tetap pantau dompetmu!'}
+            </div>
+          </div>
+        </div>
+
+        {/* CARD PENGELUARAN BULAN INI */}
         <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
             <span className="text-slate-800 font-semibold text-base">Pengeluaran</span>
@@ -154,12 +172,12 @@ export default function Dashboard() {
             <p className="tabular-nums font-bold text-3xl xl:text-4xl text-[#FF8A00] tracking-tight truncate">{currOut > 0 ? `-${fmt(currOut)}` : fmt(currOut)}</p>
             <div className="flex items-center gap-2 mt-3 text-sm">
               {renderTrendBadge(trends.keluar, true)}
-              <span className="text-slate-400 text-xs font-medium">vs bulan lalu</span>
+              <span className="text-slate-400 text-xs font-medium">vs bln lalu</span>
             </div>
           </div>
         </div>
 
-        {/* CARD PEMASUKAN: Hanya bulan ini */}
+        {/* CARD PEMASUKAN BULAN INI */}
         <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
             <span className="text-slate-800 font-semibold text-base">Pemasukan</span>
@@ -169,7 +187,7 @@ export default function Dashboard() {
             <p className="tabular-nums font-bold text-3xl xl:text-4xl text-[#10B981] tracking-tight truncate">{currIn > 0 ? `+${fmt(currIn)}` : fmt(currIn)}</p>
             <div className="flex items-center gap-2 mt-3 text-sm">
               {renderTrendBadge(trends.masuk, false)}
-              <span className="text-slate-400 text-xs font-medium">vs bulan lalu</span>
+              <span className="text-slate-400 text-xs font-medium">vs bln lalu</span>
             </div>
           </div>
         </div>
@@ -178,7 +196,7 @@ export default function Dashboard() {
       {/* --- GRID UTAMA BAWAH --- */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* KIRI: CHART KEUANGAN (Mengambil 2 Kolom) */}
+        {/* KIRI: CHART KEUANGAN */}
         <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm lg:col-span-2 flex flex-col">
           <div className="flex justify-between items-center mb-6">
             <h3 className="font-bold text-lg text-slate-800">Total Keuangan (6 Bulan)</h3>
@@ -215,13 +233,9 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* KANAN: STACK TAGIHAN & DONUT CHART (Mengambil 1 Kolom) */}
+        {/* KANAN: STACK TAGIHAN & DONUT CHART */}
         <div className="flex flex-col gap-6">
-          
-          {/* KOMPONEN TAGIHAN BULANAN */}
           <BillTracker />
-
-          {/* DONUT CHART PENGELUARAN */}
           <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm flex flex-col flex-1">
             <div className="flex justify-between items-center mb-6">
               <h3 className="font-bold text-lg text-slate-800">Total Pengeluaran</h3>
@@ -254,9 +268,7 @@ export default function Dashboard() {
               )}
             </div>
           </div>
-
         </div>
-
       </div>
     </div>
   )

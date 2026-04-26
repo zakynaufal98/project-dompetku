@@ -18,7 +18,8 @@ import {
   BarChart3,
   TrendingUp,
   Coins,
-  Wallet
+  Wallet,
+  CreditCard
 } from 'lucide-react'
 
 // Fungsi untuk format Rupiah penuh (contoh: -Rp 200.000)
@@ -70,7 +71,7 @@ export const MONTHS_FULL = ['Januari','Februari','Maret','April','Mei','Juni','J
 
 export const CATEGORIES = [
   'Tagihan','Kebutuhan Rumah Tangga','Konsumsi & Makan',
-  'Transportasi','Kewajiban','Tabungan & Investasi',
+  'Transportasi','Kewajiban', 'Bayar Cicilan','Tabungan & Investasi',
   'Kesehatan','Pakaian','Kejadian Tak Terduga',
   'Pelatihan & Lainnya','Jajan Adek','Belanja Lainnya',
   'Kosmetik','Laundry','Parkir','Lainnya'
@@ -89,6 +90,7 @@ export const CAT_ICONS = {
   'Konsumsi & Makan':      <Utensils size={16} className="inline-block mr-1.5 text-orange-500" />,
   'Transportasi':          <Car size={16} className="inline-block mr-1.5 text-sky-500" />,
   'Kewajiban':             <ClipboardList size={16} className="inline-block mr-1.5 text-slate-500" />,
+  'Bayar Cicilan':         <CreditCard size={18} className="text-rose-500" />,
   'Tabungan & Investasi':  <PiggyBank size={16} className="inline-block mr-1.5 text-emerald-500" />,
   'Kesehatan':             <Pill size={16} className="inline-block mr-1.5 text-rose-500" />,
   'Pakaian':               <Shirt size={16} className="inline-block mr-1.5 text-pink-500" />,
