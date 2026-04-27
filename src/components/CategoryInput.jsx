@@ -33,7 +33,7 @@ export default function CategoryInput({ value, onChange }) {
       {/* 2. Kolom Input Teks */}
       <input
         type="text"
-        className="w-full bg-white border border-slate-200 rounded-xl pl-[2.75rem] pr-4 py-3 text-sm font-semibold text-slate-800 focus:border-indigo-500 outline-none transition-all"
+        className="w-full bg-white border border-slate-200 rounded-xl pl-[2.75rem] pr-4 pl-12 py-3 text-sm font-semibold text-slate-800 focus:border-indigo-500 outline-none transition-all"
         placeholder="Ketik atau pilih kategori..."
         value={value}
         onChange={(e) => {

@@ -10,7 +10,6 @@ import {
 } from 'lucide-react'
 
 export default function Transaksi() {
-  // 1. TAMBAHKAN invData di baris ini
   const { txData, invData, addTx, deleteTx, totals } = useData()
   
   const [type,   setType]   = useState('out')
@@ -23,11 +22,28 @@ export default function Transaksi() {
   const [err,    setErr]    = useState('')
   const [searchQuery, setSearchQuery] = useState('')
 
-const handleAdd = async () => {
+  // --- FITUR BARU: SARAN NOMINAL PINTAR ---
+  // Mencari 3 nominal terakhir berdasarkan keterangan yang sedang diketik
+  const suggestedAmounts = useMemo(() => {
+    if (!desc.trim()) return [];
+    
+    // Cari transaksi sebelumnya dengan nama dan tipe yang persis sama
+    const matches = txData.filter(t => 
+      t.desc && t.desc.toLowerCase() === desc.trim().toLowerCase() && 
+      t.type === type
+    );
+    
+    // Hapus angka yang duplikat dan ambil 3 yang terbaru
+    const uniqueAmounts = [...new Set(matches.map(t => t.amount))];
+    return uniqueAmounts.slice(0, 3);
+  }, [desc, txData, type]);
+  // ----------------------------------------
+
+  const handleAdd = async () => {
     if (!desc.trim())       { setErr('Keterangan wajib diisi'); return }
     if (!amount||+amount<=0){ setErr('Jumlah harus lebih dari 0'); return }
     
-    // TAMBAHAN: Cegah simpan jika kategori pengeluaran masih kosong
+    // Cegah simpan jika kategori pengeluaran masih kosong
     if (type === 'out' && !cat) { setErr('Kategori wajib dipilih'); return }
     
     setBusy(true); setErr('')
@@ -36,28 +52,27 @@ const handleAdd = async () => {
     
     if (e) setErr(e.message)
     else { 
-      // TAMBAHAN: Kembalikan form ke keadaan kosong setelah berhasil simpan
+      // Kembalikan form ke keadaan kosong setelah berhasil simpan
       setDesc(''); 
       setAmount('');
       setCat(''); 
     }
   }
 
-  // 2. JURUS BARU: GABUNGKAN TRANSAKSI BIASA + INVESTASI
+  // GABUNGKAN TRANSAKSI BIASA + INVESTASI
   const combinedData = useMemo(() => {
-    // Memodifikasi format data investasi agar bisa dibaca oleh daftar transaksi
     const formattedInv = invData.map(inv => ({
       ...inv,
-      type: inv.action === 'jual' ? 'in' : 'out', // Jual = Pemasukan, Beli = Pengeluaran
+      type: inv.action === 'jual' ? 'in' : 'out', 
       cat: 'Investasi', 
       desc: inv.name || (inv.action === 'jual' ? 'Jual Investasi' : 'Beli Investasi'),
-      isInv: true // Penanda khusus bahwa ini data investasi
+      isInv: true 
     }));
     
     return [...txData, ...formattedInv];
   }, [txData, invData])
 
-  // 3. FILTER & SORTING (Sekarang menggunakan combinedData)
+  // FILTER & SORTING 
   const filtered = combinedData
     .filter(t => {
       const matchTab = filter === 'semua' || t.type === filter
@@ -67,13 +82,12 @@ const handleAdd = async () => {
       return matchTab && matchSearch
     })
     .sort((a, b) => {
-      // 1. Urutkan berdasarkan Tanggal Kalender (Misal: 27 April vs 26 April)
+      // 1. Urutkan berdasarkan Tanggal Kalender 
       const dateA = new Date(a.date).getTime()
       const dateB = new Date(b.date).getTime()
       if (dateA !== dateB) return dateB - dateA
       
-      // 2. PERBAIKAN: Jika created_at kosong (data baru), gunakan Date.now() 
-      // Ini memaksa data yang baru saja diketik untuk langsung melompat ke paling atas!
+      // 2. Jika created_at kosong (data baru diinput lokal), gunakan Date.now() agar selalu di atas
       const timeA = a.created_at ? new Date(a.created_at).getTime() : Date.now()
       const timeB = b.created_at ? new Date(b.created_at).getTime() : Date.now()
       
@@ -142,8 +156,35 @@ const handleAdd = async () => {
                 <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-slate-100 text-slate-500 rounded-xl flex items-center justify-center pointer-events-none z-10">
                   <Banknote size={16} strokeWidth={2.5} />
                 </div>
-                <input className="form-input pl-14 py-3 border-slate-200 focus:border-indigo-500 relative z-0" type="text" inputMode="numeric" value={amount ? Number(amount).toLocaleString('id-ID') : ''} onChange={e => setAmount(e.target.value.replace(/\D/g, ''))} placeholder="0" onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+                <input 
+                  className="form-input pl-14 py-3 border-slate-200 focus:border-indigo-500 relative z-0" 
+                  type="text" 
+                  inputMode="numeric" 
+                  value={amount ? Number(amount).toLocaleString('id-ID') : ''} 
+                  onChange={e => setAmount(e.target.value.replace(/\D/g, ''))} 
+                  placeholder="0" 
+                  onKeyDown={e => e.key === 'Enter' && handleAdd()} 
+                />
               </div>
+
+              {/* TAMPILAN TOMBOL NOMINAL PINTAR */}
+              {suggestedAmounts.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2.5 animate-fade-in">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center mr-1">
+                    Terakhir:
+                  </span>
+                  {suggestedAmounts.map((nominal, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setAmount(nominal.toString())}
+                      className="px-2.5 py-1 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-lg border border-indigo-100 hover:bg-indigo-100 hover:text-indigo-700 transition-colors cursor-pointer shadow-sm active:scale-95"
+                    >
+                      {nominal.toLocaleString('id-ID')}
+                    </button>
+                  ))}
+                </div>
+              )}
             </Field>
 
             {type === 'out' && (
@@ -235,7 +276,6 @@ const handleAdd = async () => {
                       <TxItem 
                         key={t.isInv ? `inv-${t.id}` : `tx-${t.id}`} 
                         t={t} 
-                        // Trik Pro: Cegah error hapus jika itu adalah data Investasi
                         onDelete={t.isInv ? undefined : deleteTx} 
                         isInv={t.isInv}
                       />

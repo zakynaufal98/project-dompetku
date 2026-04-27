@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { BarChart3, PieChart, ShieldCheck, Mail, Lock, Eye, EyeOff, Loader2, User } from 'lucide-react'
 
-
 const FEATURES = [
   { icon: <BarChart3 size={22} />, title: 'Pantau keuangan', sub: 'dengan mudah' },
   { icon: <PieChart size={22} />, title: 'Kelola pemasukan', sub: 'dan pengeluaran' },
@@ -10,7 +9,6 @@ const FEATURES = [
 ]
 
 export default function AuthPage() {
-  // 1. TAMBAHAN: Ambil loginWithGoogle dari useAuth
   const { login, register, loginWithGoogle, resetPassword } = useAuth()
   
   const [mode, setMode] = useState('login')
@@ -31,7 +29,6 @@ export default function AuthPage() {
   }
 
   // Handler untuk Login / Register biasa (Email & Password)
-  // Handler untuk Login / Register biasa (Email & Password)
   const handle = async () => {
     // 1. Validasi Umum
     if (mode === 'register' && !name.trim()) { 
@@ -49,28 +46,23 @@ export default function AuthPage() {
 
     // 2. Validasi Password Kuat (HANYA UNTUK REGISTER)
     if (mode === 'register') {
-      // Minimal 8 karakter (standar keamanan modern)
       if (pass.length < 8) { 
         setMsg({ text: 'Password minimal 8 karakter', ok: false }); 
         return 
       }
-      // Harus ada huruf kapital
       if (!/[A-Z]/.test(pass)) { 
         setMsg({ text: 'Password harus mengandung huruf kapital (A-Z)', ok: false }); 
         return 
       }
-      // Harus ada angka
       if (!/[0-9]/.test(pass)) { 
         setMsg({ text: 'Password harus mengandung angka (0-9)', ok: false }); 
         return 
       }
-      // Harus ada karakter spesial/simbol
       if (!/[!@#$%^&*(),.?":{}|<>_]/.test(pass)) { 
         setMsg({ text: 'Password harus mengandung karakter spesial (contoh: @, #, !)', ok: false }); 
         return 
       }
     } else {
-      // Validasi ringan untuk mode Login
       if (pass.length < 6) { 
         setMsg({ text: 'Password minimal 6 karakter', ok: false }); 
         return 
@@ -91,43 +83,41 @@ export default function AuthPage() {
     if (err) {
       let pesanError = err.message;
       
-      // Jika errornya karena email sudah ada
       if (pesanError.toLowerCase().includes('already registered')) {
         pesanError = 'Email ini sudah terdaftar. Silakan beralih ke menu Masuk.';
       } 
-      // Jika errornya karena salah password saat login
       else if (pesanError.toLowerCase().includes('invalid login credentials')) {
         pesanError = 'Email atau password yang kamu masukkan salah.';
+      }
+      // --- TAMBAHAN: Mencegat error Rate Limit saat Login/Register ---
+      else if (pesanError.toLowerCase().includes('rate limit') || pesanError.toLowerCase().includes('too many requests')) {
+        pesanError = 'Sistem membatasi permintaan kamu sementara waktu karena terlalu sering mencoba. Silakan tunggu beberapa saat.';
       }
       
       setMsg({ text: pesanError, ok: false });
     } 
     else if (mode === 'register') {
       setMsg({ text: '✅ Akun berhasil dibuat! Cek email kamu untuk konfirmasi.', ok: true })
-      // Opsional: Kosongkan form setelah sukses mendaftar
       setEmail('');
       setPass('');
       setName('');
     }
   }
 
-  // 2. TAMBAHAN: Handler khusus untuk tombol Google
+  // Handler khusus untuk tombol Google
   const handleGoogleLogin = async () => {
     setBusy(true);
     setMsg(null);
     const err = await loginWithGoogle();
     
-    // Jika ada error (misal user membatalkan popup), tampilkan error
     if (err) {
       setMsg({ text: err.message, ok: false });
       setBusy(false);
     }
-    // Jika sukses, Supabase akan otomatis me-redirect halaman, jadi loading akan terus berjalan
   }
 
-  // 3. TAMBAHAN: Handler untuk Lupa Password
+  // Handler untuk Lupa Password
   const handleLupaPassword = async () => {
-    // Pastikan user sudah mengetik emailnya
     if (!email.trim()) {
       setMsg({ text: 'Silakan ketik email kamu terlebih dahulu di kolom atas.', ok: false });
       return;
@@ -140,7 +130,14 @@ export default function AuthPage() {
     setBusy(false);
     
     if (err) {
-      setMsg({ text: err.message, ok: false });
+      let pesanError = err.message;
+      
+      // Mencegat error Rate Limit saat Lupa Password
+      if (pesanError.toLowerCase().includes('rate limit') || pesanError.toLowerCase().includes('too many requests')) {
+        pesanError = 'Terlalu banyak percobaan. Sistem sedang membatasi pengiriman email untuk alasan keamanan. Silakan coba lagi nanti.';
+      }
+      
+      setMsg({ text: pesanError, ok: false });
     } else {
       setMsg({ text: '✅ Link reset password telah dikirim ke email kamu!', ok: true });
     }
@@ -273,7 +270,7 @@ export default function AuthPage() {
                 </div>
                 <span className="text-sm text-text-2">Ingat saya</span>
               </label>
-              {/* Sembunyikan tombol lupa password saat mode Daftar */}
+              
               {mode === 'login' && (
                 <button 
                   type="button"
@@ -315,7 +312,6 @@ export default function AuthPage() {
               <div className="flex-1 h-px bg-border2" />
             </div>
 
-            {/* 3. TAMBAHAN: Pasang handler onClick ke tombol Google */}
             <button 
               onClick={handleGoogleLogin}
               disabled={busy}
