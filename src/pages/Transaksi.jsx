@@ -2,40 +2,63 @@ import { useState, useMemo } from 'react'
 import { useData } from '../context/DataContext'
 import { fmt, fmtShort, today, CATEGORIES, CAT_ICONS } from '../lib/utils'
 import { TxItem, Empty, Tabs, Field, PanelHeader, SummaryRow } from '../components/UI'
-import { 
-  ArrowDownLeft, ArrowUpRight, Pencil, Banknote, 
-  Calendar, PlusCircle, ReceiptText, Loader2, Tag, Search 
-} from 'lucide-react'
-import DescInput from '../components/DescInput'
 import CategoryInput from '../components/CategoryInput'
+import DescInput from '../components/DescInput'
+import { 
+  ArrowDownLeft, ArrowUpRight, Banknote, 
+  Calendar, PlusCircle, ReceiptText, Loader2, Search 
+} from 'lucide-react'
 
 export default function Transaksi() {
-  const { txData, addTx, deleteTx, totals } = useData()
+  // 1. TAMBAHKAN invData di baris ini
+  const { txData, invData, addTx, deleteTx, totals } = useData()
+  
   const [type,   setType]   = useState('out')
   const [desc,   setDesc]   = useState('')
   const [amount, setAmount] = useState('')
-  const [cat,    setCat]    = useState(CATEGORIES[0])
+  const [cat,    setCat]    = useState('')
   const [date,   setDate]   = useState(today())
   const [filter, setFilter] = useState('semua')
   const [busy,   setBusy]   = useState(false)
   const [err,    setErr]    = useState('')
-  
   const [searchQuery, setSearchQuery] = useState('')
 
-  const handleAdd = async () => {
+const handleAdd = async () => {
     if (!desc.trim())       { setErr('Keterangan wajib diisi'); return }
     if (!amount||+amount<=0){ setErr('Jumlah harus lebih dari 0'); return }
+    
+    // TAMBAHAN: Cegah simpan jika kategori pengeluaran masih kosong
+    if (type === 'out' && !cat) { setErr('Kategori wajib dipilih'); return }
+    
     setBusy(true); setErr('')
     const e = await addTx({ desc:desc.trim(), amount:+amount, type, cat:type==='out'?cat:'Pemasukan', date })
     setBusy(false)
+    
     if (e) setErr(e.message)
-    else { setDesc(''); setAmount('') }
+    else { 
+      // TAMBAHAN: Kembalikan form ke keadaan kosong setelah berhasil simpan
+      setDesc(''); 
+      setAmount('');
+      setCat(''); 
+    }
   }
 
-  // 1. LOGIKA FILTER & SORTING (Terbaru di atas)
-  // 1. LOGIKA FILTER & SORTING (Terbaru di atas)
-  // 1. LOGIKA FILTER & SORTING (Terbaru selalu di atas - REVISI FINAL)
-  const filtered = txData
+  // 2. JURUS BARU: GABUNGKAN TRANSAKSI BIASA + INVESTASI
+  const combinedData = useMemo(() => {
+    // Memodifikasi format data investasi agar bisa dibaca oleh daftar transaksi
+    const formattedInv = invData.map(inv => ({
+      ...inv,
+      type: inv.action === 'jual' ? 'in' : 'out', // Jual = Pemasukan, Beli = Pengeluaran
+      cat: 'Investasi', 
+      desc: inv.name || (inv.action === 'jual' ? 'Jual Investasi' : 'Beli Investasi'),
+      isInv: true // Penanda khusus bahwa ini data investasi
+    }));
+    
+    return [...txData, ...formattedInv];
+  }, [txData, invData])
+
+  // 3. FILTER & SORTING (Sekarang menggunakan combinedData)
+  const filtered = combinedData
     .filter(t => {
       const matchTab = filter === 'semua' || t.type === filter
       const q = searchQuery.toLowerCase()
@@ -44,29 +67,24 @@ export default function Transaksi() {
       return matchTab && matchSearch
     })
     .sort((a, b) => {
-      // 1. Urutkan berdasarkan Tanggal Kalender (Misal: 26 April vs 25 April)
+      // 1. Urutkan berdasarkan Tanggal Kalender (Misal: 27 April vs 26 April)
       const dateA = new Date(a.date).getTime()
       const dateB = new Date(b.date).getTime()
       if (dateA !== dateB) return dateB - dateA
       
-      // 2. JIKA TANGGAL SAMA: Gunakan waktu detail jika tersedia dari database
-      if (a.created_at && b.created_at) {
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      }
+      // 2. PERBAIKAN: Jika created_at kosong (data baru), gunakan Date.now() 
+      // Ini memaksa data yang baru saja diketik untuk langsung melompat ke paling atas!
+      const timeA = a.created_at ? new Date(a.created_at).getTime() : Date.now()
+      const timeB = b.created_at ? new Date(b.created_at).getTime() : Date.now()
       
-      // 3. JURUS PAMUNGKAS (Fallback)
-      // Jika waktu detail kosong, gunakan posisi index asli di database.
-      // Data yang baru diinput selalu punya index lebih besar. Kita balik urutannya (b - a).
-      return txData.indexOf(b) - txData.indexOf(a)
+      return timeB - timeA
     })
 
-  // 2. LOGIKA GROUPING (MENGELOMPOKKAN TRANSAKSI PER HARI)
+  // GROUPING PER HARI
   const groupedTx = useMemo(() => {
     const groups = {}
     filtered.forEach(t => {
-      if (!groups[t.date]) {
-        groups[t.date] = { items: [], totalIn: 0, totalOut: 0 }
-      }
+      if (!groups[t.date]) groups[t.date] = { items: [], totalIn: 0, totalOut: 0 }
       groups[t.date].items.push(t)
       if (t.type === 'in') groups[t.date].totalIn += t.amount
       if (t.type === 'out') groups[t.date].totalOut += t.amount
@@ -74,21 +92,14 @@ export default function Transaksi() {
     return groups
   }, [filtered])
 
-  // Fungsi untuk mengubah tanggal menjadi "Hari Ini", "Kemarin", dsb.
   const getDayLabel = (dateStr) => {
     const d = new Date(dateStr)
     const todayObj = new Date()
     const yesterdayObj = new Date(todayObj)
     yesterdayObj.setDate(yesterdayObj.getDate() - 1)
 
-    const dString = d.toISOString().split('T')[0]
-    const todayString = todayObj.toISOString().split('T')[0]
-    const yesterdayString = yesterdayObj.toISOString().split('T')[0]
-
-    if (dString === todayString) return "Hari Ini"
-    if (dString === yesterdayString) return "Kemarin"
-    
-    // Format: 24 April 2026
+    if (d.toISOString().split('T')[0] === todayObj.toISOString().split('T')[0]) return "Hari Ini"
+    if (d.toISOString().split('T')[0] === yesterdayObj.toISOString().split('T')[0]) return "Kemarin"
     return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
   }
 
@@ -123,36 +134,30 @@ export default function Transaksi() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="Keterangan">
-              <DescInput 
-                value={desc} 
-                onChange={setDesc} 
-                txData={txData} 
-                onEnter={handleAdd} 
-              />
+              <DescInput value={desc} onChange={setDesc} txData={txData} onEnter={handleAdd} />
             </Field>
 
             <Field label="Jumlah (Rp)">
               <div className="relative">
-                <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-slate-100 text-slate-500 rounded-xl flex items-center justify-center pointer-events-none">
+                <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-slate-100 text-slate-500 rounded-xl flex items-center justify-center pointer-events-none z-10">
                   <Banknote size={16} strokeWidth={2.5} />
                 </div>
-                <input className="form-input pl-14 py-3 border-slate-200 focus:border-indigo-500" type="text" inputMode="numeric" value={amount ? Number(amount).toLocaleString('id-ID') : ''} onChange={e => setAmount(e.target.value.replace(/\D/g, ''))} placeholder="0" onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+                <input className="form-input pl-14 py-3 border-slate-200 focus:border-indigo-500 relative z-0" type="text" inputMode="numeric" value={amount ? Number(amount).toLocaleString('id-ID') : ''} onChange={e => setAmount(e.target.value.replace(/\D/g, ''))} placeholder="0" onKeyDown={e => e.key === 'Enter' && handleAdd()} />
               </div>
             </Field>
 
             {type === 'out' && (
               <Field label="Kategori">
-                 {/* Panggil komponen pintar kita di sini! */}
-                 <CategoryInput value={cat} onChange={setCat} />
+                <CategoryInput value={cat} onChange={setCat} />
               </Field>
             )}
 
             <Field label="Tanggal">
               <div className="relative">
-                <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-slate-100 text-slate-500 rounded-xl flex items-center justify-center pointer-events-none">
+                <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-slate-100 text-slate-500 rounded-xl flex items-center justify-center pointer-events-none z-10">
                   <Calendar size={16} strokeWidth={2.5} />
                 </div>
-                <input className="form-input pl-14 py-3 cursor-pointer border-slate-200 focus:border-indigo-500 text-sm" type="date" value={date} onChange={e => setDate(e.target.value)} />
+                <input className="form-input pl-14 py-3 cursor-pointer border-slate-200 focus:border-indigo-500 text-sm relative z-0" type="date" value={date} onChange={e => setDate(e.target.value)} />
               </div>
             </Field>
           </div>
@@ -182,7 +187,7 @@ export default function Transaksi() {
         </div>
       </div>
 
-      {/* ── LIST RIWAYAT (SUDAH DI-GROUP PER HARI) ────── */}
+      {/* ── LIST RIWAYAT BUKU BESAR ────── */}
       <div className="bg-white border border-slate-200 rounded-[24px] p-6 md:p-8 shadow-sm">
         <PanelHeader title="Riwayat Transaksi" badge={`${filtered.length} total`} />
         
@@ -194,9 +199,8 @@ export default function Transaksi() {
           ]} />
         </div>
 
-        {/* BAR PENCARIAN (SEARCH BAR) */}
         <div className="relative mb-6">
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10">
             <Search size={18} />
           </div>
           <input 
@@ -204,7 +208,7 @@ export default function Transaksi() {
             placeholder="Cari transaksi berdasarkan nama atau kategori..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:border-indigo-500 focus:bg-white outline-none transition-all"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:border-indigo-500 focus:bg-white outline-none transition-all relative z-0"
           />
         </div>
 
@@ -216,7 +220,6 @@ export default function Transaksi() {
               
               return (
                 <div key={dateKey} className="mb-8 last:mb-0 animate-fade-up">
-                  {/* HEADER TANGGAL */}
                   <div className="flex items-center justify-between border-b-2 border-slate-100 pb-2.5 mb-3 sticky top-0 bg-white z-10">
                     <h4 className={`font-bold text-sm ${isToday ? 'text-indigo-600' : 'text-slate-700'}`}>
                       {getDayLabel(dateKey)}
@@ -227,9 +230,16 @@ export default function Transaksi() {
                     </div>
                   </div>
                   
-                  {/* DAFTAR TRANSAKSI DI HARI TERSEBUT */}
                   <div className="space-y-1.5">
-                    {group.items.map(t => <TxItem key={t.id} t={t} onDelete={deleteTx} />)}
+                    {group.items.map(t => (
+                      <TxItem 
+                        key={t.isInv ? `inv-${t.id}` : `tx-${t.id}`} 
+                        t={t} 
+                        // Trik Pro: Cegah error hapus jika itu adalah data Investasi
+                        onDelete={t.isInv ? undefined : deleteTx} 
+                        isInv={t.isInv}
+                      />
+                    ))}
                   </div>
                 </div>
               )

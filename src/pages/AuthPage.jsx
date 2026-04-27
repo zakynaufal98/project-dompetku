@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { BarChart3, PieChart, ShieldCheck, Mail, Lock, Eye, EyeOff, Loader2, User } from 'lucide-react'
 
+
 const FEATURES = [
   { icon: <BarChart3 size={22} />, title: 'Pantau keuangan', sub: 'dengan mudah' },
   { icon: <PieChart size={22} />, title: 'Kelola pemasukan', sub: 'dan pengeluaran' },
@@ -10,7 +11,7 @@ const FEATURES = [
 
 export default function AuthPage() {
   // 1. TAMBAHAN: Ambil loginWithGoogle dari useAuth
-  const { login, register, loginWithGoogle } = useAuth()
+  const { login, register, loginWithGoogle, resetPassword } = useAuth()
   
   const [mode, setMode] = useState('login')
   const [email, setEmail] = useState('')
@@ -122,6 +123,27 @@ export default function AuthPage() {
       setBusy(false);
     }
     // Jika sukses, Supabase akan otomatis me-redirect halaman, jadi loading akan terus berjalan
+  }
+
+  // 3. TAMBAHAN: Handler untuk Lupa Password
+  const handleLupaPassword = async () => {
+    // Pastikan user sudah mengetik emailnya
+    if (!email.trim()) {
+      setMsg({ text: 'Silakan ketik email kamu terlebih dahulu di kolom atas.', ok: false });
+      return;
+    }
+    
+    setBusy(true);
+    setMsg(null);
+    
+    const err = await resetPassword(email);
+    setBusy(false);
+    
+    if (err) {
+      setMsg({ text: err.message, ok: false });
+    } else {
+      setMsg({ text: '✅ Link reset password telah dikirim ke email kamu!', ok: true });
+    }
   }
 
   return (
@@ -251,9 +273,17 @@ export default function AuthPage() {
                 </div>
                 <span className="text-sm text-text-2">Ingat saya</span>
               </label>
-              <button className="text-sm text-primary font-medium bg-transparent border-none cursor-pointer hover:underline transition-colors">
-                Lupa password?
-              </button>
+              {/* Sembunyikan tombol lupa password saat mode Daftar */}
+              {mode === 'login' && (
+                <button 
+                  type="button"
+                  onClick={handleLupaPassword}
+                  disabled={busy}
+                  className="text-sm text-primary font-medium bg-transparent border-none cursor-pointer hover:underline transition-colors disabled:opacity-50"
+                >
+                  Lupa password?
+                </button>
+              )}
             </div>
 
             {msg && (

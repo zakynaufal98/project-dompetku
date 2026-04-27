@@ -4,7 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import { DataProvider } from './context/DataContext'
 import Sidebar from './components/Sidebar'
 import BottomNav from './components/BottomNav' 
-import Navbar from './components/Navbar' // <-- 1. Import Navbar baru di sini
+import Navbar from './components/Navbar' 
 import AuthPage from './pages/AuthPage'
 import Dashboard from './pages/Dashboard'
 import Transaksi from './pages/Transaksi'
@@ -13,6 +13,9 @@ import Bulanan from './pages/Bulanan'
 import Tahunan from './pages/Tahunan'
 import Grafik from './pages/Grafik'
 import { Spinner } from './components/UI'
+
+// 1. TAMBAHAN: Import RecoveryModal
+import RecoveryModal from './components/RecoveryModal'
 
 function AppLayout() {
   const { user, loading } = useAuth()
@@ -45,7 +48,6 @@ function AppLayout() {
         <main className="flex-1 h-full overflow-y-auto w-full relative pb-24 lg:pb-0">
           
           {/* NAVBAR ATAS (Menggantikan Header Mobile lama) */}
-          {/* <-- 2. Panggil Navbar di sini agar menempel di atas semua halaman */}
           <Navbar />
 
           <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
@@ -73,6 +75,11 @@ export default function App() {
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
+        
+        {/* 2. TAMBAHAN: Pasang Modal Lupa Password di sini */}
+        {/* Posisinya di luar AppLayout agar bisa menimpa layar loading maupun halaman lain */}
+        <RecoveryModal />
+
         <AppLayout />
       </AuthProvider>
     </BrowserRouter>

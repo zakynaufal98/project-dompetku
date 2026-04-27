@@ -274,37 +274,48 @@ export default function Grafik() {
       </div>
 
       {/* --- MODAL POP-UP DETAIL TRANSAKSI --- */}
+      {/* --- SIDE DRAWER DETAIL TRANSAKSI (PENGGANTI MODAL TENGAH) --- */}
       {selectedDate && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-md overflow-hidden animate-fade-up flex flex-col max-h-[80vh]">
+        <div className="fixed inset-0 z-[100] flex justify-end bg-slate-900/40 backdrop-blur-sm animate-fade-in">
+          
+          {/* Overlay klik untuk menutup */}
+          <div 
+            className="absolute inset-0 cursor-pointer" 
+            onClick={() => setSelectedDate(null)}
+          ></div>
+
+          {/* Panel Drawer dari Kanan */}
+          <div className="relative bg-white w-full max-w-md h-full shadow-[-10px_0_40px_rgba(0,0,0,0.1)] flex flex-col border-l border-slate-200 animate-fade-up md:animate-none">
             
-            {/* Header Modal */}
-            <div className="flex items-center justify-between p-5 md:p-6 border-b border-slate-100 bg-white sticky top-0 z-10">
+            {/* Header Drawer */}
+            <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-white z-10 shadow-sm">
               <div>
-                <h3 className="font-bold text-lg text-slate-800">Detail Pengeluaran</h3>
-                <p className="text-slate-500 text-sm font-medium mt-0.5">{selectedLabel}</p>
+                <h3 className="font-bold text-xl text-slate-800">Detail Pengeluaran</h3>
+                <p className="text-indigo-600 text-sm font-bold mt-1 bg-indigo-50 inline-block px-2.5 py-0.5 rounded-md">
+                  {selectedLabel}
+                </p>
               </div>
               <button 
                 onClick={() => setSelectedDate(null)} 
-                className="p-2.5 text-slate-400 hover:text-rose-500 bg-slate-50 hover:bg-rose-50 rounded-full transition-colors cursor-pointer"
+                className="p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-all cursor-pointer bg-slate-50"
               >
                 <X size={20} strokeWidth={2.5} />
               </button>
             </div>
             
-            {/* Isi Modal */}
-            <div className="p-5 md:p-6 overflow-y-auto custom-scrollbar bg-slate-50/50 flex-1">
-              <div className="space-y-1.5">
+            {/* Isi Drawer (Area Scroll Bebas) */}
+            <div className="p-6 overflow-y-auto custom-scrollbar bg-slate-50/50 flex-1">
+              <div className="space-y-2">
                 {selectedDayData.length > 0 ? (
                   selectedDayData.map(t => <TxItem key={t.id} t={t} isInv={t.isInv} />)
                 ) : (
-                  <div className="py-8 text-center">
+                  <div className="py-12 text-center flex flex-col items-center justify-center opacity-60">
                     <p className="text-slate-500 font-medium">Data rincian tidak ditemukan.</p>
                   </div>
                 )}
               </div>
             </div>
-            
+
           </div>
         </div>
       )}

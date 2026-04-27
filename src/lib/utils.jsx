@@ -84,6 +84,7 @@ export const CHART_COLORS = [
 ]
 
 // Emoji diganti dengan komponen Lucide React
+// Emoji diganti dengan komponen Lucide React
 export const CAT_ICONS = {
   'Tagihan':               <Receipt size={16} className="inline-block mr-1.5 text-indigo-500" />,
   'Kebutuhan Rumah Tangga':<Home size={16} className="inline-block mr-1.5 text-teal-500" />,
@@ -102,7 +103,10 @@ export const CAT_ICONS = {
   'Laundry':               <Droplets size={16} className="inline-block mr-1.5 text-sky-400" />,
   'Parkir':                <CircleParking size={16} className="inline-block mr-1.5 text-slate-400" />,
   'Pemasukan':             <Banknote size={16} className="inline-block mr-1.5 text-emerald-600" />,
-  'lainnya':               <Sparkles size={16} className="inline-block mr-1.5 text-gray-400" />,
+  
+  // --- TAMBAHAN & PERBAIKAN DI BAWAH SINI ---
+  'Investasi':             <TrendingUp size={16} className="inline-block mr-1.5 text-blue-500" />, // Tambahan untuk Aset
+  'Lainnya':               <Sparkles size={16} className="inline-block mr-1.5 text-slate-400" />, // Diperbaiki: Huruf L besar
 }
 
 // Investasi types dengan sub-jenis dan satuan (Ikon diupdate)
