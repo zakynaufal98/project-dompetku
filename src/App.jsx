@@ -12,6 +12,7 @@ import Investasi from './pages/Investasi'
 import Bulanan from './pages/Bulanan'
 import Tahunan from './pages/Tahunan'
 import Grafik from './pages/Grafik'
+import Hutang from './pages/Hutang' // Halaman baru untuk tagihan/hutang
 import { Spinner } from './components/UI'
 
 // 1. TAMBAHAN: Import RecoveryModal
@@ -57,6 +58,7 @@ function AppLayout() {
               <Route path="/investasi" element={<Investasi />} />
               <Route path="/bulanan"   element={<Bulanan />} />
               <Route path="/tahunan"   element={<Tahunan />} />
+              <Route path="/hutang" element={<Hutang />} />
               <Route path="/grafik"    element={<Grafik />} />
               <Route path="*"          element={<Navigate to="/" replace />} />
             </Routes>

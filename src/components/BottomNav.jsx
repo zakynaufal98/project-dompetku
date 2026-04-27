@@ -5,7 +5,8 @@ import {
   TrendingUp, 
   Calendar, 
   CalendarDays, 
-  PieChart 
+  PieChart,
+  Landmark
 } from 'lucide-react'
 
 // Nama label saya persingkat agar muat rapi berjejer 6 di layar HP
@@ -15,6 +16,7 @@ const MENU = [
   { path: '/investasi', icon: <TrendingUp size={20} />, label: 'Aset' },
   { path: '/bulanan', icon: <Calendar size={20} />, label: 'Bulan' },
   { path: '/tahunan', icon: <CalendarDays size={20} />, label: 'Tahun' },
+  { path: '/hutang', label: 'Hutang', icon: <Landmark size={20} /> },
   { path: '/grafik', icon: <PieChart size={20} />, label: 'Grafik' },
 ]
 
@@ -40,4 +42,4 @@ export default function BottomNav() {
       </div>
     </div>
   )
-}
+} 

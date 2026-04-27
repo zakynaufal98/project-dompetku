@@ -7,7 +7,8 @@ import {
   CalendarDays, 
   PieChart, 
   ChevronLeft, 
-  ChevronRight
+  ChevronRight,
+  BanknoteArrowDown
 } from 'lucide-react'
 
 const MENU = [
@@ -17,6 +18,7 @@ const MENU = [
   { path: '/bulanan', icon: <Calendar size={20} />, label: 'Bulanan' },
   { path: '/tahunan', icon: <CalendarDays size={20} />, label: 'Tahunan' },
   { path: '/grafik', icon: <PieChart size={20} />, label: 'Grafik' },
+  { path: '/hutang', icon: <BanknoteArrowDown size={20} />, label: 'Hutang' },
 ]
 
 export default function Sidebar({ collapsed, setCollapsed }) {
