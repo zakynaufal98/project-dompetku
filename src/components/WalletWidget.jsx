@@ -94,10 +94,10 @@ export default function WalletWidget({ totals, addWallet, updateWallet, deleteWa
   return (
     <div className="animate-fade-up">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold text-slate-800 dark:text-white tracking-tight">Dompet & Rekening</h2>
+        <h2 className="text-lg font-bold text-text tracking-tight">Dompet & Rekening</h2>
         
         {totals?.walletBalances?.length > 1 && (
-          <button onClick={handleOpenTransfer} className="text-sm font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-xl flex items-center gap-2 transition-colors">
+          <button onClick={handleOpenTransfer} className="text-sm font-bold text-income bg-income-light hover:bg-income-light px-4 py-2 rounded-xl flex items-center gap-2 transition-colors">
             <ArrowRightLeft size={16} strokeWidth={2.5} /> Transfer Saldo
           </button>
         )}
@@ -108,17 +108,17 @@ export default function WalletWidget({ totals, addWallet, updateWallet, deleteWa
           <div 
             key={w.id} 
             onClick={() => handleOpenEdit(w)}
-            className="min-w-[180px] p-5 rounded-[20px] bg-white border border-slate-200 shadow-sm flex-shrink-0 flex flex-col justify-between relative overflow-hidden hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group"
+            className="min-w-[180px] p-5 rounded-[20px] bg-surface border border-border shadow-sm flex-shrink-0 flex flex-col justify-between relative overflow-hidden hover:shadow-md hover:border-income/30 transition-all cursor-pointer group"
           >
             <div className="absolute top-0 left-0 right-0 h-1.5" style={{ backgroundColor: w.color || '#ccc' }} />
             <div>
               <div className="flex items-center gap-2 mb-2 mt-1">
                 <BankLogo name={w.name} size="sm" />
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{w.name}</p>
+                <p className="text-xs font-bold text-muted uppercase tracking-wider">{w.name}</p>
               </div>
-              <h3 className="text-xl font-black text-slate-800 tabular-nums">{fmt(w.calculatedBalance)}</h3>
+              <h3 className="text-xl font-black text-text tabular-nums">{fmt(w.calculatedBalance)}</h3>
             </div>
-            <div className="absolute top-4 right-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute top-4 right-4 text-muted2 opacity-0 group-hover:opacity-100 transition-opacity">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
             </div>
           </div>
@@ -126,9 +126,9 @@ export default function WalletWidget({ totals, addWallet, updateWallet, deleteWa
 
         <button 
           onClick={handleOpenNew}
-          className="min-w-[140px] p-5 rounded-[20px] border-2 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 transition-all flex-shrink-0"
+          className="min-w-[140px] p-5 rounded-[20px] border-2 border-dashed border-border bg-bg flex flex-col items-center justify-center text-muted2 hover:text-income hover:border-income/30 hover:bg-income-light transition-all flex-shrink-0"
         >
-          <span className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center mb-2 text-inherit">
+          <span className="w-8 h-8 rounded-full bg-surface shadow-sm flex items-center justify-center mb-2 text-inherit">
             <Plus size={16} strokeWidth={3} />
           </span>
           <span className="text-xs font-bold">Tambah Baru</span>
@@ -145,15 +145,15 @@ export default function WalletWidget({ totals, addWallet, updateWallet, deleteWa
             }
           }}
         >
-          <div className="bg-white rounded-[24px] p-6 w-full max-w-sm shadow-2xl animate-fade-up cursor-default relative">
+          <div className="bg-surface rounded-[24px] p-6 w-full max-w-sm shadow-2xl animate-fade-up cursor-default relative">
             
             <div className="flex items-center justify-between mb-5">
-              <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
-                <ArrowRightLeft size={20} className="text-indigo-600" /> Transfer Saldo
+              <h3 className="font-bold text-lg text-text flex items-center gap-2">
+                <ArrowRightLeft size={20} className="text-income" /> Transfer Saldo
               </h3>
               <button 
                 onClick={() => !busy && setShowTransfer(false)} 
-                className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-full text-muted2 hover:bg-border hover:text-text-2 transition-colors"
               >
                 <X size={20} strokeWidth={2.5} />
               </button>
@@ -161,27 +161,27 @@ export default function WalletWidget({ totals, addWallet, updateWallet, deleteWa
             
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5">Dari Dompet</label>
-                <select value={tfFrom} onChange={e => setTfFrom(e.target.value)} className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none font-medium">
+                <label className="block text-xs font-bold text-muted mb-1.5">Dari Dompet</label>
+                <select value={tfFrom} onChange={e => setTfFrom(e.target.value)} className="w-full bg-field border border-border rounded-xl px-4 py-3 text-sm text-text focus:border-income outline-none font-medium">
                   <option value="" disabled>Pilih Sumber...</option>
                   {totals.walletBalances.map(w => <option key={`from-${w.id}`} value={w.id}>{w.name} (Rp {w.calculatedBalance.toLocaleString('id-ID')})</option>)}
                 </select>
               </div>
 
               <div className="flex justify-center -my-2 relative z-10 pointer-events-none">
-                <div className="bg-slate-100 p-1.5 rounded-full text-slate-400 border-4 border-white"><ArrowRightLeft size={16} className="rotate-90" /></div>
+                <div className="bg-border p-1.5 rounded-full text-muted2 border-4 border-surface"><ArrowRightLeft size={16} className="rotate-90" /></div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5">Ke Dompet</label>
-                <select value={tfTo} onChange={e => setTfTo(e.target.value)} className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none font-medium">
+                <label className="block text-xs font-bold text-muted mb-1.5">Ke Dompet</label>
+                <select value={tfTo} onChange={e => setTfTo(e.target.value)} className="w-full bg-field border border-border rounded-xl px-4 py-3 text-sm text-text focus:border-income outline-none font-medium">
                   <option value="" disabled>Pilih Tujuan...</option>
                   {totals.walletBalances.map(w => <option key={`to-${w.id}`} value={w.id} disabled={w.id === tfFrom}>{w.name}</option>)}
                 </select>
               </div>
               
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5">Jumlah Transfer (Rp)</label>
+                <label className="block text-xs font-bold text-muted mb-1.5">Jumlah Transfer (Rp)</label>
                 <input 
                   type="text" 
                   inputMode="numeric" 
@@ -192,33 +192,33 @@ export default function WalletWidget({ totals, addWallet, updateWallet, deleteWa
                   }} 
                   className={`w-full border rounded-xl px-4 py-3 text-sm outline-none tabular-nums transition-colors ${
                     isExceedsBalance 
-                      ? 'border-rose-500 bg-rose-50 text-rose-700 focus:border-rose-600' 
-                      : 'border-slate-200 focus:border-indigo-500'
+                      ? 'border-expense bg-expense-light text-expense focus:border-expense' 
+                      : 'border-border bg-field text-text focus:border-income'
                   }`} 
                   placeholder="0" 
                 />
                 {/* PESAN ERROR REAL-TIME MUNCUL DI SINI */}
                 {isExceedsBalance && (
-                  <p className="text-[11px] font-bold text-rose-500 mt-1.5">
+                  <p className="text-[11px] font-bold text-expense mt-1.5">
                     Saldo tidak cukup! Maksimal transfer: Rp {selectedFromWallet.calculatedBalance.toLocaleString('id-ID')}
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5">Tanggal</label>
-                <input type="date" value={tfDate} onChange={e => setTfDate(e.target.value)} className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none" />
+                <label className="block text-xs font-bold text-muted mb-1.5">Tanggal</label>
+                <input type="date" value={tfDate} onChange={e => setTfDate(e.target.value)} className="w-full bg-field border border-border rounded-xl px-4 py-3 text-sm text-text focus:border-income outline-none" />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5">Catatan (Opsional)</label>
-                <input type="text" value={tfDesc} onChange={e => setTfDesc(e.target.value)} className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none" placeholder="Mis: Pindah tabungan..." />
+                <label className="block text-xs font-bold text-muted mb-1.5">Catatan (Opsional)</label>
+                <input type="text" value={tfDesc} onChange={e => setTfDesc(e.target.value)} className="w-full bg-field border border-border rounded-xl px-4 py-3 text-sm text-text placeholder:text-muted2 focus:border-income outline-none" placeholder="Mis: Pindah tabungan..." />
               </div>
 
-              {err && <div className="text-xs text-rose-600 bg-rose-50 rounded-xl px-4 py-3 font-medium">{err}</div>}
+              {err && <div className="text-xs text-expense bg-expense-light rounded-xl px-4 py-3 font-medium">{err}</div>}
 
-              <div className="flex gap-3 mt-6 pt-4 border-t border-slate-100">
-                <button onClick={() => setShowTransfer(false)} className="flex-1 py-3 bg-slate-100 text-slate-600 text-sm font-bold rounded-xl hover:bg-slate-200 transition-colors">Batal</button>
+              <div className="flex gap-3 mt-6 pt-4 border-t border-border">
+                <button onClick={() => setShowTransfer(false)} className="flex-1 py-3 bg-border text-text-2 text-sm font-bold rounded-xl hover:bg-border transition-colors">Batal</button>
                 {/* TOMBOL TRANSFER OTOMATIS MATI JIKA SALDO KURANG */}
                 <button 
                   onClick={handleTransfer} 
@@ -244,26 +244,26 @@ export default function WalletWidget({ totals, addWallet, updateWallet, deleteWa
             }
           }}
         >
-          <div className="bg-white rounded-[24px] p-6 w-full max-w-sm shadow-2xl animate-fade-up cursor-default relative">
+          <div className="bg-surface rounded-[24px] p-6 w-full max-w-sm shadow-2xl animate-fade-up cursor-default relative">
             {showConfirmDelete ? (
               <div className="animate-fade-in text-center py-2">
-                <div className="w-16 h-16 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4"><Trash2 size={32} strokeWidth={2.5} /></div>
-                <h3 className="font-bold text-lg text-slate-800 mb-2">Hapus Dompet Ini?</h3>
-                <p className="text-sm text-slate-500 mb-6 leading-relaxed">Transaksi yang sudah tercatat menggunakan dompet ini <b>tidak akan hilang</b>, namun riwayat dompet pada transaksi tersebut akan dikosongkan.</p>
+                <div className="w-16 h-16 bg-rose-100 text-expense rounded-full flex items-center justify-center mx-auto mb-4"><Trash2 size={32} strokeWidth={2.5} /></div>
+                <h3 className="font-bold text-lg text-text mb-2">Hapus Dompet Ini?</h3>
+                <p className="text-sm text-muted mb-6 leading-relaxed">Transaksi yang sudah tercatat menggunakan dompet ini <b>tidak akan hilang</b>, namun riwayat dompet pada transaksi tersebut akan dikosongkan.</p>
                 <div className="flex gap-3">
-                  <button onClick={() => setShowConfirmDelete(false)} disabled={busy} className="flex-1 py-3 bg-slate-100 text-slate-600 text-sm font-bold rounded-xl hover:bg-slate-200 transition-colors">Batal</button>
-                  <button onClick={executeDelete} disabled={busy} className="flex-1 py-3 bg-rose-500 text-white text-sm font-bold rounded-xl hover:bg-rose-600 disabled:opacity-50 transition-colors">{busy ? 'Menghapus...' : 'Ya, Hapus'}</button>
+                  <button onClick={() => setShowConfirmDelete(false)} disabled={busy} className="flex-1 py-3 bg-border text-text-2 text-sm font-bold rounded-xl hover:bg-border transition-colors">Batal</button>
+                  <button onClick={executeDelete} disabled={busy} className="flex-1 py-3 bg-expense text-white text-sm font-bold rounded-xl hover:bg-rose-600 disabled:opacity-50 transition-colors">{busy ? 'Menghapus...' : 'Ya, Hapus'}</button>
                 </div>
               </div>
             ) : (
               <>
                 <div className="flex justify-between items-center mb-5">
-                  <h3 className="font-bold text-lg text-slate-800">{editId ? 'Edit Dompet' : 'Tambah Dompet Baru'}</h3>
+                  <h3 className="font-bold text-lg text-text">{editId ? 'Edit Dompet' : 'Tambah Dompet Baru'}</h3>
                   <div className="flex items-center gap-1.5">
                     {editId && (
-                      <button onClick={() => setShowConfirmDelete(true)} className="w-8 h-8 flex items-center justify-center rounded-full text-rose-500 hover:bg-rose-50 transition-colors" title="Hapus Dompet"><Trash2 size={16} strokeWidth={2.5} /></button>
+                      <button onClick={() => setShowConfirmDelete(true)} className="w-8 h-8 flex items-center justify-center rounded-full text-expense hover:bg-expense-light transition-colors" title="Hapus Dompet"><Trash2 size={16} strokeWidth={2.5} /></button>
                     )}
-                    <button onClick={() => !busy && setShowModal(false)} className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors" title="Tutup">
+                    <button onClick={() => !busy && setShowModal(false)} className="w-8 h-8 flex items-center justify-center rounded-full text-muted2 hover:bg-border hover:text-text-2 transition-colors" title="Tutup">
                       <X size={20} strokeWidth={2.5} />
                     </button>
                   </div>
@@ -271,22 +271,22 @@ export default function WalletWidget({ totals, addWallet, updateWallet, deleteWa
                 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5">Nama Dompet (Mis: BCA, Kas, OVO)</label>
-                    <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none" placeholder="Masukkan nama..." />
+                    <label className="block text-xs font-bold text-muted mb-1.5">Nama Dompet (Mis: BCA, Kas, OVO)</label>
+                    <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full bg-field border border-border rounded-xl px-4 py-3 text-sm text-text placeholder:text-muted2 focus:border-income outline-none" placeholder="Masukkan nama..." />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5">Saldo Awal (Rp)</label>
-                    <input type="text" inputMode="numeric" value={balance ? Number(balance).toLocaleString('id-ID') : ''} onChange={e => setBalance(e.target.value.replace(/\D/g, ''))} className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none tabular-nums" placeholder="0" />
+                    <label className="block text-xs font-bold text-muted mb-1.5">Saldo Awal (Rp)</label>
+                    <input type="text" inputMode="numeric" value={balance ? Number(balance).toLocaleString('id-ID') : ''} onChange={e => setBalance(e.target.value.replace(/\D/g, ''))} className="w-full bg-field border border-border rounded-xl px-4 py-3 text-sm text-text placeholder:text-muted2 focus:border-income outline-none tabular-nums" placeholder="0" />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5">Warna Kartu</label>
+                    <label className="block text-xs font-bold text-muted mb-1.5">Warna Kartu</label>
                     <div className="flex flex-wrap gap-3">
-                      {COLORS.map(c => <button key={c} onClick={() => setColor(c)} className={`w-8 h-8 rounded-full border-2 transition-all ${color === c ? 'border-slate-800 scale-110 shadow-sm' : 'border-transparent'}`} style={{ backgroundColor: c }} />)}
+                      {COLORS.map(c => <button key={c} onClick={() => setColor(c)} className={`w-8 h-8 rounded-full border-2 transition-all ${color === c ? 'border-text scale-110 shadow-sm' : 'border-transparent'}`} style={{ backgroundColor: c }} />)}
                     </div>
                   </div>
-                  {err && <div className="text-xs text-rose-600 bg-rose-50 rounded-xl px-4 py-3 font-medium">{err}</div>}
-                  <div className="flex gap-3 mt-6 pt-4 border-t border-slate-100">
-                    <button onClick={() => setShowModal(false)} className="flex-1 py-3 bg-slate-100 text-slate-600 text-sm font-bold rounded-xl hover:bg-slate-200 transition-colors">Batal</button>
+                  {err && <div className="text-xs text-expense bg-expense-light rounded-xl px-4 py-3 font-medium">{err}</div>}
+                  <div className="flex gap-3 mt-6 pt-4 border-t border-border">
+                    <button onClick={() => setShowModal(false)} className="flex-1 py-3 bg-border text-text-2 text-sm font-bold rounded-xl hover:bg-border transition-colors">Batal</button>
                     <button onClick={handleSaveWallet} disabled={busy || !name} className="flex-1 py-3 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors">{editId ? 'Simpan Perubahan' : 'Simpan Dompet'}</button>
                   </div>
                 </div>

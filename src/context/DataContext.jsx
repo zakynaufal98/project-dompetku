@@ -10,6 +10,7 @@ export function DataProvider({ children }) {
   const [invData, setInvData] = useState([])
   const [billData, setBillData] = useState([])
   const [walletData, setWalletData] = useState([]) 
+  const [targetData, setTargetData] = useState([])
   const [loading, setLoading] = useState(false)
 
   const mapTx = (r) => ({
@@ -28,22 +29,34 @@ export function DataProvider({ children }) {
     ts: new Date(r.created_at).getTime(),
   })
 
+  const mapTarget = (r) => ({
+    id: r.id,
+    name: r.name,
+    amount: parseFloat(r.target_amount || 0),
+    saved: parseFloat(r.saved_amount || 0),
+    monthlyBoost: parseFloat(r.monthly_boost || 0),
+    created_at: r.created_at,
+    updated_at: r.updated_at,
+  })
+
   const loadAll = useCallback(async () => {
     if (!user) return
     setLoading(true)
     
-    const [txRes, invRes, billRes, walletRes] = await Promise.all([
+    const [txRes, invRes, billRes, walletRes, targetRes] = await Promise.all([
       // PERBAIKAN: Diurutkan secara ganda (Tanggal lalu Waktu dibuat) agar akurat
       supabase.from('transaksi').select('*').eq('user_id', user.id).order('tgl', { ascending: false }).order('created_at', { ascending: false }),
       supabase.from('investasi').select('*').eq('user_id', user.id).order('tgl', { ascending: false }).order('created_at', { ascending: false }),
       supabase.from('tagihan').select('*').eq('user_id', user.id).order('jatuh_tempo', { ascending: true }),
-      supabase.from('wallets').select('*').eq('user_id', user.id).order('created_at', { ascending: true }) 
+      supabase.from('wallets').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
+      supabase.from('target_finansial').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }) 
     ])
     
     if (!txRes.error)  setTxData((txRes.data  || []).map(mapTx))
     if (!invRes.error) setInvData((invRes.data  || []).map(mapInv))
     if (!billRes.error) setBillData(billRes.data || [])
     if (!walletRes.error) setWalletData(walletRes.data || []) 
+    if (!targetRes.error) setTargetData((targetRes.data || []).map(mapTarget))
     
     setLoading(false)
   }, [user])
@@ -159,6 +172,52 @@ export function DataProvider({ children }) {
     if (!error) setBillData(prev => prev.filter(b => b.id !== id))
   }
 
+  const addTarget = async ({ name, amount, saved, monthlyBoost }) => {
+    const { data, error } = await supabase.from('target_finansial')
+      .insert({
+        user_id: user.id,
+        name,
+        target_amount: amount,
+        saved_amount: saved,
+        monthly_boost: monthlyBoost,
+      })
+      .select()
+      .single()
+    if (!error) {
+      const mapped = mapTarget(data)
+      setTargetData(prev => [mapped, ...prev])
+      return { data: mapped, error: null }
+    }
+    return { data: null, error }
+  }
+
+  const updateTarget = async (id, { name, amount, saved, monthlyBoost }) => {
+    const { data, error } = await supabase.from('target_finansial')
+      .update({
+        name,
+        target_amount: amount,
+        saved_amount: saved,
+        monthly_boost: monthlyBoost,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .select()
+      .single()
+    if (!error) {
+      const mapped = mapTarget(data)
+      setTargetData(prev => prev.map(t => t.id === id ? mapped : t))
+      return { data: mapped, error: null }
+    }
+    return { data: null, error }
+  }
+
+  const deleteTarget = async (id) => {
+    const { error } = await supabase.from('target_finansial').delete().eq('id', id).eq('user_id', user.id)
+    if (!error) setTargetData(prev => prev.filter(t => t.id !== id))
+    return error
+  }
+
   const totals = useMemo(() => {
     // PERBAIKAN: Total Global MENGABAIKAN Kategori 'Transfer'
     const totalIn = txData.filter(t => t.type === 'in' && t.cat !== 'Transfer').reduce((s, t) => s + t.amount, 0)
@@ -193,10 +252,11 @@ export function DataProvider({ children }) {
 
   return (
     <DataContext.Provider value={{ 
-      txData, invData, billData, walletData, loading, loadAll, 
+      txData, invData, billData, walletData, targetData, loading, loadAll, 
       addWallet, updateWallet, deleteWallet,
       addTx, deleteTx, addInv, updateInv, deleteInv,
-      transferWallet, addBill, toggleBill, deleteBill, totals 
+      transferWallet, addBill, toggleBill, deleteBill,
+      addTarget, updateTarget, deleteTarget, totals 
     }}>
       {children}
     </DataContext.Provider>

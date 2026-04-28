@@ -3,45 +3,101 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --color-primary: 232 53 58;
+    --color-primary-light: 255 107 111;
+    --color-primary-pale: 255 240 240;
+    --color-gold: 245 166 35;
+    --color-gold-light: 255 248 237;
+    --color-income: 33 150 243;
+    --color-income-light: 232 244 255;
+    --color-expense: 232 53 58;
+    --color-expense-light: 255 240 240;
+    --color-invest: 76 175 80;
+    --color-invest-light: 232 245 233;
+    --color-bg: 245 246 250;
+    --color-surface: 255 255 255;
+    --color-field: 255 255 255;
+    --color-border: 238 238 238;
+    --color-border-2: 224 224 224;
+    --color-text: 26 26 46;
+    --color-text-2: 74 74 104;
+    --color-muted: 158 158 158;
+    --color-muted-2: 189 189 189;
+    --chart-grid: #eeeeee;
+    --chart-tooltip-bg: #ffffff;
+    --chart-tooltip-border: #eeeeee;
+    --chart-tooltip-text: #1a1a2e;
+    --chart-tick: #9e9e9e;
+  }
+
+  html.dark {
+    --color-primary: 251 113 133;
+    --color-primary-light: 244 63 94;
+    --color-primary-pale: 76 21 31;
+    --color-gold: 251 191 36;
+    --color-gold-light: 69 45 9;
+    --color-income: 96 165 250;
+    --color-income-light: 23 37 84;
+    --color-expense: 251 113 133;
+    --color-expense-light: 76 21 31;
+    --color-invest: 52 211 153;
+    --color-invest-light: 6 78 59;
+    --color-bg: 18 22 41;
+    --color-surface: 30 35 54;
+    --color-field: 18 22 41;
+    --color-border: 31 41 55;
+    --color-border-2: 51 65 85;
+    --color-text: 241 245 249;
+    --color-text-2: 203 213 225;
+    --color-muted: 148 163 184;
+    --color-muted-2: 100 116 139;
+    --chart-grid: #1e293b;
+    --chart-tooltip-bg: #1e2336;
+    --chart-tooltip-border: #334155;
+    --chart-tooltip-text: #f1f5f9;
+    --chart-tick: #64748b;
+  }
+
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
   
-  /* PERBAIKAN: Menggunakan @apply agar bisa merespons Dark Mode */
   body {
     @apply bg-bg text-text transition-colors duration-300;
     font-family: 'Instrument Sans', sans-serif;
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
   }
-  
-  /* SUNTIKAN DARK MODE UNTUK BODY */
-  html.dark body {
-    @apply bg-[#121629] text-slate-100;
-  }
 
   ::-webkit-scrollbar { width: 4px; height: 4px; }
   ::-webkit-scrollbar-track { @apply bg-transparent; }
-  ::-webkit-scrollbar-thumb { @apply bg-border2 dark:bg-slate-700 rounded-sm transition-colors; }
+  ::-webkit-scrollbar-thumb { @apply bg-border2 rounded-sm transition-colors; }
   input[type=number]::-webkit-inner-spin-button,
   input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
   input, select, button { font-family: 'Instrument Sans', sans-serif; }
 }
 
-@layer components {
-  /* CARD (Ditambah dark:bg & dark:border) */
-  .card { @apply bg-surface dark:bg-[#1E2336] rounded-2xl shadow-card border border-border dark:border-slate-800 transition-all duration-200; }
-  .card-hover { @apply card hover:shadow-card-md hover:-translate-y-0.5; }
-  .panel { @apply bg-surface dark:bg-[#1E2336] rounded-2xl shadow-card border border-border dark:border-slate-800 p-5 transition-colors; }
+@layer utilities {
+  .bg-field {
+    --tw-bg-opacity: 1;
+    background-color: rgb(var(--color-field) / var(--tw-bg-opacity));
+  }
+}
 
-  /* FORM (Ditambah dark mode) */
+@layer components {
+  .card { @apply bg-surface rounded-2xl shadow-card border border-border transition-all duration-200; }
+  .card-hover { @apply card hover:shadow-card-md hover:-translate-y-0.5; }
+  .panel { @apply bg-surface rounded-2xl shadow-card border border-border p-5 transition-colors; }
+
   .form-input {
-    @apply w-full bg-white dark:bg-[#121629] border border-border2 dark:border-slate-700 text-text dark:text-slate-100 font-sans text-sm
+    background-color: rgb(var(--color-field) / 1);
+    @apply w-full border border-border2 text-text font-sans text-sm
            px-4 py-2.5 outline-none appearance-none
            transition-all duration-200
            focus:border-primary focus:ring-2 focus:ring-primary/10
-           placeholder:text-muted2 dark:placeholder:text-slate-500;
+           placeholder:text-muted2;
   }
-  .form-label { @apply text-xs font-semibold text-text-2 dark:text-slate-400 block mb-1.5; }
+  .form-label { @apply text-xs font-semibold text-text-2 block mb-1.5; }
 
   /* BUTTONS */
   .btn-primary {
@@ -54,16 +110,16 @@
   }
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2
-           bg-bg dark:bg-[#1E2336] text-text-2 dark:text-slate-300 font-semibold text-sm border border-border2 dark:border-slate-700
+           bg-bg text-text-2 font-semibold text-sm border border-border2
            rounded-xl px-5 py-2.5 cursor-pointer
            transition-all duration-200
-           hover:bg-border dark:hover:bg-slate-800 hover:text-text dark:hover:text-white active:scale-95;
+           hover:bg-border hover:text-text active:scale-95;
   }
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-2
-           bg-transparent text-muted dark:text-slate-400 font-medium text-sm border border-transparent
+           bg-transparent text-muted font-medium text-sm border border-transparent
            rounded-xl px-4 py-2 cursor-pointer
-           transition-all duration-200 hover:bg-bg dark:hover:bg-slate-800 hover:text-text-2 dark:hover:text-slate-200;
+           transition-all duration-200 hover:bg-bg hover:text-text-2;
   }
   .btn-income  { @apply btn-primary bg-income shadow-blue-200 hover:bg-blue-500; }
   .btn-expense { @apply btn-primary bg-expense shadow-red-200 hover:bg-red-500; }
@@ -72,40 +128,40 @@
   /* NAV */
   .nav-item {
     @apply flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-left
-           text-muted dark:text-slate-400 text-sm font-medium
+           text-muted text-sm font-medium
            transition-all duration-200 cursor-pointer bg-transparent border-none
-           hover:bg-bg dark:hover:bg-slate-800 hover:text-text dark:hover:text-slate-100;
+           hover:bg-bg hover:text-text;
   }
-  .nav-item.active { @apply bg-primary-pale dark:bg-rose-500/10 text-primary dark:text-rose-400 font-semibold; }
+  .nav-item.active { @apply bg-primary-pale text-primary font-semibold; }
 
   /* TOGGLE */
-  .seg-control { @apply flex bg-bg dark:bg-[#121629] rounded-xl p-1 gap-1; }
+  .seg-control { @apply flex bg-bg rounded-xl p-1 gap-1; }
   .seg-btn {
-    @apply flex-1 py-2 text-xs font-semibold text-muted dark:text-slate-500 rounded-lg
+    @apply flex-1 py-2 text-xs font-semibold text-muted rounded-lg
            border-none cursor-pointer transition-all duration-200 bg-transparent;
   }
-  .seg-btn.active { @apply bg-white dark:bg-[#1E2336] text-text dark:text-slate-100 shadow-card; }
+  .seg-btn.active { @apply bg-surface text-text shadow-card; }
 
   /* TABS */
   .tab-btn {
-    @apply px-4 py-1.5 rounded-full text-xs font-semibold text-muted dark:text-slate-400
-           border border-border2 dark:border-slate-700 bg-white dark:bg-[#1E2336] cursor-pointer transition-all duration-200;
+    @apply px-4 py-1.5 rounded-full text-xs font-semibold text-muted
+           border border-border2 bg-surface cursor-pointer transition-all duration-200;
   }
-  .tab-btn.active { @apply bg-primary text-white border-primary dark:border-primary; }
+  .tab-btn.active { @apply bg-primary text-white border-primary; }
 
   /* TX ITEM */
   .tx-item {
     @apply flex items-center gap-3 p-3.5 rounded-xl
            transition-all duration-150 cursor-default
-           hover:bg-bg dark:hover:bg-slate-800/50;
+           hover:bg-bg;
   }
 
   /* BADGE */
   .badge { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold; }
-  .badge-income  { @apply badge bg-income-light dark:bg-blue-500/10 text-income dark:text-blue-400; }
-  .badge-expense { @apply badge bg-expense-light dark:bg-rose-500/10 text-expense dark:text-rose-400; }
-  .badge-invest  { @apply badge bg-invest-light dark:bg-emerald-500/10 text-invest dark:text-emerald-400; }
-  .badge-gold    { @apply badge bg-gold-light dark:bg-amber-500/10 text-gold dark:text-amber-400; }
+  .badge-income  { @apply badge bg-income-light text-income; }
+  .badge-expense { @apply badge bg-expense-light text-expense; }
+  .badge-invest  { @apply badge bg-invest-light text-invest; }
+  .badge-gold    { @apply badge bg-gold-light text-gold; }
 
   /* HEADER CARD (colored) */
   .header-card {
@@ -115,21 +171,13 @@
 
 /* Recharts (Ditambah Dark Mode) */
 .recharts-cartesian-grid-horizontal line,
-.recharts-cartesian-grid-vertical line { stroke: #EEEEEE !important; }
-html.dark .recharts-cartesian-grid-horizontal line,
-html.dark .recharts-cartesian-grid-vertical line { stroke: #1E2336 !important; }
+.recharts-cartesian-grid-vertical line { stroke: var(--chart-grid) !important; }
 
 .recharts-tooltip-wrapper .recharts-default-tooltip {
-  background: white !important;
-  border: 1px solid #EEEEEE !important;
+  background: var(--chart-tooltip-bg) !important;
+  border: 1px solid var(--chart-tooltip-border) !important;
   border-radius: 12px !important;
   box-shadow: 0 4px 20px rgba(0,0,0,0.10) !important;
-  color: #1A1A2E !important;
+  color: var(--chart-tooltip-text) !important;
 }
-html.dark .recharts-tooltip-wrapper .recharts-default-tooltip {
-  background: #1E2336 !important;
-  border: 1px solid #334155 !important;
-  color: #F1F5F9 !important;
-}
-.recharts-text { fill: #9E9E9E !important; }
-html.dark .recharts-text { fill: #64748b !important; }
+.recharts-text { fill: var(--chart-tick) !important; }

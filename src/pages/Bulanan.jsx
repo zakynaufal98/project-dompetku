@@ -8,9 +8,9 @@ import { PieChart as PieChartIcon, ClipboardList, CalendarX, CalendarDays } from
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-3 text-xs shadow-lg">
+    <div className="bg-surface border border-border rounded-xl p-3 text-xs shadow-lg">
       {payload.map((p, i) => (
-        <p key={i} className="tabular-nums font-bold text-slate-800">
+        <p key={i} className="tabular-nums font-bold text-text">
           {p.name}: <span style={{ color: p.color }}>{fmtShort(p.value)}</span>
         </p>
       ))}
@@ -83,17 +83,17 @@ export default function Bulanan() {
       
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="tabular-nums font-bold text-2xl text-slate-800 tracking-tight">Ringkasan Bulanan</h1>
-          <p className="text-slate-500 text-sm font-medium mt-1">Analisis arus kas per bulan</p>
+          <h1 className="tabular-nums font-bold text-2xl text-text tracking-tight">Ringkasan Bulanan</h1>
+          <p className="text-muted text-sm font-medium mt-1">Analisis arus kas per bulan</p>
         </div>
 
-        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-full p-1.5 shadow-sm px-4">
-          <CalendarDays size={16} className="text-indigo-500" />
-          <select className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer appearance-none ml-1" value={month} onChange={e=>setMonth(+e.target.value)}>
+        <div className="flex items-center gap-2 bg-surface border border-border rounded-full p-1.5 shadow-sm px-4">
+          <CalendarDays size={16} className="text-income" />
+          <select className="bg-transparent text-sm font-bold text-text-2 outline-none cursor-pointer appearance-none ml-1" value={month} onChange={e=>setMonth(+e.target.value)}>
             {MONTHS_FULL.map((m,i)=><option key={i} value={i+1}>{m}</option>)}
           </select>
-          <span className="text-slate-300">/</span>
-          <select className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer appearance-none" value={year} onChange={e=>setYear(+e.target.value)}>
+          <span className="text-muted2">/</span>
+          <select className="bg-transparent text-sm font-bold text-text-2 outline-none cursor-pointer appearance-none" value={year} onChange={e=>setYear(+e.target.value)}>
             {years.map(y=><option key={y} value={y}>{y}</option>)}
           </select>
         </div>
@@ -101,26 +101,26 @@ export default function Bulanan() {
 
       {/* SUMMARY CARDS GRID */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm col-span-2 md:col-span-1">
-          <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Netto Bulan Ini</p>
-          <p className={`tabular-nums font-bold text-3xl tracking-tight ${saldo >= 0 ? 'text-slate-800' : 'text-rose-500'}`}>{fmt(saldo)}</p>
+        <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm col-span-2 md:col-span-1">
+          <p className="text-muted text-xs font-bold uppercase tracking-wider mb-2">Netto Bulan Ini</p>
+          <p className={`tabular-nums font-bold text-3xl tracking-tight ${saldo >= 0 ? 'text-text' : 'text-expense'}`}>{fmt(saldo)}</p>
         </div>
-        <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
-          <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Pemasukan</p>
-          <p className="tabular-nums font-bold text-2xl text-indigo-600 tracking-tight">{fmtShort(totalIn)}</p>
+        <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm">
+          <p className="text-muted text-xs font-bold uppercase tracking-wider mb-2">Pemasukan</p>
+          <p className="tabular-nums font-bold text-2xl text-income tracking-tight">{fmtShort(totalIn)}</p>
         </div>
-        <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
-          <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Pengeluaran</p>
-          <p className="tabular-nums font-bold text-2xl text-orange-500 tracking-tight">{fmtShort(totalOut)}</p>
+        <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm">
+          <p className="text-muted text-xs font-bold uppercase tracking-wider mb-2">Pengeluaran</p>
+          <p className="tabular-nums font-bold text-2xl text-gold tracking-tight">{fmtShort(totalOut)}</p>
         </div>
-        <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
-          <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Investasi</p>
-          <p className="tabular-nums font-bold text-2xl text-emerald-500 tracking-tight">{fmtShort(Math.max(0, invNet))}</p>
+        <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm">
+          <p className="text-muted text-xs font-bold uppercase tracking-wider mb-2">Investasi</p>
+          <p className="tabular-nums font-bold text-2xl text-invest tracking-tight">{fmtShort(Math.max(0, invNet))}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm lg:col-span-2 flex flex-col">
+        <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm lg:col-span-2 flex flex-col">
           <PanelHeader title="Distribusi Pengeluaran" />
           <div className="flex-1 flex flex-col justify-center mt-4">
             {donutD.length > 0 ? (
@@ -135,32 +135,32 @@ export default function Bulanan() {
                 </ResponsiveContainer>
                 <div className="mt-6"><DonutLegend data={catOut} /></div>
               </>
-            ) : <div className="h-full flex flex-col justify-center items-center opacity-50"><PieChartIcon size={48} className="text-slate-300 mb-2"/><p className="text-sm font-medium">Data kosong</p></div>}
+            ) : <div className="h-full flex flex-col justify-center items-center opacity-50"><PieChartIcon size={48} className="text-muted2 mb-2"/><p className="text-sm font-medium">Data kosong</p></div>}
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm lg:col-span-3">
+        <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm lg:col-span-3">
           <PanelHeader title="Rincian Pengeluaran" />
           {sorted.length > 0 ? (
             <div className="space-y-5 mt-4 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
               {sorted.map(([cat,val],i)=>(
                 <div key={cat} className="group">
                   <div className="flex justify-between items-end mb-1.5">
-                    <span className="text-sm font-semibold text-slate-700 flex items-center gap-2"><span className="opacity-70 scale-90">{CAT_ICONS[cat]}</span> {cat}</span>
-                    <span className="text-slate-800 tabular-nums font-bold">{fmtShort(val)}</span>
+                    <span className="text-sm font-semibold text-text-2 flex items-center gap-2"><span className="opacity-70 scale-90">{CAT_ICONS[cat]}</span> {cat}</span>
+                    <span className="text-text tabular-nums font-bold">{fmtShort(val)}</span>
                   </div>
                   <ProgressBar value={val} max={maxCat} color={CHART_COLORS[i % CHART_COLORS.length]} />
                 </div>
               ))}
             </div>
-          ) : <div className="py-8"><Empty icon={<ClipboardList size={40} className="text-slate-300 mb-2" strokeWidth={1.5} />} text="Belum ada data" /></div>}
+          ) : <div className="py-8"><Empty icon={<ClipboardList size={40} className="text-muted2 mb-2" strokeWidth={1.5} />} text="Belum ada data" /></div>}
         </div>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
+      <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm">
         <PanelHeader title="Transaksi Bulan Ini" badge={`${allHistory.length} transaksi`}/>
         <div className="space-y-1.5 mt-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-          {allHistory.length > 0 ? allHistory.map(t => <TxItem key={t.id} t={t} isInv={t.action !== undefined} />) : <div className="py-8"><Empty icon={<CalendarX size={40} className="text-slate-300 mb-2" strokeWidth={1.5} />} text="Tidak ada transaksi bulan ini" /></div>}
+          {allHistory.length > 0 ? allHistory.map(t => <TxItem key={t.id} t={t} isInv={t.action !== undefined} />) : <div className="py-8"><Empty icon={<CalendarX size={40} className="text-muted2 mb-2" strokeWidth={1.5} />} text="Tidak ada transaksi bulan ini" /></div>}
         </div>
       </div>
     </div>

@@ -12,18 +12,18 @@ const CustomTooltip = ({ active, payload, label }) => {
   const hasLabel = typeof label === 'string';
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-3 text-xs shadow-lg">
-      {hasLabel && <p className="text-slate-500 font-semibold mb-1">{label}</p>}
+    <div className="bg-surface border border-border rounded-xl p-3 text-xs shadow-lg">
+      {hasLabel && <p className="text-muted font-semibold mb-1">{label}</p>}
       
       {payload.map((p, i) => (
-        <p key={i} className="tabular-nums font-bold text-slate-800">
+        <p key={i} className="tabular-nums font-bold text-text">
           {p.name}: <span style={{ color: p.color }}>{fmtShort(p.value)}</span>
         </p>
       ))}
       
       {/* Pengecekan label.includes sekarang aman */}
       {payload.length === 1 && payload[0].name === 'Pengeluaran' && hasLabel && label.includes(' ') && (
-        <p className="text-[10px] text-indigo-500 font-medium mt-2 pt-2 border-t border-slate-100">
+        <p className="text-[10px] text-income font-medium mt-2 pt-2 border-t border-border">
           Klik batang untuk lihat detail ✨
         </p>
       )}
@@ -145,18 +145,18 @@ export default function Grafik() {
     <>
       <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10 relative">
         <div>
-          <h1 className="tabular-nums font-bold text-2xl text-slate-800 tracking-tight">Grafik & Analisis</h1>
-          <p className="text-slate-500 text-sm font-medium mt-1">Visualisasi mendalam arus kasmu</p>
+          <h1 className="tabular-nums font-bold text-2xl text-text tracking-tight">Grafik & Analisis</h1>
+          <p className="text-muted text-sm font-medium mt-1">Visualisasi mendalam arus kasmu</p>
         </div>
 
         {/* 1. GRAFIK PENGELUARAN HARIAN */}
-        <div className="bg-white border border-slate-200 rounded-[24px] p-6 md:p-8 shadow-sm">
+        <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm">
           <div className="flex justify-between items-start mb-6">
             <PanelHeader title={`Pengeluaran Harian (${dailyExpense.currentMonthLabel})`} />
             {dailyExpense.maxDay.value > 0 && (
-              <div className="text-right bg-rose-50 px-4 py-2 rounded-xl border border-rose-100">
+              <div className="text-right bg-expense-light px-4 py-2 rounded-xl border border-expense/20">
                 <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest block mb-0.5">Hari Terboros</span>
-                <span className="text-sm font-black text-rose-600">{dailyExpense.maxDay.date} • {fmtShort(dailyExpense.maxDay.value)}</span>
+                <span className="text-sm font-black text-expense">{dailyExpense.maxDay.date} • {fmtShort(dailyExpense.maxDay.value)}</span>
               </div>
             )}
           </div>
@@ -164,10 +164,10 @@ export default function Grafik() {
           <div className="h-[250px] w-full mt-4">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={dailyExpense.data} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
                 <XAxis dataKey="tanggal" tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} dy={10} />
                 <YAxis tickFormatter={fmtShort} tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
-                <Tooltip cursor={{fill: '#f8fafc'}} content={<CustomTooltip />} />
+                <Tooltip cursor={{fill: 'rgb(var(--color-bg) / 0.8)'}} content={<CustomTooltip />} />
                 
                 <Bar 
                   dataKey="Pengeluaran" 
@@ -195,7 +195,7 @@ export default function Grafik() {
 
         {/* 2. SALDO & TOP KATEGORI */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white border border-slate-200 rounded-[24px] p-6 md:p-8 shadow-sm">
+          <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm">
             <PanelHeader title="Perkembangan Saldo (Semua Waktu)" />
             {saldoLine.length > 0 ? (
               <div className="mt-4 h-[250px]">
@@ -207,48 +207,48 @@ export default function Grafik() {
                         <stop offset="95%" stopColor="#4F46E5" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
                     <XAxis dataKey="date" tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} dy={10} minTickGap={30} />
                     <YAxis width={60} tickFormatter={fmtShort} tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
-                    <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '4 4' }} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--chart-tick)', strokeWidth: 1, strokeDasharray: '4 4' }} />
                     <Area type="monotone" dataKey="saldo" name="Saldo" stroke="#4F46E5" strokeWidth={3} fill="url(#saldoGrad)" activeDot={{ r: 6, fill: '#4F46E5', stroke: '#fff', strokeWidth: 2 }} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
-            ) : <div className="h-[250px] flex items-center justify-center opacity-50"><LineChart size={40} className="text-slate-300 mb-2" strokeWidth={1.5} /></div>}
+            ) : <div className="h-[250px] flex items-center justify-center opacity-50"><LineChart size={40} className="text-muted2 mb-2" strokeWidth={1.5} /></div>}
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-[24px] p-6 md:p-8 shadow-sm">
+          <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm">
             <PanelHeader title={`Top Kategori (${MONTHS[now.getMonth()]})`} />
             {catData.length > 0 ? (
               <div className="mt-4 h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={catData} layout="vertical" margin={{ left: 0, right: 10 }}>
-                    <CartesianGrid horizontal={false} strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <CartesianGrid horizontal={false} strokeDasharray="3 3" stroke="var(--chart-grid)" />
                     <XAxis type="number" tickFormatter={fmtShort} tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
                     <YAxis type="category" dataKey="name" tick={{fontSize:11, fill:'#64748b', fontWeight: 600}} width={110} axisLine={false} tickLine={false} />
-                    <Tooltip content={<CustomTooltip />} cursor={{fill: '#f8fafc'}} />
+                    <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgb(var(--color-bg) / 0.8)'}} />
                     <Bar dataKey="value" name="Pengeluaran" radius={[0,6,6,0]} maxBarSize={16}>
                       {catData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-            ) : <div className="h-[250px] flex items-center justify-center opacity-50"><BarChartHorizontal size={40} className="text-slate-300 mb-2" strokeWidth={1.5} /></div>}
+            ) : <div className="h-[250px] flex items-center justify-center opacity-50"><BarChartHorizontal size={40} className="text-muted2 mb-2" strokeWidth={1.5} /></div>}
           </div>
         </div>
 
         {/* 3. ARUS KAS & RASIO */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white border border-slate-200 rounded-[24px] p-6 md:p-8 shadow-sm order-2 lg:order-1">
+          <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm order-2 lg:order-1">
             <PanelHeader title="Arus Kas (6 Bulan Terakhir)" />
             <div className="mt-4 h-[250px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={cashflowData} barGap={4} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="var(--chart-grid)" />
                   <XAxis dataKey="name" tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} dy={10} />
                   <YAxis width={60} tickFormatter={fmtShort} tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
-                  <Tooltip content={<CustomTooltip />} cursor={{fill: '#f8fafc'}} />
+                  <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgb(var(--color-bg) / 0.8)'}} />
                   <Bar dataKey="Pemasukan" fill="#4F46E5" radius={[4,4,0,0]} maxBarSize={24} />
                   <Bar dataKey="Pengeluaran" fill="#FF8A00" radius={[4,4,0,0]} maxBarSize={24} />
                 </BarChart>
@@ -256,7 +256,7 @@ export default function Grafik() {
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-[24px] p-6 md:p-8 shadow-sm order-1 lg:order-2">
+          <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm order-1 lg:order-2">
             <PanelHeader title={`Rasio Keuangan (${MONTHS[now.getMonth()]})`} />
             {ratioData.length > 0 ? (
               <div className="flex flex-col sm:flex-row items-center gap-8 mt-6">
@@ -276,8 +276,8 @@ export default function Grafik() {
                     return (
                       <div key={d.name}>
                         <div className="flex justify-between items-end mb-2">
-                          <span className="flex items-center gap-2 text-sm font-semibold text-slate-600"><span className="w-3.5 h-3.5 rounded-full" style={{background: d.fill}} />{d.name}</span>
-                          <span className="tabular-nums font-bold text-slate-800">{fmtShort(d.value)}</span>
+                          <span className="flex items-center gap-2 text-sm font-semibold text-text-2"><span className="w-3.5 h-3.5 rounded-full" style={{background: d.fill}} />{d.name}</span>
+                          <span className="tabular-nums font-bold text-text">{fmtShort(d.value)}</span>
                         </div>
                         <ProgressBar value={d.value} max={total} color={d.fill} />
                       </div>
@@ -285,20 +285,20 @@ export default function Grafik() {
                   })}
                 </div>
               </div>
-            ) : <div className="h-[200px] flex items-center justify-center opacity-50"><PieChartIcon size={40} className="text-slate-300 mb-2" strokeWidth={1.5} /></div>}
+            ) : <div className="h-[200px] flex items-center justify-center opacity-50"><PieChartIcon size={40} className="text-muted2 mb-2" strokeWidth={1.5} /></div>}
           </div>
         </div>
 
         {/* 4. INVESTASI LINE */}
-        <div className="bg-white border border-slate-200 rounded-[24px] p-6 md:p-8 shadow-sm">
+        <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm">
           <PanelHeader title="Aktivitas Investasi (6 Bulan)" />
           <div className="mt-4 h-[250px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={invLine} barGap={4} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f1f5f9" />
+                <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="var(--chart-grid)" />
                 <XAxis dataKey="name" tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} dy={10} />
                 <YAxis width={60} tickFormatter={fmtShort} tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} cursor={{fill: '#f8fafc'}} />
+                <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgb(var(--color-bg) / 0.8)'}} />
                 <Bar dataKey="Beli" fill="#10B981" radius={[4,4,0,0]} maxBarSize={24} />
                 <Bar dataKey="Jual" fill="#FF8A00" radius={[4,4,0,0]} maxBarSize={24} />
               </BarChart>
@@ -315,30 +315,30 @@ export default function Grafik() {
           onClick={() => setSelectedDate(null)} 
         >
           <div 
-            className="fixed z-[101] bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out 
+            className="fixed z-[101] bg-surface shadow-2xl flex flex-col transition-transform duration-300 ease-out 
                        animate-fade-up md:animate-none
                        bottom-0 left-0 right-0 max-h-[85vh] rounded-t-[32px]
-                       md:bottom-auto md:top-0 md:right-0 md:left-auto md:w-[400px] md:h-full md:rounded-none md:border-l md:border-slate-200"
+                       md:bottom-auto md:top-0 md:right-0 md:left-auto md:w-[400px] md:h-full md:rounded-none md:border-l md:border-border"
             onClick={(e) => e.stopPropagation()} 
           >
-            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-4 mb-2 md:hidden flex-shrink-0" />
+            <div className="w-12 h-1.5 bg-border rounded-full mx-auto mt-4 mb-2 md:hidden flex-shrink-0" />
 
-            <div className="flex items-center justify-between px-6 pt-2 pb-5 md:pt-8 md:pb-6 border-b border-slate-100 bg-white z-10 shrink-0">
+            <div className="flex items-center justify-between px-6 pt-2 pb-5 md:pt-8 md:pb-6 border-b border-border bg-surface z-10 shrink-0">
               <div>
-                <h3 className="font-bold text-xl text-slate-800">Detail Pengeluaran</h3>
-                <p className="text-indigo-600 text-sm font-bold mt-1 bg-indigo-50 inline-block px-2.5 py-0.5 rounded-md">
+                <h3 className="font-bold text-xl text-text">Detail Pengeluaran</h3>
+                <p className="text-income text-sm font-bold mt-1 bg-income-light inline-block px-2.5 py-0.5 rounded-md">
                   {selectedLabel}
                 </p>
               </div>
               <button 
                 onClick={() => setSelectedDate(null)} 
-                className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-all cursor-pointer bg-slate-50"
+                className="p-2 text-muted2 hover:text-expense hover:bg-expense-light rounded-full transition-all cursor-pointer bg-bg"
               >
                 <X size={20} strokeWidth={2.5} />
               </button>
             </div>
             
-            <div className="p-6 overflow-y-auto custom-scrollbar bg-slate-50/50 flex-1">
+            <div className="p-6 overflow-y-auto custom-scrollbar bg-bg flex-1">
               <div className="space-y-2">
                 {selectedDayData.length > 0 ? (
                   selectedDayData.map(t => (
@@ -351,7 +351,7 @@ export default function Grafik() {
                   ))
                 ) : (
                   <div className="py-12 text-center flex flex-col items-center justify-center opacity-60">
-                    <p className="text-slate-500 font-medium">Data rincian tidak ditemukan.</p>
+                    <p className="text-muted font-medium">Data rincian tidak ditemukan.</p>
                   </div>
                 )}
               </div>

@@ -13,6 +13,7 @@ import Bulanan from './pages/Bulanan'
 import Tahunan from './pages/Tahunan'
 import Grafik from './pages/Grafik'
 import Hutang from './pages/Hutang'
+import TargetCerdas from './pages/TargetCerdas'
 import { Spinner } from './components/UI'
 import RecoveryModal from './components/RecoveryModal'
 
@@ -35,10 +36,10 @@ function AppLayout() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-bg flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Spinner size="lg" />
-          <p className="text-slate-500 font-medium text-sm">Memuat aplikasi...</p>
+          <p className="text-muted font-medium text-sm">Memuat aplikasi...</p>
         </div>
       </div>
     )
@@ -48,7 +49,6 @@ function AppLayout() {
 
   return (
     <DataProvider>
-      {/* Tambahan dark:bg-[#121629] dan dark:text-slate-100 */}
       <div className="flex h-[100dvh] overflow-hidden transition-colors duration-300">
         
         {/* SIDEBAR */}
@@ -71,6 +71,7 @@ function AppLayout() {
               <Route path="/tahunan"   element={<Tahunan />} />
               <Route path="/hutang"    element={<Hutang />} />
               <Route path="/grafik"    element={<Grafik />} />
+              <Route path="/target"    element={<TargetCerdas />} />
               <Route path="*"          element={<Navigate to="/" replace />} />
             </Routes>
           </div>
