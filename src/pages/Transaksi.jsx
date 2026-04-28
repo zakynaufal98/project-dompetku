@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useData } from '../context/DataContext'
 import { fmt, fmtShort, today, CATEGORIES, CAT_ICONS } from '../lib/utils'
 import { TxItem, Empty, Tabs, Field, PanelHeader, SummaryRow } from '../components/UI'
@@ -6,60 +6,68 @@ import CategoryInput from '../components/CategoryInput'
 import DescInput from '../components/DescInput'
 import { 
   ArrowDownLeft, ArrowUpRight, Banknote, 
-  Calendar, PlusCircle, ReceiptText, Loader2, Search 
+  Calendar, PlusCircle, ReceiptText, Loader2, Search,
+  Wallet, ChevronDown
 } from 'lucide-react'
 
 export default function Transaksi() {
-  const { txData, invData, addTx, deleteTx, totals } = useData()
+  const { txData, invData, addTx, deleteTx, totals, walletData } = useData() // UPDATE: Tarik walletData
   
   const [type,   setType]   = useState('out')
   const [desc,   setDesc]   = useState('')
   const [amount, setAmount] = useState('')
   const [cat,    setCat]    = useState('')
   const [date,   setDate]   = useState(today())
+  const [walletId, setWalletId] = useState('') // STATE BARU UNTUK DOMPET DIPILIH
+  
   const [filter, setFilter] = useState('semua')
   const [busy,   setBusy]   = useState(false)
   const [err,    setErr]    = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedMonth, setSelectedMonth] = useState(today().substring(0, 7)) 
 
-  // --- FITUR BARU: SARAN NOMINAL PINTAR ---
-  // Mencari 3 nominal terakhir berdasarkan keterangan yang sedang diketik
+  // Auto-pilih dompet pertama jika tersedia
+  useEffect(() => {
+    if (walletData && walletData.length > 0 && !walletId) {
+      setWalletId(walletData[0].id)
+    }
+  }, [walletData, walletId])
+
   const suggestedAmounts = useMemo(() => {
     if (!desc.trim()) return [];
-    
-    // Cari transaksi sebelumnya dengan nama dan tipe yang persis sama
-    const matches = txData.filter(t => 
-      t.desc && t.desc.toLowerCase() === desc.trim().toLowerCase() && 
-      t.type === type
-    );
-    
-    // Hapus angka yang duplikat dan ambil 3 yang terbaru
+    const matches = txData.filter(t => t.desc && t.desc.toLowerCase() === desc.trim().toLowerCase() && t.type === type);
     const uniqueAmounts = [...new Set(matches.map(t => t.amount))];
     return uniqueAmounts.slice(0, 3);
   }, [desc, txData, type]);
-  // ----------------------------------------
 
   const handleAdd = async () => {
     if (!desc.trim())       { setErr('Keterangan wajib diisi'); return }
     if (!amount||+amount<=0){ setErr('Jumlah harus lebih dari 0'); return }
-    
-    // Cegah simpan jika kategori pengeluaran masih kosong
     if (type === 'out' && !cat) { setErr('Kategori wajib dipilih'); return }
     
     setBusy(true); setErr('')
-    const e = await addTx({ desc:desc.trim(), amount:+amount, type, cat:type==='out'?cat:'Pemasukan', date })
+    
+    // UPDATE: Kirim wallet_id ke fungsi addTx
+    const e = await addTx({ 
+      desc: desc.trim(), 
+      amount: +amount, 
+      type, 
+      cat: type === 'out' ? cat : 'Pemasukan', 
+      date,
+      wallet_id: walletId || null 
+    })
+    
     setBusy(false)
     
     if (e) setErr(e.message)
     else { 
-      // Kembalikan form ke keadaan kosong setelah berhasil simpan
       setDesc(''); 
       setAmount('');
       setCat(''); 
+      // Tidak mereset dompet agar user bisa input berulang di dompet yang sama
     }
   }
 
-  // GABUNGKAN TRANSAKSI BIASA + INVESTASI
   const combinedData = useMemo(() => {
     const formattedInv = invData.map(inv => ({
       ...inv,
@@ -68,33 +76,26 @@ export default function Transaksi() {
       desc: inv.name || (inv.action === 'jual' ? 'Jual Investasi' : 'Beli Investasi'),
       isInv: true 
     }));
-    
     return [...txData, ...formattedInv];
   }, [txData, invData])
 
-  // FILTER & SORTING 
   const filtered = combinedData
     .filter(t => {
       const matchTab = filter === 'semua' || t.type === filter
+      const matchMonth = selectedMonth ? t.date.startsWith(selectedMonth) : true
       const q = searchQuery.toLowerCase()
-      const matchSearch = (t.desc && t.desc.toLowerCase().includes(q)) || 
-                          (t.cat && t.cat.toLowerCase().includes(q))
-      return matchTab && matchSearch
+      const matchSearch = (t.desc && t.desc.toLowerCase().includes(q)) || (t.cat && t.cat.toLowerCase().includes(q))
+      return matchTab && matchMonth && matchSearch
     })
     .sort((a, b) => {
-      // 1. Urutkan berdasarkan Tanggal Kalender 
       const dateA = new Date(a.date).getTime()
       const dateB = new Date(b.date).getTime()
       if (dateA !== dateB) return dateB - dateA
-      
-      // 2. Jika created_at kosong (data baru diinput lokal), gunakan Date.now() agar selalu di atas
       const timeA = a.created_at ? new Date(a.created_at).getTime() : Date.now()
       const timeB = b.created_at ? new Date(b.created_at).getTime() : Date.now()
-      
       return timeB - timeA
     })
 
-  // GROUPING PER HARI
   const groupedTx = useMemo(() => {
     const groups = {}
     filtered.forEach(t => {
@@ -106,16 +107,30 @@ export default function Transaksi() {
     return groups
   }, [filtered])
 
+  const monthlySummary = useMemo(() => {
+    if (!selectedMonth) return { inMonth: totals.totalIn, outMonth: totals.totalOut };
+    let inMonth = 0, outMonth = 0;
+    combinedData.forEach(t => {
+      if (t.date.startsWith(selectedMonth)) {
+        if (t.type === 'in') inMonth += t.amount;
+        if (t.type === 'out') outMonth += t.amount;
+      }
+    });
+    return { inMonth, outMonth };
+  }, [combinedData, selectedMonth, totals]);
+
   const getDayLabel = (dateStr) => {
     const d = new Date(dateStr)
     const todayObj = new Date()
     const yesterdayObj = new Date(todayObj)
     yesterdayObj.setDate(yesterdayObj.getDate() - 1)
-
     if (d.toISOString().split('T')[0] === todayObj.toISOString().split('T')[0]) return "Hari Ini"
     if (d.toISOString().split('T')[0] === yesterdayObj.toISOString().split('T')[0]) return "Kemarin"
     return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
   }
+
+  // Cari dompet yang sedang dipilih untuk warna indikator
+  const activeWallet = totals?.walletBalances?.find(w => w.id === walletId)
 
   return (
     <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
@@ -167,7 +182,6 @@ export default function Transaksi() {
                 />
               </div>
 
-              {/* TAMPILAN TOMBOL NOMINAL PINTAR */}
               {suggestedAmounts.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-2.5 animate-fade-in">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center mr-1">
@@ -193,6 +207,42 @@ export default function Transaksi() {
               </Field>
             )}
 
+            {/* FIELD BARU: PILIHAN DOMPET */}
+            {/* FIELD BARU: PILIHAN DOMPET */}
+            <Field label="Pilih Dompet / Rekening">
+              {totals?.walletBalances && totals.walletBalances.length > 0 ? (
+                <div className="relative">
+                  <div 
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl flex items-center justify-center pointer-events-none z-10 text-white"
+                    style={{ backgroundColor: activeWallet?.color || '#94a3b8' }}
+                  >
+                    <Wallet size={16} strokeWidth={2.5} />
+                  </div>
+                  <select
+                    className="form-input pl-14 pr-10 py-3 border-slate-200 focus:border-indigo-500 text-sm cursor-pointer appearance-none bg-white relative z-0 font-semibold text-slate-700"
+                    value={walletId}
+                    onChange={(e) => setWalletId(e.target.value)}
+                  >
+                    <option value="" disabled>Pilih Sumber Dana...</option>
+                    {/* PERBAIKAN: Gunakan totals.walletBalances */}
+                    {totals.walletBalances.map(w => (
+                      <option key={w.id} value={w.id}>
+                        {w.name} — {w.calculatedBalance < 0 ? '-' : ''}Rp {Math.abs(w.calculatedBalance).toLocaleString('id-ID')}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                    <ChevronDown size={18} strokeWidth={2.5} />
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-500 flex items-center gap-2">
+                  <Wallet size={16} className="text-slate-400" />
+                  Belum ada dompet. Buat di Dashboard!
+                </div>
+              )}
+            </Field>
+
             <Field label="Tanggal">
               <div className="relative">
                 <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-slate-100 text-slate-500 rounded-xl flex items-center justify-center pointer-events-none z-10">
@@ -215,14 +265,22 @@ export default function Transaksi() {
 
         {/* ── QUICK STATS ──────────────────────────────── */}
         <div className="bg-white border border-slate-200 rounded-[24px] p-6 md:p-8 shadow-sm lg:col-span-2 flex flex-col">
-          <PanelHeader title="Ringkasan" />
+          <PanelHeader title={selectedMonth ? "Ringkasan Bulan Ini" : "Ringkasan Semua Waktu"} />
+          
           <div className="flex-1 flex flex-col justify-center space-y-4">
-            <SummaryRow label="Pemasukan" value={fmt(totals.totalIn)} valueClass="text-indigo-600 font-bold" />
-            <SummaryRow label="Pengeluaran" value={fmt(totals.totalOut)} valueClass="text-orange-500 font-bold" />
-            <SummaryRow label="Investasi" value={fmt(Math.max(0,totals.invNet))} valueClass="text-emerald-500 font-bold" />
+            <SummaryRow label="Pemasukan" value={fmt(monthlySummary.inMonth)} valueClass="text-indigo-600 font-bold" />
+            <SummaryRow label="Pengeluaran" value={fmt(monthlySummary.outMonth)} valueClass="text-orange-500 font-bold" />
+            
+            <SummaryRow label="Investasi (Total)" value={fmt(Math.max(0, totals.invNet))} valueClass="text-emerald-500 font-bold" />
+            
             <div className="mt-4 pt-5 border-t border-slate-100 flex justify-between items-center">
-              <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">Saldo Bersih</span>
-              <span className={`tabular-nums font-black text-2xl tracking-tight ${totals.saldo>=0?'text-slate-800':'text-rose-500'}`}>{fmt(totals.saldo)}</span>
+              <div className="flex flex-col">
+                <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">Saldo Bersih</span>
+                <span className="text-[10px] text-slate-400 font-medium">(Semua Waktu)</span>
+              </div>
+              <span className={`tabular-nums font-black text-2xl tracking-tight ${totals.saldo >= 0 ? 'text-slate-800' : 'text-rose-500'}`}>
+                {fmt(totals.saldo)}
+              </span>
             </div>
           </div>
         </div>
@@ -232,12 +290,30 @@ export default function Transaksi() {
       <div className="bg-white border border-slate-200 rounded-[24px] p-6 md:p-8 shadow-sm">
         <PanelHeader title="Riwayat Transaksi" badge={`${filtered.length} total`} />
         
-        <div className="mb-4">
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <Tabs value={filter} onChange={setFilter} options={[
             { value: 'semua', label: 'Semua' },
             { value: 'in',    label: 'Pemasukan' },
             { value: 'out',   label: 'Pengeluaran' },
           ]} />
+          
+          {/* PEMILIH BULAN & TOMBOL SEMUA */}
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {selectedMonth && (
+              <button 
+                onClick={() => setSelectedMonth('')}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors shrink-0"
+              >
+                Semua
+              </button>
+            )}
+            <input 
+              type="month" 
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 focus:border-indigo-500 outline-none cursor-pointer hover:bg-slate-100 transition-colors w-full sm:w-auto flex-1"
+            />
+          </div>
         </div>
 
         <div className="relative mb-6">
@@ -278,6 +354,8 @@ export default function Transaksi() {
                         t={t} 
                         onDelete={t.isInv ? undefined : deleteTx} 
                         isInv={t.isInv}
+                        // 👇 TAMBAHKAN BARIS INI 👇
+                        walletName={walletData?.find(w => w.id === t.wallet_id)?.name}
                       />
                     ))}
                   </div>
@@ -286,7 +364,7 @@ export default function Transaksi() {
             })
           ) : (
             <div className="py-8">
-              <Empty icon={<ReceiptText size={40} className="text-slate-300 mb-3" strokeWidth={1} />} text="Transaksi tidak ditemukan" />
+              <Empty icon={<ReceiptText size={40} className="text-slate-300 mb-3" strokeWidth={1} />} text={selectedMonth ? "Transaksi tidak ditemukan di bulan ini" : "Transaksi tidak ditemukan"} />
             </div>
           )}
         </div>

@@ -2,17 +2,19 @@ import { useMemo, useState } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { useData } from '../context/DataContext'
 import { fmt, fmtShort, fmtUnit, today, INV_TYPES, CHART_COLORS } from '../lib/utils'
-import { TxItem, Empty, Field, PanelHeader } from '../components/UI'
+import { TxItem, Empty, Field, PanelHeader, BankLogo } from '../components/UI' 
 import { 
   TrendingUp, TrendingDown, Pencil, Banknote, CalendarDays, 
   PlusCircle, Loader2, BriefcaseBusiness, Hash, Boxes, 
-  PieChart as PieChartIcon, Search 
+  PieChart as PieChartIcon, Search, Wallet, ChevronDown 
 } from 'lucide-react'
 
 const INV_KEYS = Object.keys(INV_TYPES)
 
 export default function Investasi() {
-  const { invData, addInv, deleteInv } = useData()
+  const { invData, addInv, updateInv, deleteInv, totals } = useData()
+  
+  const [editId,  setEditId]  = useState(null)
   const [action,  setAction]  = useState('beli')
   const [invType, setInvType] = useState('Saham')
   const [subType, setSubType] = useState(INV_TYPES['Saham'].subTypes[0])
@@ -20,23 +22,58 @@ export default function Investasi() {
   const [amount,  setAmount]  = useState('')
   const [qty,     setQty]     = useState('')
   const [date,    setDate]    = useState(today())
+  const [walletId, setWalletId] = useState('') 
   const [busy,    setBusy]    = useState(false)
   const [err,     setErr]     = useState('')
   
-  // State untuk pencarian
   const [searchQuery, setSearchQuery] = useState('')
 
   const handleTypeChange = (t) => { setInvType(t); setSubType(INV_TYPES[t].subTypes[0]); setQty(''); setAmount('') }
   const cfg = INV_TYPES[invType]
 
-  const handleAdd = async () => {
+  const handleEditClick = (t) => {
+    setEditId(t.id);
+    setAction(t.action);
+    setInvType(t.invType);
+    setSubType(t.subType || INV_TYPES[t.invType].subTypes[0]);
+    setDesc(t.desc);
+    setAmount(t.amount.toString());
+    setQty(t.qty ? t.qty.toString() : '');
+    setDate(t.date);
+    setWalletId(t.wallet_id || '');
+    setErr('');
+    window.scrollTo({ top: 0, behavior: 'smooth' }); 
+  }
+
+  const cancelEdit = () => {
+    setEditId(null);
+    setDesc(''); setAmount(''); setQty(''); setWalletId('');
+    setErr('');
+  }
+
+  const handleSave = async () => {
     if (!desc.trim()) { setErr('Keterangan wajib diisi'); return }
     if (!amount || +amount <= 0){ setErr('Nilai (Rp) harus lebih dari 0'); return }
+    if (!walletId) { setErr('Pilih dompet/rekening tujuan terlebih dahulu'); return }
+
     setBusy(true); setErr('')
-    const e = await addInv({ invType, subType, desc: desc.trim(), amount: +amount, action, unit: cfg.unit, qty: +qty || 0, date })
+    
+    const payload = { 
+      invType, subType, desc: desc.trim(), amount: +amount, 
+      action, unit: cfg.unit, qty: +qty || 0, date, 
+      wallet_id: walletId 
+    };
+
+    let e;
+    if (editId) {
+      e = await updateInv(editId, payload);
+    } else {
+      e = await addInv(payload);
+    }
+    
     setBusy(false)
     if (e) setErr(e.message)
-    else { setDesc(''); setAmount(''); setQty('') }
+    else { cancelEdit() }
   }
 
   const byType = useMemo(() => {
@@ -60,15 +97,47 @@ export default function Investasi() {
     return m
   }, [invData, invType])
 
-  // Logika filter data pencarian
-  const filteredInv = invData.filter(t => {
-    const q = searchQuery.toLowerCase()
-    return (
-      (t.desc && t.desc.toLowerCase().includes(q)) || 
-      (t.invType && t.invType.toLowerCase().includes(q)) ||
-      (t.subType && t.subType.toLowerCase().includes(q))
-    )
-  })
+  const filteredInv = useMemo(() => {
+    return invData.filter(t => {
+      const q = searchQuery.toLowerCase()
+      return (
+        (t.desc && t.desc.toLowerCase().includes(q)) || 
+        (t.invType && t.invType.toLowerCase().includes(q)) ||
+        (t.subType && t.subType.toLowerCase().includes(q))
+      )
+    }).sort((a, b) => {
+      const dateA = new Date(a.date).getTime()
+      const dateB = new Date(b.date).getTime()
+      if (dateA !== dateB) return dateB - dateA
+      return (b.ts || 0) - (a.ts || 0)
+    })
+  }, [invData, searchQuery])
+
+  // --- LOGIKA GROUPING BERDASARKAN TANGGAL ---
+  const groupedInv = useMemo(() => {
+    const groups = {}
+    filteredInv.forEach(t => {
+      const d = t.date || 'unknown'
+      if (!groups[d]) groups[d] = { items: [], totalBeli: 0, totalJual: 0 }
+      groups[d].items.push(t)
+      if (t.action === 'beli') groups[d].totalBeli += t.amount
+      if (t.action === 'jual') groups[d].totalJual += t.amount
+    })
+    return groups
+  }, [filteredInv])
+
+  const getDayLabel = (dateStr) => {
+    if (!dateStr || dateStr === 'unknown') return "Tanggal Tidak Diketahui"
+    const d = new Date(dateStr)
+    const todayObj = new Date()
+    const yesterdayObj = new Date(todayObj)
+    yesterdayObj.setDate(yesterdayObj.getDate() - 1)
+    if (d.toISOString().split('T')[0] === todayObj.toISOString().split('T')[0]) return "Hari Ini"
+    if (d.toISOString().split('T')[0] === yesterdayObj.toISOString().split('T')[0]) return "Kemarin"
+    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+  }
+
+  const activeWallet = totals?.walletBalances?.find(w => w.id === walletId)
 
   return (
     <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
@@ -78,7 +147,6 @@ export default function Investasi() {
         <p className="text-slate-500 text-sm font-medium mt-1">Kelola dan pantau aset kekayaanmu.</p>
       </div>
 
-      {/* PORTFOLIO SUMMARY HEADER */}
       <div className="bg-white border border-slate-200 rounded-[24px] p-6 lg:p-8 shadow-sm">
         <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-1">Total Aset</p>
         <p className="tabular-nums font-bold text-4xl md:text-5xl mb-6 tracking-tight text-emerald-500">{fmt(totalPortfolio)}</p>
@@ -95,7 +163,6 @@ export default function Investasi() {
         </div>
       </div>
 
-      {/* TYPE SELECTOR PILLS */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {INV_KEYS.map(k => {
           const c = INV_TYPES[k]; const isActive = invType===k
@@ -113,9 +180,8 @@ export default function Investasi() {
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         
-        {/* ── FORM PANEL ───────────────────────────────── */}
-        <div className="bg-white border border-slate-200 rounded-[24px] p-6 md:p-8 shadow-sm lg:col-span-3 space-y-5">
-          <PanelHeader title={`Catat Transaksi ${invType}`} />
+        <div className={`bg-white border ${editId ? 'border-indigo-300 ring-4 ring-indigo-50' : 'border-slate-200'} rounded-[24px] p-6 md:p-8 shadow-sm lg:col-span-3 space-y-5 transition-all`}>
+          <PanelHeader title={editId ? `Edit Transaksi ${invType}` : `Catat Transaksi ${invType}`} badge={editId ? 'Mode Edit' : ''} />
 
           <div className="grid grid-cols-2 gap-3 mb-2">
             <button onClick={() => setAction('beli')}
@@ -166,7 +232,40 @@ export default function Investasi() {
               </div>
             </Field>
 
-            <Field label="Tanggal Transaksi" className="sm:col-span-2">
+            <Field label={action === 'beli' ? "Potong Saldo Dari:" : "Masukkan Saldo Ke:"}>
+              {totals?.walletBalances && totals.walletBalances.length > 0 ? (
+                <div className="relative">
+                  <div 
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl flex items-center justify-center pointer-events-none z-10 text-white"
+                    style={{ backgroundColor: activeWallet?.color || '#94a3b8' }}
+                  >
+                    <Wallet size={16} strokeWidth={2.5} />
+                  </div>
+                  <select
+                    className="form-input pl-14 pr-10 py-3 border-slate-200 focus:border-emerald-500 text-sm cursor-pointer appearance-none bg-white relative z-0 font-semibold text-slate-700"
+                    value={walletId}
+                    onChange={(e) => setWalletId(e.target.value)}
+                  >
+                    <option value="" disabled>Pilih Dompet...</option>
+                    {totals.walletBalances.map(w => (
+                      <option key={w.id} value={w.id}>
+                        {w.name} — Rp {Math.abs(w.calculatedBalance).toLocaleString('id-ID')}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                    <ChevronDown size={18} strokeWidth={2.5} />
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-500 flex items-center gap-2">
+                  <Wallet size={16} className="text-slate-400" />
+                  Belum ada dompet. Buat di Dashboard!
+                </div>
+              )}
+            </Field>
+
+            <Field label="Tanggal Transaksi">
               <div className="relative">
                 <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-slate-100 text-slate-500 rounded-xl flex items-center justify-center pointer-events-none"><CalendarDays size={16} strokeWidth={2.5} /></div>
                 <input className="form-input pl-14 py-3 cursor-pointer border-slate-200 focus:border-emerald-500 text-sm" type="date" value={date} onChange={e => setDate(e.target.value)} />
@@ -176,15 +275,22 @@ export default function Investasi() {
 
           {err && <div className="text-xs text-rose-600 bg-rose-50 rounded-xl px-4 py-3 font-medium">{err}</div>}
 
-          <button onClick={handleAdd} disabled={busy}
-            className={`w-full py-4 rounded-xl text-sm font-bold text-white transition-all cursor-pointer flex items-center justify-center gap-2.5 active:scale-95 disabled:opacity-50 mt-2 ${
-              action === 'beli' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-orange-500 hover:bg-orange-600'
-            }`}>
-            {busy ? <Loader2 size={18} className="animate-spin" /> : <PlusCircle size={18} />} Catat {action === 'beli' ? 'Pembelian' : 'Penjualan'}
-          </button>
+          <div className="flex gap-3 mt-2">
+            {editId && (
+              <button onClick={cancelEdit} className="flex-1 py-4 bg-slate-100 text-slate-600 text-sm font-bold rounded-xl hover:bg-slate-200 transition-colors">
+                Batal Edit
+              </button>
+            )}
+            <button onClick={handleSave} disabled={busy}
+              className={`flex-[2] py-4 rounded-xl text-sm font-bold text-white transition-all cursor-pointer flex items-center justify-center gap-2.5 active:scale-95 disabled:opacity-50 ${
+                action === 'beli' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-orange-500 hover:bg-orange-600'
+              }`}>
+              {busy ? <Loader2 size={18} className="animate-spin" /> : (editId ? <Pencil size={18} /> : <PlusCircle size={18} />)} 
+              {editId ? 'Simpan Perubahan' : `Catat ${action === 'beli' ? 'Pembelian' : 'Penjualan'}`}
+            </button>
+          </div>
         </div>
 
-        {/* ── PORTFOLIO DONUT ───────────────────────────── */}
         <div className="bg-white border border-slate-200 rounded-[24px] p-6 md:p-8 shadow-sm lg:col-span-2 flex flex-col">
           <PanelHeader title="Alokasi Aset" />
           <div className="flex-1 flex flex-col justify-center mt-2">
@@ -220,7 +326,6 @@ export default function Investasi() {
         </div>
       </div>
 
-      {/* ── DETAIL & HISTORY ────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {Object.keys(subBreakdown).length > 0 && (
           <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm overflow-x-auto">
@@ -246,10 +351,10 @@ export default function Investasi() {
           </div>
         )}
 
+        {/* ── BAGIAN RIWAYAT DENGAN GROUPING TANGGAL ────────────────────────────── */}
         <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
           <PanelHeader title="Riwayat Investasi" badge={`${filteredInv.length} transaksi`} />
           
-          {/* BAR PENCARIAN (SEARCH BAR) */}
           <div className="relative mt-4 mb-3">
             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
               <Search size={18} />
@@ -264,8 +369,51 @@ export default function Investasi() {
           </div>
 
           <div className="space-y-1.5 mt-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-            {filteredInv.length > 0 ? (
-              filteredInv.map(t => <TxItem key={t.id} t={t} onDelete={deleteInv} isInv />)
+            {Object.keys(groupedInv).length > 0 ? (
+              Object.keys(groupedInv).sort((a,b) => new Date(b) - new Date(a)).map(dateKey => {
+                const group = groupedInv[dateKey];
+                const isToday = getDayLabel(dateKey) === "Hari Ini";
+
+                return (
+                  <div key={dateKey} className="mb-6 last:mb-0 animate-fade-up">
+                    
+                    {/* STICKY HEADER TANGGAL */}
+                    <div className="flex items-center justify-between border-b-2 border-slate-100 pb-2.5 mb-3 sticky top-0 bg-white z-10">
+                      <h4 className={`font-bold text-sm ${isToday ? 'text-emerald-600' : 'text-slate-700'}`}>
+                        {getDayLabel(dateKey)}
+                      </h4>
+                      <div className="flex gap-4 text-[11px] font-bold uppercase tracking-wider">
+                        {group.totalJual > 0 && <span className="text-orange-500">+ {fmtShort(group.totalJual)}</span>}
+                        {group.totalBeli > 0 && <span className="text-emerald-500">- {fmtShort(group.totalBeli)}</span>}
+                      </div>
+                    </div>
+
+                    {/* LIST ITEM PADA TANGGAL TERSEBUT */}
+                    <div className="space-y-1.5">
+                      {group.items.map(t => (
+                        <div 
+                          key={t.id} 
+                          onClick={(e) => {
+                            if (e.target.closest('button')) return;
+                            handleEditClick(t);
+                          }} 
+                          className="cursor-pointer hover:bg-slate-50 rounded-2xl transition-colors ring-2 ring-transparent hover:ring-emerald-50 group"
+                          title="Klik untuk edit"
+                        >
+                          <div className="pointer-events-auto">
+                            <TxItem 
+                              t={t} 
+                              onDelete={deleteInv} 
+                              isInv={true}
+                              walletName={totals?.walletBalances?.find(w => w.id === t.wallet_id)?.name} 
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })
             ) : (
               <div className="py-8">
                 <Empty icon={<BriefcaseBusiness size={40} className="text-slate-300 mb-3" strokeWidth={1} />} text="Transaksi tidak ditemukan" />

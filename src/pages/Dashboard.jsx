@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   AreaChart, Area, XAxis, YAxis,
   Tooltip, ResponsiveContainer, CartesianGrid,
@@ -6,8 +6,8 @@ import {
 } from 'recharts'
 import { useData } from '../context/DataContext'
 import { fmt, fmtShort, MONTHS, CHART_COLORS } from '../lib/utils'
-import { Empty, Spinner, DonutLegend } from '../components/UI'
-import { TrendingUp, TrendingDown, PieChart as PieChartIcon } from 'lucide-react'
+import { Empty, Spinner, DonutLegend, BankLogo } from '../components/UI'
+import { TrendingUp, TrendingDown, PieChart as PieChartIcon, Plus, Trash2 } from 'lucide-react'
 import BillTracker from '../components/BillTracker'
 
 const CustomTooltip = ({ active, payload, label }) => {
@@ -25,7 +25,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 }
 
 export default function Dashboard() {
-  const { txData, invData, loading, totals } = useData() 
+  const { txData, invData, loading, totals, addWallet, updateWallet, deleteWallet } = useData() 
   const now = new Date()
   
   // 1. HITUNGAN SPESIFIK BULAN INI & BULAN LALU
@@ -128,7 +128,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* PERUBAHAN: Grid menjadi 4 kolom untuk menampung widget Hari Ini */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         
         {/* CARD SALDO TOTAL */}
@@ -146,7 +145,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* CARD BARU: PENGELUARAN HARI INI (Desain Khusus) */}
+        {/* CARD PENGELUARAN HARI INI */}
         <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 border border-indigo-600 rounded-[24px] p-6 shadow-sm flex flex-col justify-between text-white transform transition-transform hover:-translate-y-1">
           <div className="flex justify-between items-start mb-4">
             <span className="font-semibold text-base text-indigo-50">Keluar Hari Ini</span>
@@ -192,6 +191,9 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* --- WIDGET DOMPET & REKENING --- */}
+      <WalletWidget totals={totals} addWallet={addWallet} updateWallet={updateWallet} deleteWallet={deleteWallet} />
 
       {/* --- GRID UTAMA BAWAH --- */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -270,6 +272,181 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------
+// KOMPONEN WIDGET DOMPET (DENGAN FITUR EDIT & HAPUS IN-APP)
+// ---------------------------------------------------------
+function WalletWidget({ totals, addWallet, updateWallet, deleteWallet }) {
+  const [showModal, setShowModal] = useState(false)
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false) // State baru untuk Konfirmasi Hapus
+  const [editId, setEditId] = useState(null) 
+  const [name, setName] = useState('')
+  const [balance, setBalance] = useState('')
+  const [color, setColor] = useState('#4F46E5') 
+  const [busy, setBusy] = useState(false)
+
+  const handleOpenNew = () => {
+    setEditId(null); setName(''); setBalance(''); setColor('#4F46E5'); 
+    setShowConfirmDelete(false); // Reset konfirmasi
+    setShowModal(true);
+  }
+
+  const handleOpenEdit = (w) => {
+    setEditId(w.id); setName(w.name); setBalance(w.balance || 0); setColor(w.color || '#4F46E5'); 
+    setShowConfirmDelete(false); // Reset konfirmasi
+    setShowModal(true);
+  }
+
+  const handleSave = async () => {
+    if (!name.trim()) return;
+    setBusy(true);
+    
+    const payload = { 
+      name: name.trim(), 
+      balance: balance ? Number(balance) : 0, 
+      color 
+    };
+
+    if (editId) {
+      await updateWallet(editId, payload);
+    } else {
+      await addWallet(payload);
+    }
+
+    setBusy(false);
+    setShowModal(false);
+  }
+
+  // Hanya mengubah tampilan ke mode konfirmasi
+  const triggerDelete = () => {
+    setShowConfirmDelete(true);
+  }
+
+  // Eksekusi penghapusan sesungguhnya
+  const executeDelete = async () => {
+    setBusy(true);
+    await deleteWallet(editId);
+    setBusy(false);
+    setShowConfirmDelete(false);
+    setShowModal(false);
+  }
+
+  const COLORS = ['#4F46E5', '#10B981', '#FF8A00', '#E11D48', '#06B6D4', '#8B5CF6', '#1E293B', '#F43F5E'];
+
+  return (
+    <div className="animate-fade-up">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-bold text-slate-800 tracking-tight">Dompet & Rekening</h2>
+      </div>
+
+      <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar items-stretch">
+        
+        {totals?.walletBalances?.map(w => (
+          <div 
+            key={w.id} 
+            onClick={() => handleOpenEdit(w)}
+            className="min-w-[180px] p-5 rounded-[20px] bg-white border border-slate-200 shadow-sm flex-shrink-0 flex flex-col justify-between relative overflow-hidden hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group"
+          >
+            <div className="absolute top-0 left-0 right-0 h-1.5" style={{ backgroundColor: w.color || '#ccc' }} />
+            <div>
+              <div className="flex items-center gap-2 mb-2 mt-1">
+                <BankLogo name={w.name} size="sm" />
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{w.name}</p>
+              </div>
+              <h3 className="text-xl font-black text-slate-800 tabular-nums">{fmt(w.calculatedBalance)}</h3>
+            </div>
+            
+            <div className="absolute top-4 right-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            </div>
+          </div>
+        ))}
+
+        <button 
+          onClick={handleOpenNew}
+          className="min-w-[140px] p-5 rounded-[20px] border-2 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 transition-all flex-shrink-0"
+        >
+          <span className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center mb-2 text-inherit">
+            <Plus size={16} strokeWidth={3} />
+          </span>
+          <span className="text-xs font-bold">Tambah Baru</span>
+        </button>
+
+      </div>
+
+      {showModal && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-[24px] p-6 w-full max-w-sm shadow-2xl animate-fade-up">
+            
+            {showConfirmDelete ? (
+              // TAMPILAN KONFIRMASI HAPUS
+              <div className="animate-fade-in text-center py-2">
+                <div className="w-16 h-16 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Trash2 size={32} strokeWidth={2.5} />
+                </div>
+                <h3 className="font-bold text-lg text-slate-800 mb-2">Hapus Dompet Ini?</h3>
+                <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+                  Transaksi yang sudah tercatat menggunakan dompet ini <b>tidak akan hilang</b>, namun riwayat dompet pada transaksi tersebut akan dikosongkan.
+                </p>
+                <div className="flex gap-3">
+                  <button onClick={() => setShowConfirmDelete(false)} disabled={busy} className="flex-1 py-3 bg-slate-100 text-slate-600 text-sm font-bold rounded-xl hover:bg-slate-200 transition-colors">
+                    Batal
+                  </button>
+                  <button onClick={executeDelete} disabled={busy} className="flex-1 py-3 bg-rose-500 text-white text-sm font-bold rounded-xl hover:bg-rose-600 disabled:opacity-50 transition-colors">
+                    {busy ? 'Menghapus...' : 'Ya, Hapus'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              // TAMPILAN FORM EDIT/TAMBAH
+              <>
+                <div className="flex justify-between items-center mb-5">
+                  <h3 className="font-bold text-lg text-slate-800">
+                    {editId ? 'Edit Dompet' : 'Tambah Dompet Baru'}
+                  </h3>
+                  {editId && (
+                    <button onClick={triggerDelete} className="w-8 h-8 flex items-center justify-center rounded-full text-rose-500 hover:bg-rose-50 transition-colors" title="Hapus Dompet">
+                      <Trash2 size={16} strokeWidth={2.5} />
+                    </button>
+                  )}
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1.5">Nama Dompet (Mis: BCA, Kas, OVO)</label>
+                    <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none" placeholder="Masukkan nama..." />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1.5">Saldo Awal (Rp)</label>
+                    <input type="text" inputMode="numeric" value={balance ? Number(balance).toLocaleString('id-ID') : ''} onChange={e => setBalance(e.target.value.replace(/\D/g, ''))} className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none tabular-nums" placeholder="0" />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1.5">Warna Kartu</label>
+                    <div className="flex flex-wrap gap-3">
+                      {COLORS.map(c => (
+                        <button key={c} onClick={() => setColor(c)} className={`w-8 h-8 rounded-full border-2 transition-all ${color === c ? 'border-slate-800 scale-110 shadow-sm' : 'border-transparent'}`} style={{ backgroundColor: c }} />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 mt-6 pt-4 border-t border-slate-100">
+                    <button onClick={() => setShowModal(false)} className="flex-1 py-3 bg-slate-100 text-slate-600 text-sm font-bold rounded-xl hover:bg-slate-200 transition-colors">Batal</button>
+                    <button onClick={handleSave} disabled={busy || !name} className="flex-1 py-3 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors">
+                      {editId ? 'Simpan Perubahan' : 'Simpan Dompet'}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
+          </div>
+        </div>
+      )}
     </div>
   )
 }
