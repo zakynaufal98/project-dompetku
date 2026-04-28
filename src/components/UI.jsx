@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Trash2, Loader2, ArrowDownLeft, ArrowUpRight, ReceiptText, BriefcaseBusiness } from 'lucide-react'
-import { fmtShort, CAT_ICONS, INV_TYPES } from '../lib/utils' // Ditambahkan INV_TYPES
+import { fmtShort, CAT_ICONS, INV_TYPES } from '../lib/utils' 
 
 // ---------------------------------------------------------
 // KOMPONEN: Logo Bank Asli (Dengan API & Fallback)
@@ -30,7 +30,7 @@ export const BankLogo = ({ name = '', size = 'md' }) => {
 
   if (brand.domain && !imgError) {
     return (
-      <div className={`${sizeClasses} rounded-full flex items-center justify-center flex-shrink-0 bg-white border border-slate-100 overflow-hidden shadow-sm p-0.5`}>
+      <div className={`${sizeClasses} rounded-full flex items-center justify-center flex-shrink-0 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 overflow-hidden shadow-sm p-0.5 transition-colors`}>
         <img
           src={`https://logo.clearbit.com/${brand.domain}`}
           alt={brand.text}
@@ -49,14 +49,11 @@ export const BankLogo = ({ name = '', size = 'md' }) => {
 }
 
 // ---------------------------------------------------------
-// 1. KOMPONEN ITEM TRANSAKSI (Lebih Cerdas & Detail)
+// 1. KOMPONEN ITEM TRANSAKSI
 // ---------------------------------------------------------
 export const TxItem = ({ t, onDelete, isInv, walletName }) => { 
-  // 1. Tentukan Arah Uang
-  // Jika Investasi: Beli = Uang Keluar (isOut: true), Jual = Uang Masuk
   const isOut = isInv ? t.action === 'beli' : t.type === 'out';
   
-  // 2. Tentukan Ikon yang Benar
   let IconElement;
   if (isInv) {
     IconElement = (INV_TYPES && t.invType && INV_TYPES[t.invType]) 
@@ -68,7 +65,6 @@ export const TxItem = ({ t, onDelete, isInv, walletName }) => {
       : <ReceiptText size={18} strokeWidth={2.5} />;
   }
 
-  // 3. Tentukan Label Kategori yang Detail
   const catText = isInv 
     ? `${t.action === 'beli' ? 'Beli' : 'Jual'} ${t.invType || 'Aset'} ${t.subType ? `• ${t.subType}` : ''}`
     : t.cat;
@@ -76,36 +72,33 @@ export const TxItem = ({ t, onDelete, isInv, walletName }) => {
   const dateDisplay = t.date ? new Date(t.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
 
   return (
-    <div className="flex items-center justify-between p-3.5 bg-white border border-slate-100 rounded-2xl hover:border-slate-200 transition-colors group">
+    <div className="flex items-center justify-between p-3.5 bg-white dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/50 rounded-2xl hover:border-slate-200 dark:hover:border-slate-600 transition-colors group">
       <div className="flex items-center gap-3.5">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isOut ? 'bg-orange-50 text-orange-500' : 'bg-indigo-50 text-indigo-600'}`}>
-          {/* Ikon spesifik akan muncul di sini */}
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
+          isOut 
+            ? 'bg-orange-50 dark:bg-orange-500/10 text-orange-500 dark:text-orange-400' 
+            : 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
+        }`}>
           {IconElement}
         </div>
         <div>
-          <p className="font-bold text-sm text-slate-800 line-clamp-1 leading-tight">{t.desc}</p>
+          <p className="font-bold text-sm text-slate-800 dark:text-slate-100 line-clamp-1 leading-tight">{t.desc}</p>
           
           <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-            
-            {/* TANGGAL TRANSAKSI */}
             {dateDisplay && (
-              <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded uppercase tracking-wider">
+              <span className="text-[9px] font-bold text-slate-500 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded uppercase tracking-wider">
                 {dateDisplay}
               </span>
             )}
-
-            {/* LABEL DETAIL (Contoh: Beli Saham • BBCA) */}
-            <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
+            <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 flex items-center gap-1">
               {catText}
             </span>
-            
-            {/* LOGO BANK */}
             {walletName && (
               <>
-                <span className="w-1 h-1 rounded-full bg-slate-200"></span>
+                <span className="w-1 h-1 rounded-full bg-slate-200 dark:bg-slate-600"></span>
                 <span className="flex items-center gap-1">
                   <BankLogo name={walletName} size="sm" />
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">{walletName}</span>
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">{walletName}</span>
                 </span>
               </>
             )}
@@ -113,14 +106,16 @@ export const TxItem = ({ t, onDelete, isInv, walletName }) => {
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <span className={`font-black text-sm tabular-nums tracking-tight ${isOut ? 'text-slate-700' : 'text-indigo-600'}`}>
+        <span className={`font-black text-sm tabular-nums tracking-tight ${
+          isOut ? 'text-slate-700 dark:text-slate-300' : 'text-indigo-600 dark:text-indigo-400'
+        }`}>
           {isOut ? '-' : '+'}{fmtShort(t.amount)}
         </span>
         {onDelete && (
           <button onClick={(e) => {
-            e.stopPropagation(); // Mencegah memicu klik form Edit secara tidak sengaja
+            e.stopPropagation();
             onDelete(t.id);
-          }} className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
+          }} className="w-8 h-8 flex items-center justify-center text-slate-300 dark:text-slate-500 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-full transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
             <Trash2 size={16} />
           </button>
         )}
@@ -134,7 +129,7 @@ export const TxItem = ({ t, onDelete, isInv, walletName }) => {
 // ---------------------------------------------------------
 export function Empty({ icon, text }) {
   return (
-    <div className="flex flex-col items-center justify-center text-slate-400 py-6">
+    <div className="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 py-6">
       {icon}
       <p className="text-sm font-medium mt-2">{text}</p>
     </div>
@@ -142,7 +137,7 @@ export function Empty({ icon, text }) {
 }
 
 // ---------------------------------------------------------
-// 3. KOMPONEN TABS (Untuk Filter)
+// 3. KOMPONEN TABS
 // ---------------------------------------------------------
 export function Tabs({ value, onChange, options }) {
   return (
@@ -153,8 +148,8 @@ export function Tabs({ value, onChange, options }) {
           onClick={() => onChange(o.value)}
           className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
             value === o.value 
-              ? 'bg-rose-50 text-rose-500 border border-rose-100' 
-              : 'bg-white text-slate-400 border border-slate-200 hover:border-slate-300'
+              ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500 dark:text-rose-400 border border-rose-100 dark:border-rose-500/20' 
+              : 'bg-white dark:bg-[#1E2336] text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-500'
           }`}
         >
           {o.label}
@@ -165,12 +160,12 @@ export function Tabs({ value, onChange, options }) {
 }
 
 // ---------------------------------------------------------
-// 4. KOMPONEN FIELD WRAPPER (Untuk Form)
+// 4. KOMPONEN FIELD WRAPPER
 // ---------------------------------------------------------
 export function Field({ label, children }) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-xs font-bold text-slate-500 ml-1">{label}</label>
+      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 ml-1">{label}</label>
       {children}
     </div>
   )
@@ -179,34 +174,37 @@ export function Field({ label, children }) {
 // ---------------------------------------------------------
 // 5. KOMPONEN PANEL HEADER
 // ---------------------------------------------------------
-export function PanelHeader({ title, badge }) {
+export function PanelHeader({ title, badge, icon }) {
   return (
-    <div className="flex items-center justify-between border-b-2 border-slate-100 pb-3 mb-4">
-      <h3 className="font-bold text-slate-800 text-base">{title}</h3>
-      {badge && <span className="text-[10px] font-bold text-rose-500 bg-rose-50 px-2.5 py-1 rounded-md uppercase tracking-wider">{badge}</span>}
+    <div className="flex items-center justify-between border-b-2 border-slate-100 dark:border-slate-800/50 pb-3 mb-4">
+      <h3 className="font-bold text-slate-800 dark:text-white text-base flex items-center gap-2">
+        {icon && <span className="text-slate-400 dark:text-slate-500">{icon}</span>}
+        {title}
+      </h3>
+      {badge && <span className="text-[10px] font-bold text-rose-500 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 px-2.5 py-1 rounded-md uppercase tracking-wider">{badge}</span>}
     </div>
   )
 }
 
 // ---------------------------------------------------------
-// 6. KOMPONEN SUMMARY ROW (Untuk Ringkasan)
+// 6. KOMPONEN SUMMARY ROW
 // ---------------------------------------------------------
 export function SummaryRow({ label, value, valueClass }) {
   return (
     <div className="flex justify-between items-center">
-      <span className="text-sm font-semibold text-slate-500">{label}</span>
+      <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">{label}</span>
       <span className={`tabular-nums text-base ${valueClass}`}>{value}</span>
     </div>
   )
 }
 
 // ---------------------------------------------------------
-// 7. KOMPONEN PROGRESS BAR (Untuk Grafik Analitik)
+// 7. KOMPONEN PROGRESS BAR
 // ---------------------------------------------------------
 export function ProgressBar({ value, max, color }) {
   const pct = Math.min(100, Math.max(0, (value / max) * 100))
   return (
-    <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden mt-1.5">
+    <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-1.5">
       <div 
         className="h-full rounded-full transition-all duration-1000 ease-out" 
         style={{ width: `${pct}%`, backgroundColor: color }} 
@@ -216,7 +214,7 @@ export function ProgressBar({ value, max, color }) {
 }
 
 // ---------------------------------------------------------
-// 8. KOMPONEN DONUT LEGEND (Untuk Dashboard)
+// 8. KOMPONEN DONUT LEGEND
 // ---------------------------------------------------------
 export function DonutLegend({ data }) {
   const entries = Object.entries(data).sort((a,b) => b[1] - a[1]).slice(0,4)
@@ -224,9 +222,9 @@ export function DonutLegend({ data }) {
   return (
     <div className="space-y-2.5 mt-2">
       {entries.map(([cat, val]) => (
-        <div key={cat} className="flex items-center justify-between text-xs border-b border-slate-50 pb-1.5 last:border-0 last:pb-0">
-          <span className="font-semibold text-slate-500 truncate pr-4">{cat}</span>
-          <span className="tabular-nums font-bold text-slate-800 flex-shrink-0">{fmtShort(val)}</span>
+        <div key={cat} className="flex items-center justify-between text-xs border-b border-slate-50 dark:border-slate-800/50 pb-1.5 last:border-0 last:pb-0">
+          <span className="font-semibold text-slate-500 dark:text-slate-400 truncate pr-4">{cat}</span>
+          <span className="tabular-nums font-bold text-slate-800 dark:text-slate-200 flex-shrink-0">{fmtShort(val)}</span>
         </div>
       ))}
     </div>
@@ -234,9 +232,9 @@ export function DonutLegend({ data }) {
 }
 
 // ---------------------------------------------------------
-// 9. KOMPONEN SPINNER (Loading Animation)
+// 9. KOMPONEN SPINNER
 // ---------------------------------------------------------
 export function Spinner({ size = 'md' }) {
   const sizes = { sm: 16, md: 24, lg: 32 }
-  return <Loader2 size={sizes[size] || 24} className="text-indigo-600 animate-spin" />
+  return <Loader2 size={sizes[size] || 24} className="text-indigo-600 dark:text-indigo-400 animate-spin" />
 }

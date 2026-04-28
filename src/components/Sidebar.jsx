@@ -1,89 +1,78 @@
-import { Link, useLocation } from 'react-router-dom'
-import { 
-  LayoutDashboard, 
-  ArrowRightLeft, 
-  TrendingUp, 
-  Calendar, 
-  CalendarDays, 
-  PieChart, 
-  ChevronLeft, 
-  ChevronRight,
-  BanknoteArrowDown
-} from 'lucide-react'
+import { NavLink } from 'react-router-dom'
+import { LayoutDashboard, ReceiptText, BriefcaseBusiness, CalendarDays, CalendarCheck2, PieChart, ChevronLeft, ChevronRight, CreditCard } from 'lucide-react'
 
-const MENU = [
+const NAV_LINKS = [
   { path: '/', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
-  { path: '/transaksi', icon: <ArrowRightLeft size={20} />, label: 'Transaksi' },
-  { path: '/investasi', icon: <TrendingUp size={20} />, label: 'Investasi' },
-  { path: '/bulanan', icon: <Calendar size={20} />, label: 'Bulanan' },
-  { path: '/tahunan', icon: <CalendarDays size={20} />, label: 'Tahunan' },
+  { path: '/transaksi', icon: <ReceiptText size={20} />, label: 'Transaksi' },
+  { path: '/investasi', icon: <BriefcaseBusiness size={20} />, label: 'Investasi' },
+  { path: '/bulanan', icon: <CalendarDays size={20} />, label: 'Bulanan' },
+  { path: '/tahunan', icon: <CalendarCheck2 size={20} />, label: 'Tahunan' },
   { path: '/grafik', icon: <PieChart size={20} />, label: 'Grafik' },
-  { path: '/hutang', icon: <BanknoteArrowDown size={20} />, label: 'Hutang' },
+  { path: '/hutang', icon: <CreditCard size={20} />, label: 'Hutang' },
 ]
 
 export default function Sidebar({ collapsed, setCollapsed }) {
-  const loc = useLocation()
-
-  // Gaya untuk item navigasi
-  const navClass = (isActive) => `
-    flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 cursor-pointer
-    ${isActive 
-      ? 'bg-indigo-50 text-indigo-600 font-bold' 
-      : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800 font-semibold'
-    }
-    ${collapsed ? 'justify-center' : ''}
-  `
-
   return (
-    <aside className={`
-      sticky top-0 left-0 z-50 h-[100dvh] bg-white border-r border-slate-200 
-      flex flex-col transition-all duration-300
-      ${collapsed ? 'w-[88px]' : 'w-[260px]'}
-    `}>
+    // Tambahan dark:bg-[#1E2336] dan dark:border-slate-800
+    <aside className={`h-full bg-white dark:bg-[#1E2336] border-r border-slate-200 dark:border-slate-800 flex flex-col transition-all duration-300 relative ${collapsed ? 'w-20' : 'w-64'}`}>
       
-      {/* ── TOMBOL COLLAPSE ──────────────────────────────── */}
-      {/* Posisi dinaikkan ke top-8 karena header logo sudah dihapus */}
-      <div className="absolute -right-3 top-8 z-10">
-        <button 
-          onClick={() => setCollapsed(!collapsed)}
-          className="flex w-6 h-6 bg-white border border-slate-200 rounded-full items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:shadow-sm transition-all"
-        >
-          {collapsed ? <ChevronRight size={14} strokeWidth={3} /> : <ChevronLeft size={14} strokeWidth={3} />}
-        </button>
-      </div>
-
-      {/* ── MENU UTAMA ──────────────────────────────────── */}
-      {/* Ditambahkan pt-8 agar menu tidak menabrak atap layar */}
-      <div className="flex-1 overflow-y-auto pt-8 pb-6 px-4 space-y-1.5 custom-scrollbar">
-        <p className={`text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 pl-2 ${collapsed ? 'text-center pl-0' : ''}`}>
-          {collapsed ? 'Menu' : 'Main Menu'}
-        </p>
-        
-        {MENU.map(m => {
-          const isActive = loc.pathname === m.path
-          return (
-            <Link key={m.path} to={m.path} className={navClass(isActive)} title={collapsed ? m.label : ''}>
-              <span className="flex-shrink-0">{m.icon}</span>
-              {!collapsed && <span className="whitespace-nowrap">{m.label}</span>}
-            </Link>
-          )
-        })}
-      </div>
-
-      {/* ── PROMO/INFO BANNER ───────────────────────────── */}
-      {!collapsed && (
-        <div className="px-6 mb-8">
-          <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 rounded-[20px] p-4 relative overflow-hidden">
-            <div className="absolute -right-4 -top-4 w-16 h-16 bg-indigo-500/10 rounded-full blur-xl" />
-            <p className="text-xs font-bold text-indigo-800 mb-1">Butuh Bantuan?</p>
-            <p className="text-[11px] text-indigo-600/80 leading-relaxed mb-3">Baca panduan lengkap fitur DompetKu Pro.</p>
-            <button className="text-[11px] font-bold text-white bg-indigo-500 px-3 py-1.5 rounded-lg w-full shadow-sm hover:bg-indigo-600 transition-colors">
-              Lihat Panduan
-            </button>
-          </div>
+      {/* HEADER SIDEBAR */}
+      <div className="h-16 flex items-center px-6 border-b border-slate-100 dark:border-slate-800/50">
+        <div className={`font-black tracking-tight text-xl text-slate-800 dark:text-white flex items-center gap-2 ${collapsed ? 'hidden' : 'block'}`}>
+          <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-sm">D</div>
+          DompetKu <span className="text-indigo-600 dark:text-indigo-400">Pro</span>
         </div>
-      )}
-      
+        {collapsed && <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-sm mx-auto font-black">D</div>}
+      </div>
+
+      <button 
+        onClick={() => setCollapsed(!collapsed)}
+        className="absolute -right-3 top-20 w-6 h-6 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-full flex items-center justify-center text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 z-10 transition-colors shadow-sm"
+      >
+        {collapsed ? <ChevronRight size={14} strokeWidth={3} /> : <ChevronLeft size={14} strokeWidth={3} />}
+      </button>
+
+      {/* MENU SIDEBAR */}
+      <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-1.5 custom-scrollbar">
+        <p className={`text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 ml-3 ${collapsed ? 'text-center ml-0' : ''}`}>Menu Utama</p>
+        
+        {NAV_LINKS.map(link => (
+          <NavLink
+            key={link.path}
+            to={link.path}
+            className={({ isActive }) => `
+              flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group
+              ${isActive 
+                ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold' 
+                : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-800 dark:hover:text-slate-200 font-medium'}
+              ${collapsed ? 'justify-center' : ''}
+            `}
+            title={collapsed ? link.label : ''}
+          >
+            {({ isActive }) => (
+              <>
+                <div className={`${isActive ? 'scale-110' : 'group-hover:scale-110'} transition-transform duration-200`}>
+                  {link.icon}
+                </div>
+                {!collapsed && <span>{link.label}</span>}
+              </>
+            )}
+          </NavLink>
+        ))}
+      </nav>
+
+      {/* FOOTER SIDEBAR */}
+      <div className="p-4 border-t border-slate-100 dark:border-slate-800/50 m-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+        {!collapsed ? (
+          <div className="text-center">
+            <p className="text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">Butuh Bantuan?</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight mb-3">Baca panduan lengkap fitur DompetKu Pro.</p>
+            <button className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors">Lihat Panduan</button>
+          </div>
+        ) : (
+          <div className="flex justify-center text-indigo-600 dark:text-indigo-400"><LayoutDashboard size={20} /></div>
+        )}
+      </div>
     </aside>
   )
 }

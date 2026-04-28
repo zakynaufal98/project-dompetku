@@ -11,14 +11,14 @@ import {
 } from 'lucide-react'
 
 export default function Transaksi() {
-  const { txData, invData, addTx, deleteTx, totals, walletData } = useData() // UPDATE: Tarik walletData
+  const { txData, invData, addTx, deleteTx, totals, walletData } = useData() 
   
   const [type,   setType]   = useState('out')
   const [desc,   setDesc]   = useState('')
   const [amount, setAmount] = useState('')
   const [cat,    setCat]    = useState('')
   const [date,   setDate]   = useState(today())
-  const [walletId, setWalletId] = useState('') // STATE BARU UNTUK DOMPET DIPILIH
+  const [walletId, setWalletId] = useState('') 
   
   const [filter, setFilter] = useState('semua')
   const [busy,   setBusy]   = useState(false)
@@ -26,7 +26,6 @@ export default function Transaksi() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedMonth, setSelectedMonth] = useState(today().substring(0, 7)) 
 
-  // Auto-pilih dompet pertama jika tersedia
   useEffect(() => {
     if (walletData && walletData.length > 0 && !walletId) {
       setWalletId(walletData[0].id)
@@ -47,7 +46,6 @@ export default function Transaksi() {
     
     setBusy(true); setErr('')
     
-    // UPDATE: Kirim wallet_id ke fungsi addTx
     const e = await addTx({ 
       desc: desc.trim(), 
       amount: +amount, 
@@ -64,7 +62,6 @@ export default function Transaksi() {
       setDesc(''); 
       setAmount('');
       setCat(''); 
-      // Tidak mereset dompet agar user bisa input berulang di dompet yang sama
     }
   }
 
@@ -88,12 +85,10 @@ export default function Transaksi() {
       return matchTab && matchMonth && matchSearch
     })
     .sort((a, b) => {
-      const dateA = new Date(a.date).getTime()
-      const dateB = new Date(b.date).getTime()
-      if (dateA !== dateB) return dateB - dateA
-      const timeA = a.created_at ? new Date(a.created_at).getTime() : Date.now()
-      const timeB = b.created_at ? new Date(b.created_at).getTime() : Date.now()
-      return timeB - timeA
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      if (dateA !== dateB) return dateB - dateA; 
+      return b.ts - a.ts; 
     })
 
   const groupedTx = useMemo(() => {
@@ -129,33 +124,32 @@ export default function Transaksi() {
     return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
   }
 
-  // Cari dompet yang sedang dipilih untuk warna indikator
   const activeWallet = totals?.walletBalances?.find(w => w.id === walletId)
 
   return (
     <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
       
-      <div>
-        <h1 className="tabular-nums font-bold text-2xl text-slate-800 tracking-tight">Transaksi</h1>
-        <p className="text-slate-500 text-sm font-medium mt-1">Catat dan pantau arus kas harianmu.</p>
-      </div>
+    <div>
+      <h1 className="tabular-nums font-bold text-2xl text-slate-800 dark:text-white tracking-tight">Transaksi</h1>
+      <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mt-1">Catat dan pantau arus kas harianmu.</p>
+    </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         
         {/* ── FORM PANEL ───────────────────────────────── */}
-        <div className="bg-white border border-slate-200 rounded-[24px] p-6 md:p-8 shadow-sm lg:col-span-3 space-y-5">
+        <div className="bg-white dark:bg-[#1E2336] border border-slate-200 dark:border-slate-800 rounded-[24px] p-6 md:p-8 shadow-sm lg:col-span-3 space-y-5 transition-colors">
           <PanelHeader title="Tambah Transaksi" />
 
           <div className="grid grid-cols-2 gap-3 mb-2">
             <button onClick={() => setType('in')}
               className={`flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-sm font-bold border transition-all cursor-pointer ${
-                type === 'in' ? 'bg-indigo-50/50 text-indigo-600 border-indigo-200' : 'bg-slate-50 text-slate-500 border-transparent hover:border-slate-200'
+                type === 'in' ? 'bg-indigo-50/50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/30' : 'bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border-transparent hover:border-slate-200 dark:hover:border-slate-700'
               }`}>
               <ArrowDownLeft size={18} strokeWidth={2.5} /> Pemasukan
             </button>
             <button onClick={() => setType('out')}
               className={`flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-sm font-bold border transition-all cursor-pointer ${
-                type === 'out' ? 'bg-orange-50/50 text-orange-600 border-orange-200' : 'bg-slate-50 text-slate-500 border-transparent hover:border-slate-200'
+                type === 'out' ? 'bg-orange-50/50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-500/30' : 'bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border-transparent hover:border-slate-200 dark:hover:border-slate-700'
               }`}>
               <ArrowUpRight size={18} strokeWidth={2.5} /> Pengeluaran
             </button>
@@ -163,16 +157,17 @@ export default function Transaksi() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="Keterangan">
+              {/* Note: Jika form input DescInput masih terang, beritahu saya! */}
               <DescInput value={desc} onChange={setDesc} txData={txData} onEnter={handleAdd} />
             </Field>
 
             <Field label="Jumlah (Rp)">
               <div className="relative">
-                <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-slate-100 text-slate-500 rounded-xl flex items-center justify-center pointer-events-none z-10">
+                <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-xl flex items-center justify-center pointer-events-none z-10 transition-colors">
                   <Banknote size={16} strokeWidth={2.5} />
                 </div>
                 <input 
-                  className="form-input pl-14 py-3 border-slate-200 focus:border-indigo-500 relative z-0" 
+                  className="form-input pl-14 py-3 relative z-0" 
                   type="text" 
                   inputMode="numeric" 
                   value={amount ? Number(amount).toLocaleString('id-ID') : ''} 
@@ -184,7 +179,7 @@ export default function Transaksi() {
 
               {suggestedAmounts.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-2.5 animate-fade-in">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center mr-1">
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center mr-1">
                     Terakhir:
                   </span>
                   {suggestedAmounts.map((nominal, idx) => (
@@ -192,7 +187,7 @@ export default function Transaksi() {
                       key={idx}
                       type="button"
                       onClick={() => setAmount(nominal.toString())}
-                      className="px-2.5 py-1 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-lg border border-indigo-100 hover:bg-indigo-100 hover:text-indigo-700 transition-colors cursor-pointer shadow-sm active:scale-95"
+                      className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-xs font-bold rounded-lg border border-indigo-100 dark:border-indigo-500/20 hover:bg-indigo-100 dark:hover:bg-indigo-500/30 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors cursor-pointer shadow-sm active:scale-95"
                     >
                       {nominal.toLocaleString('id-ID')}
                     </button>
@@ -203,12 +198,11 @@ export default function Transaksi() {
 
             {type === 'out' && (
               <Field label="Kategori">
+                {/* Note: Jika pop-up CategoryInput masih terang, kita akan perbaiki di file komponennya nanti */}
                 <CategoryInput value={cat} onChange={setCat} />
               </Field>
             )}
 
-            {/* FIELD BARU: PILIHAN DOMPET */}
-            {/* FIELD BARU: PILIHAN DOMPET */}
             <Field label="Pilih Dompet / Rekening">
               {totals?.walletBalances && totals.walletBalances.length > 0 ? (
                 <div className="relative">
@@ -219,12 +213,11 @@ export default function Transaksi() {
                     <Wallet size={16} strokeWidth={2.5} />
                   </div>
                   <select
-                    className="form-input pl-14 pr-10 py-3 border-slate-200 focus:border-indigo-500 text-sm cursor-pointer appearance-none bg-white relative z-0 font-semibold text-slate-700"
+                    className="form-input pl-14 pr-10 py-3 cursor-pointer appearance-none bg-transparent relative z-0 font-semibold text-slate-700 dark:text-slate-100"
                     value={walletId}
                     onChange={(e) => setWalletId(e.target.value)}
                   >
                     <option value="" disabled>Pilih Sumber Dana...</option>
-                    {/* PERBAIKAN: Gunakan totals.walletBalances */}
                     {totals.walletBalances.map(w => (
                       <option key={w.id} value={w.id}>
                         {w.name} — {w.calculatedBalance < 0 ? '-' : ''}Rp {Math.abs(w.calculatedBalance).toLocaleString('id-ID')}
@@ -236,7 +229,7 @@ export default function Transaksi() {
                   </div>
                 </div>
               ) : (
-                <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-500 flex items-center gap-2">
+                <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
                   <Wallet size={16} className="text-slate-400" />
                   Belum ada dompet. Buat di Dashboard!
                 </div>
@@ -245,15 +238,15 @@ export default function Transaksi() {
 
             <Field label="Tanggal">
               <div className="relative">
-                <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-slate-100 text-slate-500 rounded-xl flex items-center justify-center pointer-events-none z-10">
+                <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-xl flex items-center justify-center pointer-events-none z-10 transition-colors">
                   <Calendar size={16} strokeWidth={2.5} />
                 </div>
-                <input className="form-input pl-14 py-3 cursor-pointer border-slate-200 focus:border-indigo-500 text-sm relative z-0" type="date" value={date} onChange={e => setDate(e.target.value)} />
+                <input className="form-input pl-14 py-3 cursor-pointer text-sm relative z-0" type="date" value={date} onChange={e => setDate(e.target.value)} />
               </div>
             </Field>
           </div>
 
-          {err && <div className="text-xs text-rose-600 bg-rose-50 rounded-xl px-4 py-3 font-medium">{err}</div>}
+          {err && <div className="text-xs text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 rounded-xl px-4 py-3 font-medium">{err}</div>}
 
           <button onClick={handleAdd} disabled={busy}
             className={`w-full py-4 rounded-xl text-sm font-bold text-white transition-all cursor-pointer flex items-center justify-center gap-2.5 active:scale-95 disabled:opacity-50 mt-2 ${
@@ -264,21 +257,20 @@ export default function Transaksi() {
         </div>
 
         {/* ── QUICK STATS ──────────────────────────────── */}
-        <div className="bg-white border border-slate-200 rounded-[24px] p-6 md:p-8 shadow-sm lg:col-span-2 flex flex-col">
+        <div className="bg-white dark:bg-[#1E2336] border border-slate-200 dark:border-slate-800 rounded-[24px] p-6 md:p-8 shadow-sm lg:col-span-2 flex flex-col transition-colors">
           <PanelHeader title={selectedMonth ? "Ringkasan Bulan Ini" : "Ringkasan Semua Waktu"} />
           
           <div className="flex-1 flex flex-col justify-center space-y-4">
-            <SummaryRow label="Pemasukan" value={fmt(monthlySummary.inMonth)} valueClass="text-indigo-600 font-bold" />
-            <SummaryRow label="Pengeluaran" value={fmt(monthlySummary.outMonth)} valueClass="text-orange-500 font-bold" />
+            <SummaryRow label="Pemasukan" value={fmt(monthlySummary.inMonth)} valueClass="text-indigo-600 dark:text-indigo-400 font-bold" />
+            <SummaryRow label="Pengeluaran" value={fmt(monthlySummary.outMonth)} valueClass="text-orange-500 dark:text-orange-400 font-bold" />
+            <SummaryRow label="Investasi (Total)" value={fmt(Math.max(0, totals.invNet))} valueClass="text-emerald-500 dark:text-emerald-400 font-bold" />
             
-            <SummaryRow label="Investasi (Total)" value={fmt(Math.max(0, totals.invNet))} valueClass="text-emerald-500 font-bold" />
-            
-            <div className="mt-4 pt-5 border-t border-slate-100 flex justify-between items-center">
+            <div className="mt-4 pt-5 border-t border-slate-100 dark:border-slate-800/50 flex justify-between items-center transition-colors">
               <div className="flex flex-col">
-                <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">Saldo Bersih</span>
-                <span className="text-[10px] text-slate-400 font-medium">(Semua Waktu)</span>
+                <span className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Saldo Bersih</span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">(Semua Waktu)</span>
               </div>
-              <span className={`tabular-nums font-black text-2xl tracking-tight ${totals.saldo >= 0 ? 'text-slate-800' : 'text-rose-500'}`}>
+              <span className={`tabular-nums font-black text-2xl tracking-tight ${totals.saldo >= 0 ? 'text-slate-800 dark:text-white' : 'text-rose-500 dark:text-rose-400'}`}>
                 {fmt(totals.saldo)}
               </span>
             </div>
@@ -287,7 +279,7 @@ export default function Transaksi() {
       </div>
 
       {/* ── LIST RIWAYAT BUKU BESAR ────── */}
-      <div className="bg-white border border-slate-200 rounded-[24px] p-6 md:p-8 shadow-sm">
+      <div className="bg-white dark:bg-[#1E2336] border border-slate-200 dark:border-slate-800 rounded-[24px] p-6 md:p-8 shadow-sm transition-colors">
         <PanelHeader title="Riwayat Transaksi" badge={`${filtered.length} total`} />
         
         <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -302,7 +294,7 @@ export default function Transaksi() {
             {selectedMonth && (
               <button 
                 onClick={() => setSelectedMonth('')}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors shrink-0"
+                className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors shrink-0"
               >
                 Semua
               </button>
@@ -311,13 +303,13 @@ export default function Transaksi() {
               type="month" 
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 focus:border-indigo-500 outline-none cursor-pointer hover:bg-slate-100 transition-colors w-full sm:w-auto flex-1"
+              className="bg-slate-50 dark:bg-[#121629] border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-200 focus:border-indigo-500 dark:focus:border-indigo-500 outline-none cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors w-full sm:w-auto flex-1"
             />
           </div>
         </div>
 
         <div className="relative mb-6">
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 z-10">
             <Search size={18} />
           </div>
           <input 
@@ -325,7 +317,7 @@ export default function Transaksi() {
             placeholder="Cari transaksi berdasarkan nama atau kategori..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:border-indigo-500 focus:bg-white outline-none transition-all relative z-0"
+            className="w-full bg-slate-50 dark:bg-[#121629] border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:border-indigo-500 focus:bg-white dark:focus:bg-[#1E2336] outline-none transition-all relative z-0"
           />
         </div>
 
@@ -337,13 +329,13 @@ export default function Transaksi() {
               
               return (
                 <div key={dateKey} className="mb-8 last:mb-0 animate-fade-up">
-                  <div className="flex items-center justify-between border-b-2 border-slate-100 pb-2.5 mb-3 sticky top-0 bg-white z-10">
-                    <h4 className={`font-bold text-sm ${isToday ? 'text-indigo-600' : 'text-slate-700'}`}>
+                  <div className="flex items-center justify-between border-b-2 border-slate-100 dark:border-slate-800/50 pb-2.5 mb-3 sticky top-0 bg-white dark:bg-[#1E2336] z-10 transition-colors">
+                    <h4 className={`font-bold text-sm ${isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-200'}`}>
                       {getDayLabel(dateKey)}
                     </h4>
                     <div className="flex gap-4 text-[11px] font-bold uppercase tracking-wider">
-                      {group.totalIn > 0 && <span className="text-indigo-500">+ {fmtShort(group.totalIn)}</span>}
-                      {group.totalOut > 0 && <span className="text-orange-500">- {fmtShort(group.totalOut)}</span>}
+                      {group.totalIn > 0 && <span className="text-indigo-500 dark:text-indigo-400">+ {fmtShort(group.totalIn)}</span>}
+                      {group.totalOut > 0 && <span className="text-orange-500 dark:text-orange-400">- {fmtShort(group.totalOut)}</span>}
                     </div>
                   </div>
                   
@@ -354,7 +346,6 @@ export default function Transaksi() {
                         t={t} 
                         onDelete={t.isInv ? undefined : deleteTx} 
                         isInv={t.isInv}
-                        // 👇 TAMBAHKAN BARIS INI 👇
                         walletName={walletData?.find(w => w.id === t.wallet_id)?.name}
                       />
                     ))}
@@ -364,7 +355,7 @@ export default function Transaksi() {
             })
           ) : (
             <div className="py-8">
-              <Empty icon={<ReceiptText size={40} className="text-slate-300 mb-3" strokeWidth={1} />} text={selectedMonth ? "Transaksi tidak ditemukan di bulan ini" : "Transaksi tidak ditemukan"} />
+              <Empty icon={<ReceiptText size={40} className="text-slate-300 dark:text-slate-600 mb-3" strokeWidth={1} />} text={selectedMonth ? "Transaksi tidak ditemukan di bulan ini" : "Transaksi tidak ditemukan"} />
             </div>
           )}
         </div>
