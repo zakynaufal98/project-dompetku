@@ -1,4 +1,4 @@
-import { Trash2, Loader2, ArrowDownLeft, ArrowUpRight, ReceiptText, BriefcaseBusiness } from 'lucide-react'
+import { Trash2, Loader2, ReceiptText, BriefcaseBusiness } from 'lucide-react'
 import { fmtShort, CAT_ICONS, INV_TYPES } from '../lib/utils' 
 
 // ---------------------------------------------------------
@@ -221,4 +221,43 @@ export function DonutLegend({ data }) {
 export function Spinner({ size = 'md' }) {
   const sizes = { sm: 16, md: 24, lg: 32 }
   return <Loader2 size={sizes[size] || 24} className="text-income animate-spin" />
+}
+
+// ---------------------------------------------------------
+// 10. KOMPONEN METRIC CARD
+// ---------------------------------------------------------
+export function MetricCard({ icon, label, value, tone }) {
+  const tones = {
+    income: 'bg-income-light text-income',
+    gold: 'bg-gold-light text-gold',
+    invest: 'bg-invest-light text-invest',
+    expense: 'bg-expense-light text-expense',
+  }
+
+  return (
+    <div className="bg-surface border border-border rounded-[20px] p-5 shadow-sm transition-colors">
+      <div className={`w-9 h-9 rounded-xl ${tones[tone]} flex items-center justify-center mb-4 transition-colors`}>
+        {icon}
+      </div>
+      <p className="text-[11px] font-bold text-muted uppercase tracking-wider mb-1">{label}</p>
+      <p className="font-black text-text tabular-nums tracking-tight">{value}</p>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------
+// 11. KOMPONEN INSIGHT
+// ---------------------------------------------------------
+export function Insight({ icon, title, text }) {
+  return (
+    <div className="flex gap-3 p-3 rounded-xl bg-bg transition-colors">
+      <div className="w-8 h-8 rounded-lg bg-surface text-income flex items-center justify-center flex-shrink-0 transition-colors">
+        {icon}
+      </div>
+      <div>
+        <p className="text-sm font-bold text-text">{title}</p>
+        <p className="text-xs font-medium text-muted leading-relaxed mt-0.5">{text}</p>
+      </div>
+    </div>
+  )
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useData } from '../context/DataContext'
 import { fmtShort } from '../lib/utils'
-import { BellRing, Plus, Calendar, CheckCircle2, Circle, Trash2, X } from 'lucide-react'
+import { BellRing, Plus, Calendar, CheckCircle2, Circle, Trash2, X, Save } from 'lucide-react'
 
 export default function BillTracker() {
   const { billData, addBill, toggleBill, deleteBill } = useData()
@@ -11,40 +11,38 @@ export default function BillTracker() {
   const [name, setName] = useState('')
   const [amount, setAmount] = useState('')
   const [date, setDate] = useState('')
+  const [busy, setBusy] = useState(false)
 
   const handleAdd = async () => {
     if (!name || !amount || !date) return
+    setBusy(true)
     await addBill({ 
       nama_tagihan: name, 
       amount: parseInt(amount.replace(/\D/g, '')), 
       jatuh_tempo: date 
     })
     setName(''); setAmount(''); setDate(''); setShowForm(false)
+    setBusy(false)
   }
 
-  // LOGIKA BARU: Filter tagihan belum lunas HANYA untuk bulan ini (atau bulan-bulan sebelumnya yang nunggak)
+  // Filter tagihan: Belum lunas & (Bulan ini atau nunggak dari bulan lalu)
   const pendingBills = billData.filter(b => {
-    if (b.is_lunas) return false; // Sembunyikan yang sudah lunas
-
+    if (b.is_lunas) return false;
     const billDate = new Date(b.jatuh_tempo);
     const now = new Date();
-    
-    // Cek apakah tagihan ini untuk bulan ini atau bulan lalu (menunggak)
     const isPastOrCurrentMonth = 
       (billDate.getFullYear() < now.getFullYear()) || 
       (billDate.getFullYear() === now.getFullYear() && billDate.getMonth() <= now.getMonth());
-
     return isPastOrCurrentMonth;
   })
 
-  // Hitung total dari tagihan yang tertampil saja
   const totalPending = pendingBills.reduce((sum, b) => sum + Number(b.amount), 0)
 
   return (
-    <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm flex flex-col h-full">
+    <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm flex flex-col h-full transition-colors">
       <div className="flex justify-between items-center mb-5">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-income-light text-income flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-income-light text-income flex items-center justify-center transition-colors">
             <BellRing size={20} strokeWidth={2.5} />
           </div>
           <div>
@@ -54,52 +52,60 @@ export default function BillTracker() {
             </p>
           </div>
         </div>
+        
+        {/* Update Button Toggle: Menggunakan style btn-secondary yang lebih kecil */}
         <button 
           onClick={() => setShowForm(!showForm)}
-          className="p-2 bg-bg hover:bg-border text-text-2 rounded-xl transition-colors"
+          className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all active:scale-90 ${
+            showForm 
+              ? 'bg-expense-light text-expense border border-expense/20' 
+              : 'bg-bg text-text-2 border border-border2 hover:border-border'
+          }`}
         >
-          {showForm ? <X size={20} /> : <Plus size={20} />}
+          {showForm ? <X size={18} /> : <Plus size={18} />}
         </button>
       </div>
 
       {/* FORM TAMBAH TAGIHAN */}
       {showForm && (
-        <div className="bg-bg rounded-xl p-4 mb-4 border border-border animate-fade-up">
-          <div className="space-y-3 mb-3">
+        <div className="bg-bg/50 rounded-2xl p-4 mb-5 border border-border animate-fade-up">
+          <div className="space-y-3 mb-4">
             <input 
               type="text" placeholder="Nama Tagihan (Mis: Netflix)" 
               value={name} onChange={e => setName(e.target.value)}
-              className="w-full bg-field border border-border rounded-lg px-3 py-2 text-sm text-text placeholder:text-muted2 focus:border-income outline-none"
+              className="form-input rounded-xl"
             />
             <div className="flex gap-3">
               <input 
                 type="text" placeholder="Nominal (Rp)" 
                 value={amount ? Number(amount).toLocaleString('id-ID') : ''} 
                 onChange={e => setAmount(e.target.value.replace(/\D/g, ''))}
-                className="w-1/2 bg-field border border-border rounded-lg px-3 py-2 text-sm text-text placeholder:text-muted2 focus:border-income outline-none"
+                className="w-1/2 form-input rounded-xl tabular-nums"
               />
               <input 
                 type="date" 
                 value={date} onChange={e => setDate(e.target.value)}
-                className="w-1/2 bg-field border border-border rounded-lg px-3 py-2 text-sm text-text focus:border-income outline-none cursor-pointer"
+                className="w-1/2 form-input rounded-xl cursor-pointer"
               />
             </div>
           </div>
           <button 
             onClick={handleAdd}
-            className="w-full bg-income hover:bg-blue-600 text-white font-bold text-sm py-2.5 rounded-lg transition-colors"
+            disabled={busy || !name || !amount || !date}
+            className="btn-income w-full py-3 shadow-lg shadow-income/20"
           >
-            Simpan Tagihan
+            <Save size={16} />
+            {busy ? 'Menyimpan...' : 'Simpan Tagihan'}
           </button>
         </div>
       )}
 
       {/* DAFTAR TAGIHAN */}
-      <div className="flex-1 overflow-y-auto pr-1 space-y-2 custom-scrollbar max-h-[300px]">
+      <div className="flex-1 overflow-y-auto pr-1 space-y-2.5 custom-scrollbar max-h-[350px]">
         {pendingBills.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-muted2">
-            <CheckCircle2 size={32} className="mb-2 text-invest opacity-50" />
-            <p className="text-sm font-medium">Hore! Semua tagihan beres 🎉</p>
+          <div className="flex flex-col items-center justify-center py-10 text-muted2 opacity-60">
+            <CheckCircle2 size={40} className="mb-3 text-invest" />
+            <p className="text-sm font-bold tracking-tight text-center">Hore! Semua tagihan beres 🎉</p>
           </div>
         ) : (
           pendingBills.map(bill => {
@@ -108,27 +114,33 @@ export default function BillTracker() {
             const dateStr = `${d.getDate()} ${d.toLocaleString('id-ID', { month: 'short' })}`;
 
             return (
-              <div key={bill.id} className="flex items-center justify-between p-3 rounded-xl border transition-all bg-surface border-border hover:border-income/30">
+              <div key={bill.id} className="group flex items-center justify-between p-3.5 rounded-2xl border transition-all bg-surface border-border hover:border-income/30 hover:shadow-sm">
                 
                 <div className="flex items-center gap-3 overflow-hidden">
-                  <button onClick={() => toggleBill(bill.id, isLunas)} className="flex-shrink-0 transition-colors text-muted2 hover:text-income">
-                    <Circle size={24} />
+                  <button 
+                    onClick={() => toggleBill(bill.id, isLunas)} 
+                    className="flex-shrink-0 transition-colors text-muted2 hover:text-income active:scale-90"
+                  >
+                    <Circle size={22} strokeWidth={2.5} />
                   </button>
                   <div className="overflow-hidden">
                     <p className="text-sm font-bold truncate text-text-2">
                       {bill.nama_tagihan}
                     </p>
-                    <p className="text-[11px] font-semibold text-muted2 flex items-center gap-1 mt-0.5">
-                      <Calendar size={12} /> Jatuh Tempo: {dateStr}
+                    <p className="text-[10px] font-bold text-muted2 flex items-center gap-1 mt-0.5 uppercase tracking-wide">
+                      <Calendar size={12} /> {dateStr}
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3 pl-3">
-                  <span className="text-sm font-bold tabular-nums text-text-2">
+                  <span className="text-sm font-black tabular-nums text-text-2">
                     {fmtShort(bill.amount)}
                   </span>
-                  <button onClick={() => deleteBill(bill.id)} className="text-muted2 hover:text-expense transition-colors">
+                  <button 
+                    onClick={() => deleteBill(bill.id)} 
+                    className="w-8 h-8 flex items-center justify-center text-muted2 hover:text-expense hover:bg-expense-light rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                  >
                     <Trash2 size={16} />
                   </button>
                 </div>

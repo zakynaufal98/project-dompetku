@@ -22,28 +22,22 @@ import {
   CreditCard
 } from 'lucide-react'
 
-// Fungsi untuk format Rupiah penuh (contoh: -Rp 200.000)
+// Fungsi untuk format Rupiah penuh
 export const fmt = (n) => {
-  if (!n) return 'Rp 0'; // Jaga-jaga jika nilainya kosong/0
-  const isNegative = n < 0; // Cek apakah nilainya minus
-  const formatted = Math.abs(n).toLocaleString('id-ID'); // Format angkanya saja
-  
-  // Jika minus, tambahkan '-' di depan 'Rp'
+  if (!n) return 'Rp 0'; 
+  const isNegative = n < 0; 
+  const formatted = Math.abs(n).toLocaleString('id-ID'); 
   return (isNegative ? '-' : '') + 'Rp ' + formatted;
 }
 
-// Fungsi untuk format Rupiah singkatan
-// Fungsi untuk format Rupiah singkatan (SUDAH DIPERBAIKI UNTUK PECAHAN)
+// Fungsi untuk format Rupiah singkatan 
 export const fmtShort = (n) => {
-  // Gunakan \u00A0 sebagai ganti spasi biasa
   if (!n) return 'Rp\u00A00'; 
   
   const isNegative = n < 0;
   const a = Math.abs(n);
   
   let val = '';
-  // parseFloat akan membuang nol ekstra (misal 1.0 jadi 1)
-  // replace('.', ',') untuk mengubah desimal Inggris ke format Indonesia
   if (a >= 1e9) {
     val = parseFloat((a / 1e9).toFixed(2)).toString().replace('.', ',') + 'M';
   } else if (a >= 1e6) {
@@ -54,11 +48,10 @@ export const fmtShort = (n) => {
     val = a.toLocaleString('id-ID');
   }
 
-  // Gabungkan tanda minus, Rp, dan angkanya menggunakan \u00A0
   return (isNegative ? '-' : '') + 'Rp\u00A0' + val;
 }
 
-// TAMBAHAN BARU: Fungsi untuk memformat Unit/Qty investasi (maks 4 desimal, otomatis rapi)
+// Fungsi untuk memformat Unit/Qty investasi
 export const fmtUnit = (num) => {
   if (!num) return '0';
   return Number(num.toFixed(4)).toString();
@@ -83,33 +76,29 @@ export const CHART_COLORS = [
   '#009688','#FFC107','#8BC34A','#FF9800','#795548',
 ]
 
-// Emoji diganti dengan komponen Lucide React
-// Emoji diganti dengan komponen Lucide React
+// Emoji diganti dengan komponen Lucide React dan ditambah adaptasi Dark Mode
 export const CAT_ICONS = {
-  'Tagihan':               <Receipt size={16} className="inline-block mr-1.5 text-indigo-500" />,
-  'Kebutuhan Rumah Tangga':<Home size={16} className="inline-block mr-1.5 text-teal-500" />,
-  'Konsumsi & Makan':      <Utensils size={16} className="inline-block mr-1.5 text-orange-500" />,
-  'Transportasi':          <Car size={16} className="inline-block mr-1.5 text-sky-500" />,
-  'Kewajiban':             <ClipboardList size={16} className="inline-block mr-1.5 text-slate-500" />,
-  'Bayar Cicilan':         <CreditCard size={18} className="text-rose-500" />,
-  'Tabungan & Investasi':  <PiggyBank size={16} className="inline-block mr-1.5 text-emerald-500" />,
-  'Kesehatan':             <Pill size={16} className="inline-block mr-1.5 text-rose-500" />,
-  'Pakaian':               <Shirt size={16} className="inline-block mr-1.5 text-pink-500" />,
-  'Kejadian Tak Terduga':  <Zap size={16} className="inline-block mr-1.5 text-yellow-500" />,
-  'Pelatihan & Lainnya':   <BookOpen size={16} className="inline-block mr-1.5 text-cyan-500" />,
-  'Jajan Adek':            <IceCream size={16} className="inline-block mr-1.5 text-fuchsia-500" />,
-  'Belanja Lainnya':       <ShoppingBag size={16} className="inline-block mr-1.5 text-purple-500" />,
-  'Kosmetik':              <Sparkles size={16} className="inline-block mr-1.5 text-rose-400" />,
-  'Laundry':               <Droplets size={16} className="inline-block mr-1.5 text-sky-400" />,
-  'Parkir':                <CircleParking size={16} className="inline-block mr-1.5 text-slate-400" />,
-  'Pemasukan':             <Banknote size={16} className="inline-block mr-1.5 text-emerald-600" />,
-  
-  // --- TAMBAHAN & PERBAIKAN DI BAWAH SINI ---
-  'Investasi':             <TrendingUp size={16} className="inline-block mr-1.5 text-blue-500" />, // Tambahan untuk Aset
-  'Lainnya':               <Sparkles size={16} className="inline-block mr-1.5 text-slate-400" />, // Diperbaiki: Huruf L besar
+  'Tagihan':               <Receipt size={16} className="inline-block mr-1.5 text-indigo-500 dark:text-indigo-400" />,
+  'Kebutuhan Rumah Tangga':<Home size={16} className="inline-block mr-1.5 text-teal-500 dark:text-teal-400" />,
+  'Konsumsi & Makan':      <Utensils size={16} className="inline-block mr-1.5 text-orange-500 dark:text-orange-400" />,
+  'Transportasi':          <Car size={16} className="inline-block mr-1.5 text-sky-500 dark:text-sky-400" />,
+  'Kewajiban':             <ClipboardList size={16} className="inline-block mr-1.5 text-slate-500 dark:text-slate-400" />,
+  'Bayar Cicilan':         <CreditCard size={18} className="text-rose-500 dark:text-rose-400" />,
+  'Tabungan & Investasi':  <PiggyBank size={16} className="inline-block mr-1.5 text-emerald-500 dark:text-emerald-400" />,
+  'Kesehatan':             <Pill size={16} className="inline-block mr-1.5 text-rose-500 dark:text-rose-400" />,
+  'Pakaian':               <Shirt size={16} className="inline-block mr-1.5 text-pink-500 dark:text-pink-400" />,
+  'Kejadian Tak Terduga':  <Zap size={16} className="inline-block mr-1.5 text-yellow-500 dark:text-yellow-400" />,
+  'Pelatihan & Lainnya':   <BookOpen size={16} className="inline-block mr-1.5 text-cyan-500 dark:text-cyan-400" />,
+  'Jajan Adek':            <IceCream size={16} className="inline-block mr-1.5 text-fuchsia-500 dark:text-fuchsia-400" />,
+  'Belanja Lainnya':       <ShoppingBag size={16} className="inline-block mr-1.5 text-purple-500 dark:text-purple-400" />,
+  'Kosmetik':              <Sparkles size={16} className="inline-block mr-1.5 text-rose-400 dark:text-rose-300" />,
+  'Laundry':               <Droplets size={16} className="inline-block mr-1.5 text-sky-400 dark:text-sky-300" />,
+  'Parkir':                <CircleParking size={16} className="inline-block mr-1.5 text-slate-400 dark:text-slate-300" />,
+  'Pemasukan':             <Banknote size={16} className="inline-block mr-1.5 text-emerald-600 dark:text-emerald-400" />,
+  'Investasi':             <TrendingUp size={16} className="inline-block mr-1.5 text-blue-500 dark:text-blue-400" />, 
+  'Lainnya':               <Sparkles size={16} className="inline-block mr-1.5 text-slate-400 dark:text-slate-300" />, 
 }
 
-// Investasi types dengan sub-jenis dan satuan (Ikon diupdate)
 export const INV_TYPES = {
   Reksadana: {
     icon: <BarChart3 size={20} />,
@@ -140,7 +129,7 @@ export const INV_TYPES = {
     unitPlaceholder: 'Mis. 10',
   },
   Emas: {
-    icon: <Coins size={20} />, // Lucide tidak punya gold bar, Coins adalah alternatif terbaik
+    icon: <Coins size={20} />, 
     color: '#F5A623',
     subTypes: [
       'Emas Antam',

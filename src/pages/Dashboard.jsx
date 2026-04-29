@@ -11,6 +11,8 @@ import { Spinner, DonutLegend } from '../components/UI'
 import { Target, TrendingUp, TrendingDown, PieChart as PieChartIcon } from 'lucide-react'
 import BillTracker from '../components/BillTracker'
 import WalletWidget from '../components/WalletWidget' 
+// 👇 Import komponen ShareReport yang baru kita buat 👇
+import ShareReport from '../components/ShareReport'
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null
@@ -90,7 +92,7 @@ export default function Dashboard() {
       Pemasukan: inTx + inInv,
       Pengeluaran: outTx + outInv,
     }
-  }), [txData, invData, now]) // <-- Pastikan invData masuk ke dalam array dependency ini
+  }), [txData, invData, now]) 
 
   const currYM = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
   const catOut = useMemo(() => {
@@ -104,7 +106,7 @@ export default function Dashboard() {
       .forEach(t => { m['Investasi'] = (m['Investasi'] || 0) + t.amount })
       
     return m
-  }, [txData, invData, currYM]) // <-- Pastikan invData masuk ke dalam array dependency ini
+  }, [txData, invData, currYM]) 
 
   const donutData = Object.entries(catOut).filter(([,v]) => v > 0).sort((a,b) => b[1] - a[1]).map(([name, value], i) => ({name, value, fill: CHART_COLORS[i]}))
 
@@ -322,6 +324,12 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* 👇 KOMPONEN SHARE REPORT ADA DI SINI 👇 */}
+      <div className="mt-8">
+        <ShareReport />
+      </div>
+      
     </div>
   )
 }

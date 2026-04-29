@@ -24,7 +24,8 @@ import {
 } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { fmt, fmtShort, MONTHS } from '../lib/utils'
-import { ProgressBar } from '../components/UI'
+// 👇 KITA IMPORT COMPONENT YANG SUDAH DIPINDAHKAN KE UI.JSX 👇
+import { ProgressBar, MetricCard, Insight } from '../components/UI'
 
 const monthKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 
@@ -282,13 +283,13 @@ export default function TargetCerdas() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
-        <div className="bg-surface border border-border rounded-[24px] p-5 shadow-sm xl:col-span-2">
+        <div className="bg-surface border border-border rounded-[24px] p-5 shadow-sm xl:col-span-2 transition-colors">
           <div className="flex items-center justify-between mb-5">
             <div>
               <h2 className="font-bold text-text tracking-tight">Daftar Target</h2>
               <p className="text-xs font-medium text-muted">{targetData.length} target tersimpan</p>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-income-light text-income flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-income-light text-income flex items-center justify-center transition-colors">
               <Target size={20} strokeWidth={2.5} />
             </div>
           </div>
@@ -320,10 +321,10 @@ export default function TargetCerdas() {
           </div>
         </div>
 
-        <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm xl:col-span-3">
+        <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm xl:col-span-3 transition-colors">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-income-light text-income flex items-center justify-center">
+              <div className="w-11 h-11 rounded-2xl bg-income-light text-income flex items-center justify-center transition-colors">
                 <BrainCircuit size={22} strokeWidth={2.5} />
               </div>
               <div>
@@ -339,7 +340,7 @@ export default function TargetCerdas() {
             </div>
           </div>
 
-          {err && <div className="mb-4 text-xs text-expense bg-expense-light rounded-xl px-4 py-3 font-medium">{err}</div>}
+          {err && <div className="mb-4 text-xs text-expense bg-expense-light rounded-xl px-4 py-3 font-medium transition-colors">{err}</div>}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -360,14 +361,14 @@ export default function TargetCerdas() {
             </div>
           </div>
 
-          <div className="mt-6 bg-bg rounded-2xl p-5">
+          <div className="mt-6 bg-bg rounded-2xl p-5 transition-colors">
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">{targetName || 'Target'}</p>
                 <h2 className="text-3xl md:text-4xl font-black text-text tracking-tight tabular-nums">{fmt(remaining)}</h2>
                 <p className="text-sm text-muted mt-2">Sisa dari target {fmt(target)}</p>
               </div>
-              <div className="bg-surface rounded-2xl px-4 py-3 text-right">
+              <div className="bg-surface rounded-2xl px-4 py-3 text-right transition-colors">
                 <p className="text-[11px] font-bold text-muted uppercase tracking-wider">Perkiraan Tercapai</p>
                 <p className="font-black text-income mt-1">{achievedLabel}</p>
               </div>
@@ -391,7 +392,7 @@ export default function TargetCerdas() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
-        <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm xl:col-span-3">
+        <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm xl:col-span-3 transition-colors">
           <div className="flex items-center justify-between mb-6">
             <h2 className="font-bold text-text tracking-tight">Proyeksi 12 Bulan</h2>
             <span className="text-[11px] font-bold text-muted bg-bg px-2 py-1 rounded-md uppercase tracking-wider">Dinamis</span>
@@ -415,9 +416,9 @@ export default function TargetCerdas() {
           </div>
         </div>
 
-        <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm xl:col-span-2">
+        <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm xl:col-span-2 transition-colors">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-invest-light text-invest flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-invest-light text-invest flex items-center justify-center transition-colors">
               <Sparkles size={20} strokeWidth={2.5} />
             </div>
             <div>
@@ -434,7 +435,7 @@ export default function TargetCerdas() {
         </div>
       </div>
 
-      <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm">
+      <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm transition-colors">
         <div className="flex items-center justify-between mb-6">
           <h2 className="font-bold text-text tracking-tight">Perilaku Cashflow</h2>
           <span className="text-[11px] font-bold text-muted bg-bg px-2 py-1 rounded-md uppercase tracking-wider">9 Bulan</span>
@@ -451,39 +452,6 @@ export default function TargetCerdas() {
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </div>
-    </div>
-  )
-}
-
-function MetricCard({ icon, label, value, tone }) {
-  const tones = {
-    income: 'bg-income-light text-income',
-    gold: 'bg-gold-light text-gold',
-    invest: 'bg-invest-light text-invest',
-    expense: 'bg-expense-light text-expense',
-  }
-
-  return (
-    <div className="bg-surface border border-border rounded-[20px] p-5 shadow-sm">
-      <div className={`w-9 h-9 rounded-xl ${tones[tone]} flex items-center justify-center mb-4`}>
-        {icon}
-      </div>
-      <p className="text-[11px] font-bold text-muted uppercase tracking-wider mb-1">{label}</p>
-      <p className="font-black text-text tabular-nums tracking-tight">{value}</p>
-    </div>
-  )
-}
-
-function Insight({ icon, title, text }) {
-  return (
-    <div className="flex gap-3 p-3 rounded-xl bg-bg">
-      <div className="w-8 h-8 rounded-lg bg-surface text-income flex items-center justify-center flex-shrink-0">
-        {icon}
-      </div>
-      <div>
-        <p className="text-sm font-bold text-text">{title}</p>
-        <p className="text-xs font-medium text-muted leading-relaxed mt-0.5">{text}</p>
       </div>
     </div>
   )

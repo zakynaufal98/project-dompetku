@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { KeyRound, Loader2, CheckCircle2 } from 'lucide-react'
+import { Field } from '../components/UI' // Kita gunakan komponen Field agar konsisten
 
 export default function RecoveryModal() {
   const { recoveryMode, setRecoveryMode, updatePassword } = useAuth()
@@ -9,7 +10,6 @@ export default function RecoveryModal() {
   const [err, setErr] = useState('')
   const [success, setSuccess] = useState(false)
 
-  // Jika tidak dalam mode recovery, sembunyikan modal ini
   if (!recoveryMode) return null
 
   const handleUpdate = async () => {
@@ -25,44 +25,67 @@ export default function RecoveryModal() {
       setErr(error.message)
     } else {
       setSuccess(true)
-      // Tutup modal setelah 2 detik
-      setTimeout(() => setRecoveryMode(false), 2000)
+      setTimeout(() => {
+        setRecoveryMode(false)
+        setSuccess(false)
+        setNewPass('')
+      }, 2000)
     }
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-50 p-4 animate-fade-in">
-      <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl relative animate-fade-up text-center">
+    <div 
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in"
+      role="dialog" 
+      aria-modal="true"
+      aria-labelledby="modal-title"
+    >
+      <div className="bg-surface rounded-3xl p-8 max-w-md w-full shadow-2xl relative animate-fade-up text-center border border-border">
         
         {success ? (
-          <div className="flex flex-col items-center py-6">
-            <CheckCircle2 size={60} className="text-emerald-500 mb-4 animate-bounce" />
-            <h3 className="text-2xl font-bold text-slate-800">Berhasil!</h3>
-            <p className="text-slate-500 mt-2 font-medium">Password kamu telah diperbarui.</p>
+          <div className="flex flex-col items-center py-6" role="alert">
+            <CheckCircle2 size={60} className="text-invest mb-4 animate-bounce" />
+            <h3 id="modal-title" className="text-2xl font-bold text-text">Berhasil!</h3>
+            <p className="text-muted mt-2 font-medium">Password kamu telah diperbarui.</p>
           </div>
         ) : (
           <>
-            <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-5">
+            <div className="w-16 h-16 bg-income-light text-income rounded-2xl flex items-center justify-center mx-auto mb-5 transition-colors">
               <KeyRound size={28} strokeWidth={2.5} />
             </div>
-            <h3 className="text-2xl font-bold text-slate-800 mb-2">Buat Password Baru</h3>
-            <p className="text-slate-500 text-sm font-medium mb-6">
-              Silakan masukkan password baru untuk akun kamu.
+            
+            <h3 id="modal-title" className="text-2xl font-bold text-text mb-2 tracking-tight">
+              Buat Password Baru
+            </h3>
+            <p className="text-muted text-sm font-medium mb-6 leading-relaxed">
+              Silakan masukkan password baru untuk mengamankan kembali akun kamu.
             </p>
 
-            <input 
-              type="password" 
-              placeholder="Minimal 6 karakter" 
-              value={newPass}
-              onChange={e => setNewPass(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-sm focus:border-indigo-500 outline-none mb-2"
-            />
-            {err && <p className="text-rose-500 text-xs font-bold text-left mb-4">{err}</p>}
+            <div className="text-left">
+              <Field label="Password Baru">
+                <input 
+                  type="password" 
+                  autoFocus
+                  placeholder="Minimal 6 karakter" 
+                  value={newPass}
+                  onChange={e => setNewPass(e.target.value)}
+                  className="form-input rounded-xl"
+                  aria-invalid={err ? "true" : "false"}
+                />
+              </Field>
+            </div>
+
+            {err && (
+              <p className="text-expense text-xs font-bold text-left mt-2 animate-pulse" role="alert">
+                {err}
+              </p>
+            )}
 
             <button 
               onClick={handleUpdate} 
-              disabled={busy}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl transition-all flex justify-center mt-4"
+              disabled={busy || newPass.length < 1}
+              className="btn-primary w-full py-4 mt-6 shadow-lg shadow-primary/20"
+              aria-label="Simpan password baru"
             >
               {busy ? <Loader2 size={20} className="animate-spin" /> : 'Simpan Password Baru'}
             </button>

@@ -1,21 +1,29 @@
 <!DOCTYPE html>
+<!-- 1. Tambahkan lang="id" untuk membantu Screen Reader (Accessibility) -->
 <html lang="id">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#1a1508" />
+    <meta name="theme-color" content="#121629" /> <!-- Sesuaikan dengan warna bg dark mode Anda -->
+    
+    <!-- 2. SEO: Meta description sudah ada, ini sudah bagus -->
+    <meta name="description" content="DompetKu - Kelola keuangan, tabungan, dan investasi Anda dengan lebih cerdas dan teratur.">
 
-    <title>DompetKu Pro</title>
+    <title>DompetKu Pro - Kelola Keuangan Lebih Cerdas</title>
 
-    <!-- ✅ TAMBAHKAN INI -->
-    <link rel="icon" type="image/png" href="src\{components,pages,hooks,lib,assets}\Logo.png" />
+    <!-- 3. PERBAIKAN ICON: Path href tidak boleh mengandung kurung kurawal. 
+         Pindahkan file Logo.png ke folder /public/ agar bisa diakses langsung -->
+    <link rel="icon" type="image/png" href="/Logo.png" />
 
-    <!-- font -->
+    <!-- 4. PERFORMANCE: Preconnect sudah ada, sangat membantu FCP (Performance) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Instrument+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
   </head>
   <body>
+    <!-- 5. ACCESSIBILITY: No-script sangat disarankan untuk SEO dan aksesibilitas dasar -->
+    <noscript>Anda perlu mengaktifkan JavaScript untuk menjalankan aplikasi ini.</noscript>
+    
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
