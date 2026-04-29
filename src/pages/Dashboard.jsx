@@ -76,20 +76,35 @@ export default function Dashboard() {
   const tren6 = useMemo(() => Array.from({length: 6}, (_, i) => {
     const d   = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    
+    // Hitung Pemasukan (Transaksi + Jual Investasi)
+    const inTx = txData.filter(t => t.type === 'in' && t.cat !== 'Transfer' && t.date?.startsWith(key)).reduce((s,t) => s + t.amount, 0)
+    const inInv = invData.filter(t => t.action === 'jual' && t.date?.startsWith(key)).reduce((s,t) => s + t.amount, 0)
+    
+    // Hitung Pengeluaran (Transaksi + Beli Investasi)
+    const outTx = txData.filter(t => t.type === 'out' && t.cat !== 'Transfer' && t.date?.startsWith(key)).reduce((s,t) => s + t.amount, 0)
+    const outInv = invData.filter(t => t.action === 'beli' && t.date?.startsWith(key)).reduce((s,t) => s + t.amount, 0)
+
     return {
-      name:   MONTHS[d.getMonth()],
-      Pemasukan:  txData.filter(t => t.type === 'in' && t.cat !== 'Transfer' && t.date?.startsWith(key)).reduce((s,t) => s + t.amount, 0),
-      Pengeluaran: txData.filter(t => t.type === 'out' && t.cat !== 'Transfer' && t.date?.startsWith(key)).reduce((s,t) => s + t.amount, 0),
+      name: MONTHS[d.getMonth()],
+      Pemasukan: inTx + inInv,
+      Pengeluaran: outTx + outInv,
     }
-  }), [txData, now])
+  }), [txData, invData, now]) // <-- Pastikan invData masuk ke dalam array dependency ini
 
   const currYM = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
   const catOut = useMemo(() => {
     const m = {}
+    // 1. Masukkan pengeluaran transaksi biasa
     txData.filter(t => t.type === 'out' && t.cat !== 'Transfer' && t.date?.startsWith(currYM))
       .forEach(t => { m[t.cat] = (m[t.cat] || 0) + t.amount })
+      
+    // 2. Tambahkan pengeluaran investasi (Pembelian Aset) ke dalam grafik donut
+    invData.filter(t => t.action === 'beli' && t.date?.startsWith(currYM))
+      .forEach(t => { m['Investasi'] = (m['Investasi'] || 0) + t.amount })
+      
     return m
-  }, [txData, currYM])
+  }, [txData, invData, currYM]) // <-- Pastikan invData masuk ke dalam array dependency ini
 
   const donutData = Object.entries(catOut).filter(([,v]) => v > 0).sort((a,b) => b[1] - a[1]).map(([name, value], i) => ({name, value, fill: CHART_COLORS[i]}))
 

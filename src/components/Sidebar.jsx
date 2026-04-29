@@ -1,13 +1,11 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, ReceiptText, BriefcaseBusiness, CalendarDays, CalendarCheck2, PieChart, ChevronLeft, ChevronRight, CreditCard, Target } from 'lucide-react'
+import { LayoutDashboard, ReceiptText, BriefcaseBusiness, BarChart3, ChevronLeft, ChevronRight, CreditCard, Target } from 'lucide-react'
 
 const NAV_LINKS = [
   { path: '/', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
   { path: '/transaksi', icon: <ReceiptText size={20} />, label: 'Transaksi' },
   { path: '/investasi', icon: <BriefcaseBusiness size={20} />, label: 'Investasi' },
-  { path: '/bulanan', icon: <CalendarDays size={20} />, label: 'Bulanan' },
-  { path: '/tahunan', icon: <CalendarCheck2 size={20} />, label: 'Tahunan' },
-  { path: '/grafik', icon: <PieChart size={20} />, label: 'Grafik' },
+  { path: '/laporan', icon: <BarChart3 size={20} />, label: 'Laporan' },
   { path: '/target', icon: <Target size={20} />, label: 'Target Cerdas' },
   { path: '/hutang', icon: <CreditCard size={20} />, label: 'Hutang' },
 ]
@@ -40,6 +38,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
           <NavLink
             key={link.path}
             to={link.path}
+            end={link.path === '/'}
             className={({ isActive }) => `
               flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group
               ${isActive 

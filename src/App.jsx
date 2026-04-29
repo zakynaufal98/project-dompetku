@@ -9,9 +9,7 @@ import AuthPage from './pages/AuthPage'
 import Dashboard from './pages/Dashboard'
 import Transaksi from './pages/Transaksi'
 import Investasi from './pages/Investasi'
-import Bulanan from './pages/Bulanan'
-import Tahunan from './pages/Tahunan'
-import Grafik from './pages/Grafik'
+import Laporan from './pages/Laporan'
 import Hutang from './pages/Hutang'
 import TargetCerdas from './pages/TargetCerdas'
 import { Spinner } from './components/UI'
@@ -67,10 +65,12 @@ function AppLayout() {
               <Route path="/"          element={<Dashboard />} />
               <Route path="/transaksi" element={<Transaksi />} />
               <Route path="/investasi" element={<Investasi />} />
-              <Route path="/bulanan"   element={<Bulanan />} />
-              <Route path="/tahunan"   element={<Tahunan />} />
+              <Route path="/laporan"   element={<Navigate to="/laporan/bulanan" replace />} />
+              <Route path="/laporan/:tab" element={<Laporan />} />
+              <Route path="/bulanan"   element={<Navigate to="/laporan/bulanan" replace />} />
+              <Route path="/tahunan"   element={<Navigate to="/laporan/tahunan" replace />} />
+              <Route path="/grafik"    element={<Navigate to="/laporan/grafik" replace />} />
               <Route path="/hutang"    element={<Hutang />} />
-              <Route path="/grafik"    element={<Grafik />} />
               <Route path="/target"    element={<TargetCerdas />} />
               <Route path="*"          element={<Navigate to="/" replace />} />
             </Routes>
