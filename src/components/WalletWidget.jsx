@@ -25,14 +25,17 @@ export default function WalletWidget({ totals, addWallet, updateWallet, deleteWa
   const [tfTo, setTfTo] = useState('')
   const [tfAmount, setTfAmount] = useState('')
   const [tfDesc, setTfDesc] = useState('')
+  const [tfFeeType, setTfFeeType] = useState('none')
   const [tfDate, setTfDate] = useState(new Date().toISOString().split('T')[0])
 
   // --- LOGIKA VALIDASI REAL-TIME ---
   // Cari data dompet asal yang sedang dipilih
   const selectedFromWallet = totals?.walletBalances?.find(w => w.id === tfFrom);
   
+  const feeAmount = tfFeeType === 'bifast' ? 2500 : tfFeeType === 'biasa' ? 6500 : 0;
+  
   // Cek apakah jumlah yang diketik MELEBIHI saldo dompet asal
-  const isExceedsBalance = selectedFromWallet && (Number(tfAmount) > selectedFromWallet.calculatedBalance);
+  const isExceedsBalance = selectedFromWallet && (Number(tfAmount) + feeAmount > selectedFromWallet.calculatedBalance);
 
   const handleOpenNew = () => {
     setEditId(null); setName(''); setBalance(''); setColor('#4F46E5'); 
@@ -45,7 +48,7 @@ export default function WalletWidget({ totals, addWallet, updateWallet, deleteWa
   }
 
   const handleOpenTransfer = () => {
-    setTfFrom(''); setTfTo(''); setTfAmount(''); setTfDesc(''); setErr('');
+    setTfFrom(''); setTfTo(''); setTfAmount(''); setTfDesc(''); setTfFeeType('none'); setErr('');
     setShowTransfer(true);
   }
 
@@ -79,6 +82,7 @@ export default function WalletWidget({ totals, addWallet, updateWallet, deleteWa
       fromId: tfFrom,
       toId: tfTo,
       amount: +tfAmount,
+      fee: feeAmount,
       descOut: `Transfer ke ${tujuan.name}${customDesc}`,
       descIn: `Transfer dari ${asal.name}${customDesc}`,
       date: tfDate
@@ -200,9 +204,36 @@ export default function WalletWidget({ totals, addWallet, updateWallet, deleteWa
                 {/* PESAN ERROR REAL-TIME MUNCUL DI SINI */}
                 {isExceedsBalance && (
                   <p className="text-[11px] font-bold text-expense mt-1.5">
-                    Saldo tidak cukup! Maksimal transfer: Rp {selectedFromWallet.calculatedBalance.toLocaleString('id-ID')}
+                    Saldo tidak cukup! Maksimal transfer (termasuk biaya): Rp {selectedFromWallet.calculatedBalance.toLocaleString('id-ID')}
                   </p>
                 )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-muted mb-1.5">Biaya Transfer</label>
+                <div className="flex gap-3">
+                  <label className={`flex-1 border rounded-xl p-3 cursor-pointer transition-all ${tfFeeType === 'none' ? 'border-income bg-income-light text-income' : 'border-border bg-field text-text hover:border-income/50'}`}>
+                    <input type="radio" name="feeType" value="none" checked={tfFeeType === 'none'} onChange={() => setTfFeeType('none')} className="hidden" />
+                    <div className="text-center">
+                      <div className="text-sm font-bold">Gratis</div>
+                      <div className="text-[10px] opacity-80">Rp 0</div>
+                    </div>
+                  </label>
+                  <label className={`flex-1 border rounded-xl p-3 cursor-pointer transition-all ${tfFeeType === 'bifast' ? 'border-income bg-income-light text-income' : 'border-border bg-field text-text hover:border-income/50'}`}>
+                    <input type="radio" name="feeType" value="bifast" checked={tfFeeType === 'bifast'} onChange={() => setTfFeeType('bifast')} className="hidden" />
+                    <div className="text-center">
+                      <div className="text-sm font-bold">BI Fast</div>
+                      <div className="text-[10px] opacity-80">Rp 2.500</div>
+                    </div>
+                  </label>
+                  <label className={`flex-1 border rounded-xl p-3 cursor-pointer transition-all ${tfFeeType === 'biasa' ? 'border-income bg-income-light text-income' : 'border-border bg-field text-text hover:border-income/50'}`}>
+                    <input type="radio" name="feeType" value="biasa" checked={tfFeeType === 'biasa'} onChange={() => setTfFeeType('biasa')} className="hidden" />
+                    <div className="text-center">
+                      <div className="text-sm font-bold">Biasa</div>
+                      <div className="text-[10px] opacity-80">Rp 6.500</div>
+                    </div>
+                  </label>
+                </div>
               </div>
 
               <div>

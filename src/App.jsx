@@ -14,6 +14,7 @@ import Hutang from './pages/Hutang'
 import TargetCerdas from './pages/TargetCerdas'
 import { Spinner } from './components/UI'
 import RecoveryModal from './components/RecoveryModal'
+import LandingPage from './pages/LandingPage'
 
 function AppLayout() {
   const { user, loading } = useAuth()
@@ -43,7 +44,16 @@ function AppLayout() {
     )
   }
 
-  if (!user) return <AuthPage />
+  if (!user) {
+    return (
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<AuthPage defaultMode="login" />} />
+        <Route path="/register" element={<AuthPage defaultMode="register" />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    )
+  }
 
   return (
     <DataProvider>

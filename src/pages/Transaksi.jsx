@@ -1,28 +1,31 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useData } from '../context/DataContext'
-import { fmt, fmtShort, today, CATEGORIES, CAT_ICONS } from '../lib/utils'
+import { fmt, fmtShort, today, CATEGORY_TREE } from '../lib/utils'
 import { TxItem, Empty, Tabs, Field, PanelHeader, SummaryRow } from '../components/UI'
-import CategoryInput from '../components/CategoryInput'
 import DescInput from '../components/DescInput'
 import { 
   ArrowDownLeft, ArrowUpRight, Banknote, 
   Calendar, PlusCircle, ReceiptText, Loader2, Search,
-  Wallet, ChevronDown
+  Wallet, ChevronDown, Sparkles, BriefcaseBusiness
 } from 'lucide-react'
 
 export default function Transaksi() {
-  const { txData, invData, addTx, deleteTx, totals, walletData } = useData() 
+  // 👇 PERBAIKAN 1: Tidak perlu memanggil invData lagi, karena txData sudah memuat seluruh arus mutasi kas
+  const { txData, addTx, deleteTx, totals, walletData } = useData() 
   
-  const [type,   setType]   = useState('out')
-  const [desc,   setDesc]   = useState('')
-  const [amount, setAmount] = useState('')
-  const [cat,    setCat]    = useState('')
-  const [date,   setDate]   = useState(today())
+  const [type,    setType]   = useState('out')
+  const [desc,    setDesc]   = useState('')
+  const [amount,  setAmount] = useState('')
+  
+  const [mainCat, setMainCat] = useState('')
+  const [subCat,  setSubCat]  = useState('')
+  
+  const [date,    setDate]   = useState(today())
   const [walletId, setWalletId] = useState('') 
   
   const [filter, setFilter] = useState('semua')
-  const [busy,   setBusy]   = useState(false)
-  const [err,    setErr]    = useState('')
+  const [busy,    setBusy]   = useState(false)
+  const [err,     setErr]    = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedMonth, setSelectedMonth] = useState(today().substring(0, 7)) 
 
@@ -32,6 +35,29 @@ export default function Transaksi() {
     }
   }, [walletData, walletId])
 
+  // ==========================================
+  // ✨ LOGIKA SMART AUTO-CATEGORIZATION ✨
+  // ==========================================
+  const handleDescChange = (val) => {
+    setDesc(val);
+    if (val.trim().length > 2) {
+      const pastMatch = txData.find(t => t.desc && t.desc.toLowerCase() === val.trim().toLowerCase());
+      
+      if (pastMatch && pastMatch.cat) {
+        setType(pastMatch.type); 
+        const parts = pastMatch.cat.split(' - ');
+        setMainCat(parts[0] || '');
+        setSubCat(parts[1] || '');
+      }
+    }
+  }
+
+  const handleTypeChange = (newType) => {
+    setType(newType);
+    setMainCat('');
+    setSubCat('');
+  }
+
   const suggestedAmounts = useMemo(() => {
     if (!desc.trim()) return [];
     const matches = txData.filter(t => t.desc && t.desc.toLowerCase() === desc.trim().toLowerCase() && t.type === type);
@@ -39,18 +65,25 @@ export default function Transaksi() {
     return uniqueAmounts.slice(0, 3);
   }, [desc, txData, type]);
 
+  const availableMainCats = Object.keys(CATEGORY_TREE[type] || {});
+  const availableSubCats = mainCat && CATEGORY_TREE[type]?.[mainCat] ? CATEGORY_TREE[type][mainCat] : [];
+
   const handleAdd = async () => {
     if (!desc.trim())       { setErr('Keterangan wajib diisi'); return }
     if (!amount||+amount<=0){ setErr('Jumlah harus lebih dari 0'); return }
-    if (type === 'out' && !cat) { setErr('Kategori wajib dipilih'); return }
+    if (!mainCat)           { setErr('Kategori Induk wajib dipilih'); return }
+    if (availableSubCats.length > 0 && !subCat) { setErr('Sub kategori wajib dipilih'); return }
     
     setBusy(true); setErr('')
+    
+    const finalCategory = subCat ? `${mainCat} - ${subCat}` : mainCat;
     
     const e = await addTx({ 
       desc: desc.trim(), 
       amount: +amount, 
       type, 
-      cat: type === 'out' ? cat : 'Pemasukan', 
+      cat: mainCat,        // Induk masuk ke kolom cat
+      sub_cat: subCat,     // Anak masuk ke kolom sub_cat
       date,
       wallet_id: walletId || null 
     })
@@ -61,22 +94,13 @@ export default function Transaksi() {
     else { 
       setDesc(''); 
       setAmount('');
-      setCat(''); 
+      setMainCat(''); 
+      setSubCat('');
     }
   }
 
-  const combinedData = useMemo(() => {
-    const formattedInv = invData.map(inv => ({
-      ...inv,
-      type: inv.action === 'jual' ? 'in' : 'out', 
-      cat: 'Investasi', 
-      desc: inv.name || (inv.action === 'jual' ? 'Jual Investasi' : 'Beli Investasi'),
-      isInv: true 
-    }));
-    return [...txData, ...formattedInv];
-  }, [txData, invData])
-
-  const filtered = combinedData
+  // 👇 PERBAIKAN 2: Menggunakan Filter pada txData saja
+  const filtered = txData
     .filter(t => {
       const matchTab = filter === 'semua' || t.type === filter
       const matchMonth = selectedMonth ? t.date.startsWith(selectedMonth) : true
@@ -102,17 +126,20 @@ export default function Transaksi() {
     return groups
   }, [filtered])
 
+  // 👇 PERBAIKAN 3: Perhitungan Murni (Mengabaikan Transfer untuk Ringkasan)
   const monthlySummary = useMemo(() => {
-    if (!selectedMonth) return { inMonth: totals.totalIn, outMonth: totals.totalOut };
     let inMonth = 0, outMonth = 0;
-    combinedData.forEach(t => {
-      if (t.date.startsWith(selectedMonth)) {
+    txData.forEach(t => {
+      if (selectedMonth && !t.date.startsWith(selectedMonth)) return;
+      
+      // LOGIKA MURNI: Jangan hitung Transfer di Pemasukan/Pengeluaran
+      if (t.cat !== 'Transfer' && !t.cat.startsWith('Transfer')) {
         if (t.type === 'in') inMonth += t.amount;
         if (t.type === 'out') outMonth += t.amount;
       }
     });
     return { inMonth, outMonth };
-  }, [combinedData, selectedMonth, totals]);
+  }, [txData, selectedMonth]);
 
   const getDayLabel = (dateStr) => {
     const d = new Date(dateStr)
@@ -141,13 +168,13 @@ export default function Transaksi() {
           <PanelHeader title="Tambah Transaksi" />
 
           <div className="grid grid-cols-2 gap-3 mb-2">
-            <button onClick={() => setType('in')}
+            <button onClick={() => handleTypeChange('in')}
               className={`flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-sm font-bold border transition-all cursor-pointer ${
                 type === 'in' ? 'bg-income-light text-income border-income/30' : 'bg-bg text-muted border-transparent hover:border-border2'
               }`}>
               <ArrowDownLeft size={18} strokeWidth={2.5} /> Pemasukan
             </button>
-            <button onClick={() => setType('out')}
+            <button onClick={() => handleTypeChange('out')}
               className={`flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-sm font-bold border transition-all cursor-pointer ${
                 type === 'out' ? 'bg-gold-light text-gold border-gold/30' : 'bg-bg text-muted border-transparent hover:border-border2'
               }`}>
@@ -156,9 +183,11 @@ export default function Transaksi() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="Keterangan">
-              {/* Note: Jika form input DescInput masih terang, beritahu saya! */}
-              <DescInput value={desc} onChange={setDesc} txData={txData} onEnter={handleAdd} />
+            <Field label="Keterangan / Tempat">
+              <DescInput value={desc} onChange={handleDescChange} txData={txData} onEnter={handleAdd} />
+              <p className="text-[9px] text-income font-bold flex items-center mt-1.5 uppercase tracking-widest opacity-80">
+                <Sparkles size={10} className="mr-1" /> Auto-Kategori Aktif
+              </p>
             </Field>
 
             <Field label="Jumlah (Rp)">
@@ -196,12 +225,41 @@ export default function Transaksi() {
               )}
             </Field>
 
-            {type === 'out' && (
-              <Field label="Kategori">
-                {/* Note: Jika pop-up CategoryInput masih terang, kita akan perbaiki di file komponennya nanti */}
-                <CategoryInput value={cat} onChange={setCat} />
-              </Field>
-            )}
+            <Field label="Kategori Induk">
+              <div className="relative">
+                <select 
+                  className="form-input py-3 pl-4 pr-10 cursor-pointer appearance-none bg-transparent relative z-0 font-semibold text-text-2 text-sm w-full"
+                  value={mainCat}
+                  onChange={(e) => {
+                    setMainCat(e.target.value);
+                    setSubCat('');
+                  }}
+                >
+                  <option value="" disabled>Pilih Kategori...</option>
+                  {availableMainCats.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                  <ChevronDown size={18} strokeWidth={2.5} />
+                </div>
+              </div>
+            </Field>
+
+            <Field label="Sub Kategori">
+              <div className="relative">
+                <select 
+                  className="form-input py-3 pl-4 pr-10 cursor-pointer appearance-none bg-transparent relative z-0 font-semibold text-text-2 text-sm w-full disabled:opacity-50"
+                  value={subCat}
+                  onChange={(e) => setSubCat(e.target.value)}
+                  disabled={!mainCat || availableSubCats.length === 0}
+                >
+                  <option value="" disabled>Pilih Detail...</option>
+                  {availableSubCats.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                  <ChevronDown size={18} strokeWidth={2.5} />
+                </div>
+              </div>
+            </Field>
 
             <Field label="Pilih Dompet / Rekening">
               {totals?.walletBalances && totals.walletBalances.length > 0 ? (
@@ -250,9 +308,9 @@ export default function Transaksi() {
 
           <button onClick={handleAdd} disabled={busy}
             className={`w-full py-4 rounded-xl text-sm font-bold text-white transition-all cursor-pointer flex items-center justify-center gap-2.5 active:scale-95 disabled:opacity-50 mt-2 ${
-              type === 'in' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-orange-500 hover:bg-orange-600'
+              type === 'in' ? 'bg-income hover:opacity-90' : 'bg-expense hover:opacity-90'
             }`}>
-            {busy ? <Loader2 size={18} className="animate-spin" /> : <PlusCircle size={18} />} Tambah Transaksi
+            {busy ? <Loader2 size={18} className="animate-spin" /> : <PlusCircle size={18} />} Simpan Transaksi
           </button>
         </div>
 
@@ -260,19 +318,54 @@ export default function Transaksi() {
         <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm lg:col-span-2 flex flex-col transition-colors">
           <PanelHeader title={selectedMonth ? "Ringkasan Bulan Ini" : "Ringkasan Semua Waktu"} />
           
-          <div className="flex-1 flex flex-col justify-center space-y-4">
-            <SummaryRow label="Pemasukan" value={fmt(monthlySummary.inMonth)} valueClass="text-income font-bold" />
-            <SummaryRow label="Pengeluaran" value={fmt(monthlySummary.outMonth)} valueClass="text-gold font-bold" />
-            <SummaryRow label="Investasi (Total)" value={fmt(Math.max(0, totals.invNet))} valueClass="text-invest font-bold" />
-            
-            <div className="mt-4 pt-5 border-t border-border flex justify-between items-center transition-colors">
-              <div className="flex flex-col">
-                <span className="text-sm font-bold text-muted uppercase tracking-wider">Saldo Bersih</span>
-                <span className="text-[10px] text-muted2 font-medium">(Semua Waktu)</span>
+          <div className="mt-2 space-y-3.5">
+            <div className="bg-income/5 border border-income/10 rounded-[20px] p-4 flex justify-between items-center transition-all hover:bg-income/10 hover:border-income/20">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-income-light text-income flex items-center justify-center shadow-inner">
+                  <ArrowDownLeft size={22} strokeWidth={2.5} />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-bold text-text">Pemasukan</span>
+                  <span className="text-[10px] font-bold text-muted2 uppercase tracking-wider">Murni</span>
+                </div>
               </div>
-              <span className={`tabular-nums font-black text-2xl tracking-tight ${totals.saldo >= 0 ? 'text-text' : 'text-expense'}`}>
-                {fmt(totals.saldo)}
-              </span>
+              <span className="text-income font-black text-lg md:text-xl tracking-tight">{fmt(monthlySummary.inMonth)}</span>
+            </div>
+
+            <div className="bg-gold/5 border border-gold/10 rounded-[20px] p-4 flex justify-between items-center transition-all hover:bg-gold/10 hover:border-gold/20">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-gold-light text-gold flex items-center justify-center shadow-inner">
+                  <ArrowUpRight size={22} strokeWidth={2.5} />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-bold text-text">Pengeluaran</span>
+                  <span className="text-[10px] font-bold text-muted2 uppercase tracking-wider">Murni</span>
+                </div>
+              </div>
+              <span className="text-gold font-black text-lg md:text-xl tracking-tight">{fmt(monthlySummary.outMonth)}</span>
+            </div>
+
+            <div className="bg-invest/5 border border-invest/10 rounded-[20px] p-4 flex justify-between items-center transition-all hover:bg-invest/10 hover:border-invest/20">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-invest-light text-invest flex items-center justify-center shadow-inner">
+                  <BriefcaseBusiness size={22} strokeWidth={2.5} />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-bold text-text">Investasi</span>
+                  <span className="text-[10px] font-bold text-muted2 uppercase tracking-wider">Total</span>
+                </div>
+              </div>
+              <span className="text-invest font-black text-lg md:text-xl tracking-tight">{fmt(Math.max(0, totals.invNet))}</span>
+            </div>
+            
+            <div className="mt-6 flex flex-col items-center justify-center bg-bg/50 border border-border2 rounded-[24px] p-6 shadow-inner relative overflow-hidden">
+               <div className="absolute top-0 left-0 w-full h-[4px] bg-gradient-to-r from-income via-invest to-gold"></div>
+               <span className="text-[11px] font-bold text-muted uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                  <Wallet size={12} /> Saldo Bersih Keseluruhan
+               </span>
+               <span className={`tabular-nums font-black text-3xl md:text-4xl tracking-tight ${totals.saldo >= 0 ? 'text-text' : 'text-expense'}`}>
+                 {fmt(totals.saldo)}
+               </span>
             </div>
           </div>
         </div>
@@ -289,7 +382,6 @@ export default function Transaksi() {
             { value: 'out',   label: 'Pengeluaran' },
           ]} />
           
-          {/* PEMILIH BULAN & TOMBOL SEMUA */}
           <div className="flex items-center gap-2 w-full sm:w-auto">
             {selectedMonth && (
               <button 
@@ -342,10 +434,10 @@ export default function Transaksi() {
                   <div className="space-y-1.5">
                     {group.items.map(t => (
                       <TxItem 
-                        key={t.isInv ? `inv-${t.id}` : `tx-${t.id}`} 
+                        key={`tx-${t.id}`} 
                         t={t} 
-                        onDelete={t.isInv ? undefined : deleteTx} 
-                        isInv={t.isInv}
+                        onDelete={deleteTx} 
+                        isInv={false} // Selalu false, karena tabel transaksi sudah memuat mutasi investasi & hutang
                         walletName={walletData?.find(w => w.id === t.wallet_id)?.name}
                       />
                     ))}

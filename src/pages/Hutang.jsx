@@ -1,40 +1,52 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useData } from '../context/DataContext'
 import { fmt, fmtShort, today } from '../lib/utils'
 import { TxItem, PanelHeader, Empty, Field } from '../components/UI'
-import { Landmark, CheckCircle2, ReceiptText, PlusCircle, Loader2 } from 'lucide-react'
+import { Landmark, CheckCircle2, ReceiptText, PlusCircle, Loader2, Wallet, ChevronDown } from 'lucide-react'
 
 export default function Hutang() {
-  const { txData, addTx, deleteTx } = useData()
+  // 👇 TAMBAHAN: Panggil walletData dan totals dari context
+  const { txData, addTx, deleteTx, walletData, totals } = useData()
   
-  // State untuk form input cepat
   const [mode, setMode] = useState('bayar') 
   const [amount, setAmount] = useState('')
   const [desc, setDesc] = useState('')
-  const [date, setDate] = useState(today()) // <-- TAMBAHAN: State untuk Tanggal
+  const [date, setDate] = useState(today())
+  
+  // 👇 TAMBAHAN: State untuk menyimpan Wallet ID
+  const [walletId, setWalletId] = useState('') 
+  
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
-  // 1. AMBIL DATA PINJAMAN (Target Hutang)
+  // 👇 TAMBAHAN: Auto-select dompet pertama saat halaman dimuat
+  useEffect(() => {
+    if (walletData && walletData.length > 0 && !walletId) {
+      setWalletId(walletData[0].id)
+    }
+  }, [walletData, walletId])
+
   const hutangMasuk = useMemo(() => {
-    return txData.filter(t => t.type === 'in' && t.cat === 'Pinjaman')
+    return txData.filter(t => 
+      (t.type === 'in' && t.cat === 'Pinjaman') || 
+      (t.type === 'in' && t.cat === 'Transfer' && t.sub_cat === 'Terima Pinjaman')
+    )
   }, [txData])
   const totalHutang = hutangMasuk.reduce((sum, t) => sum + t.amount, 0)
 
-  // 2. AMBIL DATA PEMBAYARAN (Telah Dibayar)
   const cicilanKeluar = useMemo(() => {
-    return txData.filter(t => t.type === 'out' && (t.cat === 'Bayar Cicilan' || t.cat === 'Kewajiban'))
+    return txData.filter(t => 
+      (t.type === 'out' && (t.cat === 'Bayar Cicilan' || t.cat === 'Kewajiban')) ||
+      (t.type === 'out' && t.cat === 'Transfer' && t.sub_cat === 'Bayar Pinjaman')
+    )
   }, [txData])
   const totalDibayar = cicilanKeluar.reduce((sum, t) => sum + t.amount, 0)
 
-  // 3. KALKULASI
   const sisaHutang = Math.max(0, totalHutang - totalDibayar)
   const progress = totalHutang === 0 ? 0 : Math.min(100, (totalDibayar / totalHutang) * 100)
 
-  // 4. GABUNGKAN RIWAYAT KEDUANYA
   const riwayatHutang = useMemo(() => {
     return [...hutangMasuk, ...cicilanKeluar].sort((a, b) => {
-      // Urutkan berdasarkan tanggal, lalu berdasarkan waktu pembuatan agar akurat
       const timeA = new Date(a.date).getTime()
       const timeB = new Date(b.date).getTime()
       if (timeA !== timeB) return timeB - timeA
@@ -45,19 +57,22 @@ export default function Hutang() {
     })
   }, [hutangMasuk, cicilanKeluar])
 
-  // Fungsi simpan transaksi (Otomatis menggunakan kategori yang tepat)
   const handleSimpan = async () => {
     if (!desc.trim()) { setErr('Keterangan wajib diisi'); return }
     if (!amount || +amount <= 0) { setErr('Jumlah harus lebih dari 0'); return }
+    if (!walletId) { setErr('Sumber dana (Dompet) wajib dipilih'); return } // Validasi wallet
     
     setBusy(true); setErr('')
     
+    const isBayar = mode === 'bayar';
     const e = await addTx({
       desc: desc.trim(),
       amount: +amount,
-      type: mode === 'bayar' ? 'out' : 'in',
-      cat: mode === 'bayar' ? 'Kewajiban' : 'Pinjaman', 
-      date: date // <-- PERBAIKAN: Gunakan state date yang dipilih user, bukan today()
+      type: isBayar ? 'out' : 'in',
+      cat: 'Transfer', 
+      sub_cat: isBayar ? 'Bayar Pinjaman' : 'Terima Pinjaman',
+      date: date,
+      wallet_id: walletId // 👇 TAMBAHAN: Kirim data dompet ke database
     })
     
     setBusy(false)
@@ -65,15 +80,17 @@ export default function Hutang() {
     else {
       setDesc(''); 
       setAmount('');
-      // Kita biarkan tanggalnya tetap di posisi terakhir user memilih, agar praktis jika input banyak data
     }
   }
+
+  // Bantu mencari data dompet yang sedang aktif untuk warnanya
+  const activeWallet = totals?.walletBalances?.find(w => w.id === walletId)
 
   return (
     <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
       <div>
         <h1 className="tabular-nums font-bold text-2xl text-text tracking-tight">Kewajiban & Cicilan</h1>
-        <p className="text-muted text-sm font-medium mt-1">Pantau progres pelunasan hutang dan tagihanmu.</p>
+        <p className="text-muted text-sm font-medium mt-1">Pantau progres pelunasan hutang dan tagihanmu tanpa merusak laporan arus kas.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -81,7 +98,6 @@ export default function Hutang() {
         {/* ── KOLOM KIRI: STATUS & FORM ───────────────────────────────── */}
         <div className="space-y-6 lg:col-span-1">
           
-          {/* KARTU PROGRES */}
           <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm">
             <div className="w-12 h-12 bg-expense-light text-expense rounded-2xl flex items-center justify-center mb-5">
               <Landmark size={24} strokeWidth={2.5} />
@@ -110,7 +126,6 @@ export default function Hutang() {
             </div>
           </div>
 
-          {/* FORM INPUT CEPAT */}
           <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm">
             <div className="flex gap-2 p-1 bg-border rounded-xl mb-5">
               <button 
@@ -149,7 +164,40 @@ export default function Hutang() {
                 />
               </Field>
 
-              {/* <-- TAMBAHAN: Field Tanggal --> */}
+              {/* 👇 TAMBAHAN: Field Dropdown Dompet/Rekening 👇 */}
+              <Field label={mode === 'bayar' ? "Gunakan Dana Dari" : "Terima Uang Ke"}>
+                {totals?.walletBalances && totals.walletBalances.length > 0 ? (
+                  <div className="relative">
+                    <div 
+                      className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl flex items-center justify-center pointer-events-none z-10 text-white"
+                      style={{ backgroundColor: activeWallet?.color || '#94a3b8' }}
+                    >
+                      <Wallet size={16} strokeWidth={2.5} />
+                    </div>
+                    <select
+                      className="form-input pl-14 pr-10 py-3 cursor-pointer appearance-none bg-transparent relative z-0 font-semibold text-text-2 w-full"
+                      value={walletId}
+                      onChange={(e) => setWalletId(e.target.value)}
+                    >
+                      <option value="" disabled>Pilih Sumber Dana...</option>
+                      {totals.walletBalances.map(w => (
+                        <option key={w.id} value={w.id}>
+                          {w.name} — {w.calculatedBalance < 0 ? '-' : ''}Rp {Math.abs(w.calculatedBalance).toLocaleString('id-ID')}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                      <ChevronDown size={18} strokeWidth={2.5} />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-bg border border-border rounded-xl px-4 py-3 text-sm text-muted flex items-center gap-2">
+                    <Wallet size={16} className="text-slate-400" />
+                    Belum ada dompet. Buat di Dashboard!
+                  </div>
+                )}
+              </Field>
+
               <Field label="Tanggal">
                 <input 
                   type="date" 
@@ -187,7 +235,8 @@ export default function Hutang() {
                   <TxItem 
                     key={`hutang-${t.id}`} 
                     t={t} 
-                    onDelete={deleteTx} // <-- Tambahan: Biar bisa langsung hapus dari sini
+                    onDelete={deleteTx} 
+                    walletName={walletData?.find(w => w.id === t.wallet_id)?.name} // 👇 TAMBAHAN: Tampilkan badge dompet di riwayat
                   />
                 ))}
               </div>

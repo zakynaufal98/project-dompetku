@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts'
+import { useMemo, useState, useEffect } from 'react'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { useData } from '../context/DataContext'
-import { fmt, fmtShort, MONTHS, CHART_COLORS } from '../lib/utils'
-import { Empty, PanelHeader, DonutLegend } from '../components/UI'
-import { CalendarDays, PieChart as PieChartIcon } from 'lucide-react'
+import { fmt, fmtShort, MONTHS } from '../lib/utils'
+import { Empty, PanelHeader, InteractiveDonut } from '../components/UI'
+import { CalendarDays, ClipboardList } from 'lucide-react'
 
+// Tooltip khusus untuk BarChart (InteractiveDonut sudah punya tooltip sendiri)
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null
   return (
@@ -30,51 +31,44 @@ export default function Tahunan() {
   }, [txData, invData])
   
   const [year, setYear] = useState(years[0] || now.getFullYear().toString())
+  
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('updateExportDate', { detail: year }))
+  }, [year])
 
+  // Filter transaksi berdasarkan tahun yang dipilih
   const txT  = txData.filter(t => t.date?.startsWith(year))
   const invT = invData.filter(t => t.date?.startsWith(year))
   
-  // PERBAIKAN: Menghitung Pemasukan & Pengeluaran secara menyeluruh (Termasuk Investasi)
-  const txIn   = txT.filter(t => t.type === 'in').reduce((s,t) => s + t.amount, 0)
-  const txOut  = txT.filter(t => t.type === 'out').reduce((s,t) => s + t.amount, 0)
+  // 👇 PERBAIKAN 1: LOGIKA MURNI SEPENUHNYA 👇
+  // Menghitung murni gaya hidup, mengabaikan mutasi 'Transfer' (baik investasi maupun hutang)
+  const txIn   = txT.filter(t => t.type === 'in' && t.cat !== 'Transfer').reduce((s,t) => s + t.amount, 0)
+  const txOut  = txT.filter(t => t.type === 'out' && t.cat !== 'Transfer').reduce((s,t) => s + t.amount, 0)
   
   const invBuy  = invT.filter(t => t.action === 'beli').reduce((s,t) => s + t.amount, 0)
   const invSell = invT.filter(t => t.action === 'jual').reduce((s,t) => s + t.amount, 0)
 
-  // Total Pemasukan = Transaksi Masuk + Jual Investasi
-  const totalIn  = txIn + invSell
-  // Total Pengeluaran = Transaksi Keluar + Beli Investasi
-  const totalOut = txOut + invBuy
-  
-  // Netto Investasi = Uang yang masih nyangkut di instrumen (Belum dijual)
+  // Netto Investasi (Hanya untuk ditampilkan di kartu metrik Investasi)
   const invNet = invBuy - invSell
 
-  // Saldo Tahunan = Total Uang Masuk - Total Uang Keluar
-  const saldo = totalIn - totalOut
+  // Netto Murni Tahunan (Seberapa banyak uang yang berhasil Anda "selamatkan" dari penghasilan murni)
+  const nettoTahunan = txIn - txOut
 
-  // PERBAIKAN: Perhitungan per Bulan (Digabung dengan Investasi)
+  // 👇 PERBAIKAN 2: Grafik & Tabel Murni (Tidak ada lagi pencampuran dengan invBuy/invSell) 👇
   const monthData = useMemo(() => MONTHS.map((name, i) => {
     const ym = `${year}-${String(i + 1).padStart(2, '0')}`
     
-    const mTxIn   = txData.filter(t => t.type === 'in' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0)
-    const mInvSell= invData.filter(t => t.action === 'jual' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0)
-    const masuk   = mTxIn + mInvSell
-
-    const mTxOut  = txData.filter(t => t.type === 'out' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0)
-    const mInvBuy = invData.filter(t => t.action === 'beli' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0)
-    const keluar  = mTxOut + mInvBuy
+    // Hanya jumlahkan transaksi yang BUKAN Transfer
+    const masuk  = txData.filter(t => t.type === 'in' && t.cat !== 'Transfer' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0)
+    const keluar = txData.filter(t => t.type === 'out' && t.cat !== 'Transfer' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0)
 
     return { name, masuk, keluar, net: masuk - keluar }
-  }), [txData, invData, year])
+  }), [txData, year])
 
-  // Donut Chart Top Pengeluaran (Hanya dari Kategori Transaksi biasa, bukan investasi)
-  const catOut = useMemo(() => {
-    const m = {}
-    txT.filter(t => t.type === 'out').forEach(t => { m[t.cat] = (m[t.cat] || 0) + t.amount })
-    return m
-  }, [txT])
-  
-  const donutD = Object.entries(catOut).filter(([,v]) => v > 0).sort((a,b) => b[1] - a[1]).slice(0, 10).map(([name, value], i) => ({ name, value, fill: CHART_COLORS[i] }))
+  // Data khusus untuk dilempar ke komponen Interactive Donut (Pengeluaran Murni)
+  const txYearOut = useMemo(() => {
+    return txT.filter(t => t.type === 'out' && t.cat !== 'Transfer');
+  }, [txT]);
   
   return (
     <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
@@ -82,7 +76,12 @@ export default function Tahunan() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="tabular-nums font-bold text-2xl text-text tracking-tight">Laporan Tahunan</h1>
-          <p className="text-muted text-sm font-medium mt-1">Performa keuangan sepanjang tahun</p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-muted text-sm font-medium">Performa keuangan sepanjang tahun</p>
+            <span className="bg-surface border border-border px-2 py-0.5 rounded text-[10px] text-muted2 font-bold uppercase tracking-wider">
+              Murni (Tanpa Transfer)
+            </span>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 bg-surface border border-border rounded-full p-1.5 shadow-sm px-4">
@@ -96,15 +95,15 @@ export default function Tahunan() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm col-span-2 md:col-span-1">
           <p className="text-muted text-xs font-bold uppercase tracking-wider mb-2">Netto {year}</p>
-          <p className={`tabular-nums font-bold text-3xl tracking-tight ${saldo >= 0 ? 'text-text' : 'text-expense'}`}>{fmt(saldo)}</p>
+          <p className={`tabular-nums font-bold text-3xl tracking-tight ${nettoTahunan >= 0 ? 'text-text' : 'text-expense'}`}>{fmt(nettoTahunan)}</p>
         </div>
         <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm">
           <p className="text-muted text-xs font-bold uppercase tracking-wider mb-2">Pemasukan</p>
-          <p className="tabular-nums font-bold text-2xl text-income tracking-tight">{fmtShort(totalIn)}</p>
+          <p className="tabular-nums font-bold text-2xl text-income tracking-tight">{fmtShort(txIn)}</p>
         </div>
         <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm">
           <p className="text-muted text-xs font-bold uppercase tracking-wider mb-2">Pengeluaran</p>
-          <p className="tabular-nums font-bold text-2xl text-gold tracking-tight">{fmtShort(totalOut)}</p>
+          <p className="tabular-nums font-bold text-2xl text-gold tracking-tight">{fmtShort(txOut)}</p>
         </div>
         <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm">
           <p className="text-muted text-xs font-bold uppercase tracking-wider mb-2">Investasi</p>
@@ -121,55 +120,47 @@ export default function Tahunan() {
               <XAxis dataKey="name" tick={{fontSize:12, fill:'#94a3b8'}} axisLine={false} tickLine={false} dy={10} />
               <YAxis width={60} tickFormatter={fmtShort} tick={{fontSize:12, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgb(var(--color-bg) / 0.8)'}} />
-              <Bar dataKey="masuk" name="Pemasukan" fill="#4F46E5" radius={[6,6,0,0]} maxBarSize={24} />
-              <Bar dataKey="keluar" name="Pengeluaran" fill="#FF8A00" radius={[6,6,0,0]} maxBarSize={24} />
+              <Bar dataKey="masuk" name="Pemasukan Murni" fill="#4F46E5" radius={[6,6,0,0]} maxBarSize={24} />
+              <Bar dataKey="keluar" name="Pengeluaran Murni" fill="#FF8A00" radius={[6,6,0,0]} maxBarSize={24} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        
+        {/* KARTU DISTRIBUSI PENGELUARAN (Menggunakan Interactive Donut) */}
         <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm lg:col-span-2 flex flex-col">
-          <PanelHeader title="Top Pengeluaran" />
-          <div className="flex-1 flex flex-col justify-center mt-4">
-            {donutD.length > 0 ? (
-              <>
-                <ResponsiveContainer width="100%" height={200}>
-                  <PieChart>
-                    <Pie data={donutD} cx="50%" cy="50%" innerRadius={70} outerRadius={90} dataKey="value" stroke="none">
-                      {donutD.map((_, i) => <Cell key={i} fill={CHART_COLORS[i]} />)}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="mt-6"><DonutLegend data={catOut} /></div>
-              </>
-            ) : <div className="h-full flex flex-col justify-center items-center opacity-50"><PieChartIcon size={48} className="text-muted2 mb-2"/><p className="text-sm font-medium">Belum ada data</p></div>}
-          </div>
+          <PanelHeader title="Distribusi Pengeluaran" />
+          <InteractiveDonut data={txYearOut} />
         </div>
 
         <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm lg:col-span-3 overflow-x-auto">
-          <PanelHeader title="Rekapitulasi" />
-          <table className="w-full text-sm mt-4 text-left">
-            <thead>
-              <tr className="border-b border-border text-muted2 text-xs uppercase tracking-wider">
-                <th className="py-3 font-semibold">Bulan</th>
-                <th className="py-3 font-semibold text-right">Masuk</th>
-                <th className="py-3 font-semibold text-right">Keluar</th>
-                <th className="py-3 font-semibold text-right">Netto</th>
-              </tr>
-            </thead>
-            <tbody>
-              {monthData.map(row => (
-                <tr key={row.name} className="border-b border-border hover:bg-bg">
-                  <td className="py-4 text-text-2 font-bold">{row.name}</td>
-                  <td className="py-4 text-right text-income tabular-nums font-semibold">{fmtShort(row.masuk)}</td>
-                  <td className="py-4 text-right text-gold tabular-nums font-semibold">{fmtShort(row.keluar)}</td>
-                  <td className={`py-4 text-right tabular-nums font-bold ${row.net >= 0 ? 'text-text' : 'text-expense'}`}>{fmtShort(row.net)}</td>
+          <PanelHeader title="Rekapitulasi Arus Kas" />
+          {monthData.some(m => m.masuk > 0 || m.keluar > 0) ? (
+            <table className="w-full text-sm mt-4 text-left">
+              <thead>
+                <tr className="border-b border-border text-muted2 text-xs uppercase tracking-wider">
+                  <th className="py-3 font-semibold">Bulan</th>
+                  <th className="py-3 font-semibold text-right">Masuk</th>
+                  <th className="py-3 font-semibold text-right">Keluar</th>
+                  <th className="py-3 font-semibold text-right">Netto</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {monthData.map(row => (
+                  <tr key={row.name} className="border-b border-border hover:bg-bg transition-colors">
+                    <td className="py-4 text-text-2 font-bold">{row.name}</td>
+                    <td className="py-4 text-right text-income tabular-nums font-semibold">{fmtShort(row.masuk)}</td>
+                    <td className="py-4 text-right text-gold tabular-nums font-semibold">{fmtShort(row.keluar)}</td>
+                    <td className={`py-4 text-right tabular-nums font-bold ${row.net >= 0 ? 'text-text' : 'text-expense'}`}>{fmtShort(row.net)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="py-12"><Empty icon={<ClipboardList size={40} className="text-muted2 mb-2" strokeWidth={1.5} />} text="Belum ada data di tahun ini" /></div>
+          )}
         </div>
       </div>
     </div>

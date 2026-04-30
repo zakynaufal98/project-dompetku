@@ -1,17 +1,12 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  AreaChart, Area, XAxis, YAxis,
-  Tooltip, ResponsiveContainer, CartesianGrid,
-  PieChart, Pie, Cell,
-} from 'recharts'
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { useData } from '../context/DataContext'
-import { fmt, fmtShort, MONTHS, CHART_COLORS } from '../lib/utils'
-import { Spinner, DonutLegend } from '../components/UI'
-import { Target, TrendingUp, TrendingDown, PieChart as PieChartIcon } from 'lucide-react'
+import { fmt, fmtShort, MONTHS } from '../lib/utils'
+import { Spinner, InteractiveDonut } from '../components/UI'
+import { Target, TrendingUp, TrendingDown } from 'lucide-react'
 import BillTracker from '../components/BillTracker'
 import WalletWidget from '../components/WalletWidget' 
-// 👇 Import komponen ShareReport yang baru kita buat 👇
 import ShareReport from '../components/ShareReport'
 
 const CustomTooltip = ({ active, payload, label }) => {
@@ -37,24 +32,17 @@ export default function Dashboard() {
     const lastDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
     const lastYM = `${lastDate.getFullYear()}-${String(lastDate.getMonth() + 1).padStart(2, '0')}`
 
-    const cInTx = txData.filter(t => t.type === 'in' && t.cat !== 'Transfer' && t.date?.startsWith(currYM)).reduce((s, t) => s + t.amount, 0)
-    const cInInv = invData.filter(t => t.action === 'jual' && t.date?.startsWith(currYM)).reduce((s, t) => s + t.amount, 0)
-    const cIn = cInTx + cInInv
+    const cIn = txData.filter(t => t.type === 'in' && t.cat !== 'Transfer' && t.date?.startsWith(currYM)).reduce((s, t) => s + t.amount, 0)
+    const cOut = txData.filter(t => t.type === 'out' && t.cat !== 'Transfer' && t.date?.startsWith(currYM)).reduce((s, t) => s + t.amount, 0)
+
+    const lIn = txData.filter(t => t.type === 'in' && t.cat !== 'Transfer' && t.date?.startsWith(lastYM)).reduce((s, t) => s + t.amount, 0)
+    const lOut = txData.filter(t => t.type === 'out' && t.cat !== 'Transfer' && t.date?.startsWith(lastYM)).reduce((s, t) => s + t.amount, 0)
+
+    const cInReal = cIn + invData.filter(t => t.action === 'jual' && t.date?.startsWith(currYM)).reduce((s, t) => s + t.amount, 0)
+    const cOutReal = cOut + invData.filter(t => t.action === 'beli' && t.date?.startsWith(currYM)).reduce((s, t) => s + t.amount, 0)
     
-    const cOutTx = txData.filter(t => t.type === 'out' && t.cat !== 'Transfer' && t.date?.startsWith(currYM)).reduce((s, t) => s + t.amount, 0)
-    const cOutInv = invData.filter(t => t.action === 'beli' && t.date?.startsWith(currYM)).reduce((s, t) => s + t.amount, 0)
-    const cOut = cOutTx + cOutInv
-
-    const lInTx = txData.filter(t => t.type === 'in' && t.cat !== 'Transfer' && t.date?.startsWith(lastYM)).reduce((s, t) => s + t.amount, 0)
-    const lInInv = invData.filter(t => t.action === 'jual' && t.date?.startsWith(lastYM)).reduce((s, t) => s + t.amount, 0)
-    const lIn = lInTx + lInInv
-
-    const lOutTx = txData.filter(t => t.type === 'out' && t.cat !== 'Transfer' && t.date?.startsWith(lastYM)).reduce((s, t) => s + t.amount, 0)
-    const lOutInv = invData.filter(t => t.action === 'beli' && t.date?.startsWith(lastYM)).reduce((s, t) => s + t.amount, 0)
-    const lOut = lOutTx + lOutInv
-
     const currSaldo = totals.saldo
-    const lastSaldo = currSaldo - cIn + cOut
+    const lastSaldo = currSaldo - cInReal + cOutReal
 
     const calcPct = (curr, last) => {
       if (last === 0) return curr > 0 ? 100 : 0
@@ -70,45 +58,18 @@ export default function Dashboard() {
 
   const todayOut = useMemo(() => {
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const tOutTx = txData.filter(t => t.type === 'out' && t.cat !== 'Transfer' && t.date === todayStr).reduce((s, t) => s + t.amount, 0);
-    const tOutInv = invData.filter(t => t.action === 'beli' && t.date === todayStr).reduce((s, t) => s + t.amount, 0);
-    return tOutTx + tOutInv;
-  }, [txData, invData, now]);
+    return txData.filter(t => t.type === 'out' && t.cat !== 'Transfer' && t.date === todayStr).reduce((s, t) => s + t.amount, 0);
+  }, [txData, now]);
 
   const tren6 = useMemo(() => Array.from({length: 6}, (_, i) => {
     const d   = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
     
-    // Hitung Pemasukan (Transaksi + Jual Investasi)
     const inTx = txData.filter(t => t.type === 'in' && t.cat !== 'Transfer' && t.date?.startsWith(key)).reduce((s,t) => s + t.amount, 0)
-    const inInv = invData.filter(t => t.action === 'jual' && t.date?.startsWith(key)).reduce((s,t) => s + t.amount, 0)
-    
-    // Hitung Pengeluaran (Transaksi + Beli Investasi)
     const outTx = txData.filter(t => t.type === 'out' && t.cat !== 'Transfer' && t.date?.startsWith(key)).reduce((s,t) => s + t.amount, 0)
-    const outInv = invData.filter(t => t.action === 'beli' && t.date?.startsWith(key)).reduce((s,t) => s + t.amount, 0)
 
-    return {
-      name: MONTHS[d.getMonth()],
-      Pemasukan: inTx + inInv,
-      Pengeluaran: outTx + outInv,
-    }
-  }), [txData, invData, now]) 
-
-  const currYM = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
-  const catOut = useMemo(() => {
-    const m = {}
-    // 1. Masukkan pengeluaran transaksi biasa
-    txData.filter(t => t.type === 'out' && t.cat !== 'Transfer' && t.date?.startsWith(currYM))
-      .forEach(t => { m[t.cat] = (m[t.cat] || 0) + t.amount })
-      
-    // 2. Tambahkan pengeluaran investasi (Pembelian Aset) ke dalam grafik donut
-    invData.filter(t => t.action === 'beli' && t.date?.startsWith(currYM))
-      .forEach(t => { m['Investasi'] = (m['Investasi'] || 0) + t.amount })
-      
-    return m
-  }, [txData, invData, currYM]) 
-
-  const donutData = Object.entries(catOut).filter(([,v]) => v > 0).sort((a,b) => b[1] - a[1]).map(([name, value], i) => ({name, value, fill: CHART_COLORS[i]}))
+    return { name: MONTHS[d.getMonth()], Pemasukan: inTx, Pengeluaran: outTx }
+  }), [txData, now]) 
 
   const targetSummary = useMemo(() => {
     const rows = targetData
@@ -116,10 +77,7 @@ export default function Dashboard() {
         const amount = Number(target.amount) || 0
         const saved = Number(target.saved) || 0
         return {
-          ...target,
-          amount,
-          saved,
-          remaining: Math.max(0, amount - saved),
+          ...target, amount, saved, remaining: Math.max(0, amount - saved),
           progress: amount > 0 ? Math.min(100, Math.max(0, (saved / amount) * 100)) : 0,
         }
       })
@@ -131,6 +89,12 @@ export default function Dashboard() {
       avgProgress: rows.length ? rows.reduce((sum, target) => sum + target.progress, 0) / rows.length : 0,
     }
   }, [targetData])
+
+  // 👇 Data transaksi bulan ini khusus disiapkan untuk Interactive Donut 👇
+  const currYM = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
+  const txBlnOut = useMemo(() => {
+    return txData.filter(t => t.type === 'out' && t.cat !== 'Transfer' && t.date?.startsWith(currYM));
+  }, [txData, currYM]);
 
   const renderTrendBadge = (pct, isExpense = false) => {
     if (pct === 0) return <span className="text-muted2 bg-bg px-2 py-1 rounded-md font-bold text-[11px] tracking-wide">0%</span>
@@ -172,7 +136,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Card Gradien tidak perlu dark mode karena sudah kontras dari sananya */}
         <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 border border-indigo-600 rounded-[24px] p-6 shadow-sm flex flex-col justify-between text-white transform transition-transform hover:-translate-y-1">
           <div className="flex justify-between items-start mb-4">
             <span className="font-semibold text-base text-indigo-50">Keluar Hari Ini</span>
@@ -217,7 +180,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <WalletWidget totals={totals} addWallet={addWallet} updateWallet={updateWallet} deleteWallet={deleteWallet} />
+      <WalletWidget totals={totals} addWallet={updateWallet} updateWallet={updateWallet} deleteWallet={deleteWallet} />
 
       <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm transition-colors">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
@@ -290,42 +253,18 @@ export default function Dashboard() {
 
         <div className="flex flex-col gap-6">
           <BillTracker />
+          
+          {/* 👇 KARTU PENGELUARAN MENGGUNAKAN KOMPONEN REUSABLE 👇 */}
           <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm flex flex-col flex-1 transition-colors">
             <div className="flex justify-between items-center mb-6">
               <h3 className="font-bold text-lg text-text">Total Pengeluaran</h3>
               <span className="text-[11px] font-bold text-muted2 bg-bg px-2 py-1 rounded-md uppercase tracking-wider">Bulan Ini</span>
             </div>
-            <div className="flex-1 flex flex-col justify-center">
-              {donutData.length > 0 ? (
-                <>
-                  <div className="relative h-[200px] flex items-center justify-center">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={donutData} cx="50%" cy="50%" innerRadius={70} outerRadius={90} dataKey="value" stroke="none">
-                          {donutData.map((d,i) => <Cell key={i} fill={d.fill} />)}
-                        </Pie>
-                        <Tooltip formatter={v => fmtShort(v)} wrapperStyle={{ zIndex: 40, pointerEvents: 'none' }} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                      <span className="text-xs text-muted font-bold uppercase tracking-widest mb-1">Total</span>
-                      <span className="tabular-nums font-bold text-2xl text-[#FF8A00] tracking-tight">{fmtShort(currOut)}</span>
-                    </div>
-                  </div>
-                  <div className="mt-4"><DonutLegend data={catOut} /></div>
-                </>
-              ) : (
-                <div className="h-full flex flex-col items-center justify-center opacity-50">
-                  <PieChartIcon size={48} className="text-muted2 mb-3" strokeWidth={1} />
-                  <p className="text-sm text-muted2 font-medium">Belum ada pengeluaran</p>
-                </div>
-              )}
-            </div>
+            <InteractiveDonut data={txBlnOut} />
           </div>
         </div>
       </div>
 
-      {/* 👇 KOMPONEN SHARE REPORT ADA DI SINI 👇 */}
       <div className="mt-8">
         <ShareReport />
       </div>

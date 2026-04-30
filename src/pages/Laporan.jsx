@@ -49,7 +49,7 @@ export default function Laporan() {
 
         {/* Tombol Export Premium */}
         <div className="relative z-50">
-          <ExportData />
+          <ExportData isYearly={tab === 'tahunan'} />
         </div>
       </header>
 

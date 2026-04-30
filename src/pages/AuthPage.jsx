@@ -1,6 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { BarChart3, PieChart, ShieldCheck, Mail, Lock, Eye, EyeOff, Loader2, User } from 'lucide-react'
+import { BarChart3, PieChart, ShieldCheck, Mail, Lock, Eye, EyeOff, Loader2, User, ArrowLeft } from 'lucide-react'
+import LandingPage from './LandingPage'
+
+import { useNavigate, Link } from 'react-router-dom'
 
 const FEATURES = [
   { icon: <BarChart3 size={22} />, title: 'Pantau keuangan', sub: 'dengan mudah' },
@@ -8,12 +11,18 @@ const FEATURES = [
   { icon: <ShieldCheck size={22} />, title: 'Aman, cepat,', sub: 'dan terpercaya' },
 ]
 
-export default function AuthPage() {
+export default function AuthPage({ defaultMode = 'login' }) {
   const { login, register, loginWithGoogle, resetPassword } = useAuth()
+  const navigate = useNavigate()
   
-  const [mode, setMode] = useState('login')
+  const [mode, setMode] = useState(defaultMode)
+  
   const [email, setEmail] = useState('')
   const [pass, setPass] = useState('')
+  
+  useEffect(() => {
+    setMode(defaultMode)
+  }, [defaultMode])
   const [name, setName] = useState('')
   const [showPass, setShowPass] = useState(false)
   const [remember, setRemember] = useState(false)
@@ -144,7 +153,17 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bg p-6 lg:p-0">
+    <div className="min-h-screen flex items-center justify-center bg-bg p-6 lg:p-0 relative animate-fade-in">
+      
+      {/* Floating Back Button */}
+      <Link 
+        to="/"
+        className="absolute top-6 left-6 lg:top-8 lg:left-8 w-12 h-12 bg-surface rounded-full border border-border shadow-sm flex items-center justify-center text-muted hover:text-primary hover:border-primary/30 hover:shadow-md transition-all z-20 group"
+        title="Kembali ke Beranda"
+      >
+        <ArrowLeft size={20} className="group-hover:-translate-x-0.5 transition-transform" />
+      </Link>
+
       <div className="w-full max-w-[1000px] flex flex-col lg:flex-row bg-surface rounded-3xl shadow-card overflow-hidden border border-border">
         
         {/* ── LEFT PANEL ─────────────────────────────────── */}
@@ -188,7 +207,7 @@ export default function AuthPage() {
 
             <div className="flex justify-center border-b border-border2 mb-10">
               {['login','register'].map(m => (
-                <button key={m} onClick={() => switchMode(m)}
+                <button key={m} onClick={() => { switchMode(m); navigate(`/${m}`); }}
                   className={`pb-3.5 px-6 text-sm font-semibold transition-all border-b-2 -mb-px bg-transparent cursor-pointer ${
                     mode === m
                       ? 'border-primary text-primary'
@@ -335,7 +354,7 @@ export default function AuthPage() {
             <p className="text-center text-xs text-muted">
               {mode === 'login' ? 'Belum punya akun? ' : 'Sudah punya akun? '}
               <button
-                onClick={() => switchMode(mode === 'login' ? 'register' : 'login')}
+                onClick={() => { const newMode = mode === 'login' ? 'register' : 'login'; switchMode(newMode); navigate(`/${newMode}`); }}
                 className="text-primary font-semibold bg-transparent border-none cursor-pointer hover:underline p-0"
               >
                 {mode === 'login' ? 'Daftar sekarang' : 'Masuk di sini'}

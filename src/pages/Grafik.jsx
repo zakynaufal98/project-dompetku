@@ -5,24 +5,22 @@ import { fmt, fmtShort, MONTHS, CHART_COLORS } from '../lib/utils'
 import { Empty, PanelHeader, ProgressBar, TxItem } from '../components/UI'
 import { LineChart, BarChartHorizontal, PieChart as PieChartIcon, X } from 'lucide-react'
 
+// ==========================================
+// 1. KOMPONEN TOOLTIP RECHARTS
+// ==========================================
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null
-  
-  // Gunakan optional chaining (?.) untuk memastikan label tidak undefined
   const hasLabel = typeof label === 'string';
 
   return (
     <div className="bg-surface border border-border rounded-xl p-3 text-xs shadow-lg">
       {hasLabel && <p className="text-muted font-semibold mb-1">{label}</p>}
-      
       {payload.map((p, i) => (
         <p key={i} className="tabular-nums font-bold text-text">
           {p.name}: <span style={{ color: p.color }}>{fmtShort(p.value)}</span>
         </p>
       ))}
-      
-      {/* Pengecekan label.includes sekarang aman */}
-      {payload.length === 1 && payload[0].name === 'Pengeluaran' && hasLabel && label.includes(' ') && (
+      {payload.length === 1 && payload[0].name === 'Pengeluaran Murni' && hasLabel && label.includes(' ') && (
         <p className="text-[10px] text-income font-medium mt-2 pt-2 border-t border-border">
           Klik batang untuk lihat detail ✨
         </p>
@@ -31,14 +29,66 @@ const CustomTooltip = ({ active, payload, label }) => {
   )
 }
 
+// ==========================================
+// 2. SUB-KOMPONEN: DRAWER DETAIL TRANSAKSI
+// ==========================================
+const DayDetailDrawer = ({ date, label, data, walletData, onClose, onDelete }) => {
+  if (!date) return null;
+  return (
+    <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm transition-opacity animate-fade-in" onClick={onClose}>
+      <div 
+        className="fixed z-[101] bg-surface shadow-2xl flex flex-col transition-transform duration-300 ease-out animate-fade-up md:animate-none bottom-0 left-0 right-0 max-h-[85vh] rounded-t-[32px] md:bottom-auto md:top-0 md:right-0 md:left-auto md:w-[400px] md:h-full md:rounded-none md:border-l md:border-border"
+        onClick={(e) => e.stopPropagation()} 
+      >
+        <div className="w-12 h-1.5 bg-border rounded-full mx-auto mt-4 mb-2 md:hidden flex-shrink-0" />
+        <div className="flex items-center justify-between px-6 pt-2 pb-5 md:pt-8 md:pb-6 border-b border-border bg-surface z-10 shrink-0">
+          <div>
+            <h3 className="font-bold text-xl text-text">Detail Buku Besar</h3>
+            <p className="text-income text-sm font-bold mt-1 bg-income-light inline-block px-2.5 py-0.5 rounded-md">{label}</p>
+          </div>
+          <button onClick={onClose} className="p-2 text-muted2 hover:text-expense hover:bg-expense-light rounded-full transition-all cursor-pointer bg-bg">
+            <X size={20} strokeWidth={2.5} />
+          </button>
+        </div>
+        
+        <div className="p-6 overflow-y-auto custom-scrollbar bg-bg flex-1">
+          <div className="space-y-2">
+            {data.length > 0 ? (
+              data.map(t => (
+                <TxItem 
+                  key={t.id} 
+                  t={t} 
+                  isInv={false} // Selalu false karena investasi sudah jadi Transfer di txData
+                  onDelete={deleteTx => onDelete(deleteTx)} 
+                  walletName={walletData?.find(w => w.id === t.wallet_id)?.name} 
+                />
+              ))
+            ) : (
+              <div className="py-12 text-center flex flex-col items-center justify-center opacity-60">
+                <p className="text-muted font-medium">Tidak ada transaksi di hari ini.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ==========================================
+// 3. KOMPONEN UTAMA (HALAMAN GRAFIK)
+// ==========================================
 export default function Grafik() {
-  const { txData, invData, totals, walletData } = useData()
+  const { txData, invData, walletData, deleteTx } = useData()
   const now = new Date()
   const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 
   const [selectedDate, setSelectedDate] = useState(null)
   const [selectedLabel, setSelectedLabel] = useState('')
 
+  // ─── LOGIKA DATA (MURNI & DOUBLE-ENTRY) ───────────────────────────
+
+  // 1. Saldo Pertumbuhan (Membaca semua arus kas)
   const saldoLine = useMemo(() => {
     let cum = 0
     return [...txData].sort((a,b) => new Date(a.date) - new Date(b.date)).map(t => {
@@ -47,16 +97,53 @@ export default function Grafik() {
     })
   }, [txData])
 
+  // 2. Kategori Pengeluaran (MURNI: Abaikan Transfer)
   const catData = useMemo(() => {
     const m = {}
     txData
-      .filter(t => t.type === 'out' && t.date?.startsWith(currentMonthPrefix))
+      .filter(t => t.type === 'out' && t.date?.startsWith(currentMonthPrefix) && t.cat !== 'Transfer')
       .forEach(t => { m[t.cat] = (m[t.cat] || 0) + t.amount })
       
     return Object.entries(m).sort((a,b) => b[1] - a[1]).slice(0,8)
       .map(([name, value]) => ({ name: name.length > 14 ? name.slice(0,13) + '…' : name, value }))
   }, [txData, currentMonthPrefix])
 
+  // 3. Rasio Bulan Ini (MURNI)
+  const ratioData = useMemo(() => {
+    let inM = 0, outM = 0, invM = 0;
+    
+    txData.forEach(t => {
+      if (t.date?.startsWith(currentMonthPrefix)) {
+        if (t.type === 'in' && t.cat !== 'Transfer') inM += t.amount;
+        if (t.type === 'out' && t.cat !== 'Transfer') outM += t.amount;
+      }
+    });
+    
+    invData.forEach(t => {
+      if (t.date?.startsWith(currentMonthPrefix) && t.action === 'beli') invM += t.amount;
+    });
+
+    return [
+      { name: 'Pemasukan Murni',  value: inM,  fill: '#4F46E5' },
+      { name: 'Pengeluaran Murni', value: outM, fill: '#FF8A00' },
+      { name: 'Investasi',   value: invM, fill: '#10B981' },
+    ].filter(d => d.value > 0);
+  }, [txData, invData, currentMonthPrefix]);
+
+  // 4. Arus Kas 6 Bulan (MURNI)
+  const cashflowData = useMemo(() => {
+    return Array.from({length: 6}, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      
+      const pemasukan = txData.filter(t => t.type === 'in' && t.cat !== 'Transfer' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0);
+      const pengeluaran = txData.filter(t => t.type === 'out' && t.cat !== 'Transfer' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0);
+      
+      return { name: MONTHS[d.getMonth()], Pemasukan: pemasukan, Pengeluaran: pengeluaran }
+    })
+  }, [txData, now]);
+
+  // 5. Investasi 6 Bulan (Tetap membaca invData)
   const invLine = useMemo(() => Array.from({length: 6}, (_, i) => {
     const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
     const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
@@ -67,92 +154,45 @@ export default function Grafik() {
     }
   }), [invData, now])
 
-  const ratioData = useMemo(() => {
-    let inM = 0, outM = 0, invM = 0;
-    
-    txData.forEach(t => {
-      if (t.date?.startsWith(currentMonthPrefix)) {
-        if (t.type === 'in') inM += t.amount;
-        if (t.type === 'out') outM += t.amount;
-      }
-    });
-    
-    invData.forEach(t => {
-      if (t.date?.startsWith(currentMonthPrefix) && t.action === 'beli') invM += t.amount;
-    });
-
-    return [
-      { name: 'Pemasukan',   value: inM,  fill: '#4F46E5' },
-      { name: 'Pengeluaran', value: outM, fill: '#FF8A00' },
-      { name: 'Investasi',   value: invM, fill: '#10B981' },
-    ].filter(d => d.value > 0);
-  }, [txData, invData, currentMonthPrefix]);
-
-  const cashflowData = useMemo(() => {
-    return Array.from({length: 6}, (_, i) => {
-      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
-      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      
-      const pemasukan = txData.filter(t => t.type === 'in' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0);
-      const pengeluaran = txData.filter(t => t.type === 'out' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0);
-      
-      return {
-        name: MONTHS[d.getMonth()],
-        Pemasukan: pemasukan,
-        Pengeluaran: pengeluaran
-      }
-    })
-  }, [txData, now]);
-
+  // 6. Pengeluaran Harian (MURNI)
   const dailyExpense = useMemo(() => {
-    const y = now.getFullYear();
-    const m = now.getMonth();
-    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const y = now.getFullYear(), m = now.getMonth(), daysInMonth = new Date(y, m + 1, 0).getDate();
     const prefix = `${y}-${String(m + 1).padStart(2, '0')}-`;
-
-    const data = [];
-    let maxDay = { date: '', value: 0 };
+    const data = []; let maxDay = { date: '', value: 0 };
 
     for (let i = 1; i <= daysInMonth; i++) {
       const dateStr = `${prefix}${String(i).padStart(2, '0')}`;
       
-      const outTx = txData.filter(t => t.type === 'out' && t.date === dateStr).reduce((s, t) => s + t.amount, 0);
-      const outInv = invData.filter(t => t.action === 'beli' && t.date === dateStr).reduce((s, t) => s + t.amount, 0);
-      const val = outTx + outInv;
+      // HANYA hitung pengeluaran gaya hidup, abaikan transfer investasi
+      const val = txData.filter(t => t.type === 'out' && t.cat !== 'Transfer' && t.date === dateStr).reduce((s, t) => s + t.amount, 0);
 
-      data.push({ 
-        tanggal: String(i), 
-        Pengeluaran: val,
-        labelInfo: `${i} ${MONTHS[m]}`,
-        fullDate: dateStr
-      });
-
-      if (val > maxDay.value) {
-        maxDay = { date: `${i} ${MONTHS[m]}`, value: val };
-      }
+      data.push({ tanggal: String(i), "Pengeluaran Murni": val, labelInfo: `${i} ${MONTHS[m]}`, fullDate: dateStr });
+      if (val > maxDay.value) maxDay = { date: `${i} ${MONTHS[m]}`, value: val };
     }
     return { data, maxDay, currentMonthLabel: `${MONTHS[m]} ${y}` };
-  }, [txData, invData, now])
+  }, [txData, now])
 
+  // 7. Data Detail Harian (Menampilkan SELURUH aktivitas buku besar hari itu)
   const selectedDayData = useMemo(() => {
     if (!selectedDate) return [];
-    const txs = txData.filter(t => t.type === 'out' && t.date === selectedDate);
-    const invs = invData.filter(t => t.action === 'beli' && t.date === selectedDate).map(i => ({...i, type: 'out', cat: 'Investasi', isInv: true}));
-    return [...txs, ...invs];
-  }, [selectedDate, txData, invData])
+    // Menarik semua data di hari itu agar pengguna tahu uangnya bergerak ke mana saja
+    return txData.filter(t => t.date === selectedDate).sort((a,b) => b.ts - a.ts);
+  }, [selectedDate, txData])
 
+
+  // ─── RENDER UI (SUPER BERSIH KARENA COMPONENT COMPOSITION) ───────────
   return(
     <>
       <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10 relative">
         <div>
           <h1 className="tabular-nums font-bold text-2xl text-text tracking-tight">Grafik & Analisis</h1>
-          <p className="text-muted text-sm font-medium mt-1">Visualisasi mendalam arus kasmu</p>
+          <p className="text-muted text-sm font-medium mt-1">Visualisasi mendalam arus kas murnimu</p>
         </div>
 
         {/* 1. GRAFIK PENGELUARAN HARIAN */}
         <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm">
           <div className="flex justify-between items-start mb-6">
-            <PanelHeader title={`Pengeluaran Harian (${dailyExpense.currentMonthLabel})`} />
+            <PanelHeader title={`Pengeluaran Harian Murni (${dailyExpense.currentMonthLabel})`} />
             {dailyExpense.maxDay.value > 0 && (
               <div className="text-right bg-expense-light px-4 py-2 rounded-xl border border-expense/20">
                 <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest block mb-0.5">Hari Terboros</span>
@@ -160,7 +200,6 @@ export default function Grafik() {
               </div>
             )}
           </div>
-          
           <div className="h-[250px] w-full mt-4">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={dailyExpense.data} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
@@ -168,24 +207,17 @@ export default function Grafik() {
                 <XAxis dataKey="tanggal" tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} dy={10} />
                 <YAxis tickFormatter={fmtShort} tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
                 <Tooltip cursor={{fill: 'rgb(var(--color-bg) / 0.8)'}} content={<CustomTooltip />} />
-                
                 <Bar 
-                  dataKey="Pengeluaran" 
-                  radius={[4, 4, 0, 0]} 
-                  maxBarSize={30}
+                  dataKey="Pengeluaran Murni" radius={[4, 4, 0, 0]} maxBarSize={30}
                   className="cursor-pointer hover:opacity-80 transition-opacity"
                   onClick={(data) => {
-                    if(data.Pengeluaran > 0) {
-                      setSelectedDate(data.fullDate);
-                      setSelectedLabel(data.labelInfo);
+                    if(data["Pengeluaran Murni"] > 0) {
+                      setSelectedDate(data.fullDate); setSelectedLabel(data.labelInfo);
                     }
                   }}
                 >
                   {dailyExpense.data.map((entry, index) => (
-                    <Cell 
-                      key={`cell-${index}`} 
-                      fill={entry.Pengeluaran === dailyExpense.maxDay.value && entry.Pengeluaran > 0 ? '#E11D48' : '#FF8A00'} 
-                    />
+                    <Cell key={`cell-${index}`} fill={entry["Pengeluaran Murni"] === dailyExpense.maxDay.value && entry["Pengeluaran Murni"] > 0 ? '#E11D48' : '#FF8A00'} />
                   ))}
                 </Bar>
               </BarChart>
@@ -203,15 +235,14 @@ export default function Grafik() {
                   <AreaChart data={saldoLine} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="saldoGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.2} />
-                        <stop offset="95%" stopColor="#4F46E5" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.2} /><stop offset="95%" stopColor="#4F46E5" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
                     <XAxis dataKey="date" tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} dy={10} minTickGap={30} />
                     <YAxis width={60} tickFormatter={fmtShort} tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
                     <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--chart-tick)', strokeWidth: 1, strokeDasharray: '4 4' }} />
-                    <Area type="monotone" dataKey="saldo" name="Saldo" stroke="#4F46E5" strokeWidth={3} fill="url(#saldoGrad)" activeDot={{ r: 6, fill: '#4F46E5', stroke: '#fff', strokeWidth: 2 }} />
+                    <Area type="monotone" dataKey="saldo" name="Pertumbuhan Saldo" stroke="#4F46E5" strokeWidth={3} fill="url(#saldoGrad)" activeDot={{ r: 6, fill: '#4F46E5', stroke: '#fff', strokeWidth: 2 }} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -228,7 +259,7 @@ export default function Grafik() {
                     <XAxis type="number" tickFormatter={fmtShort} tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
                     <YAxis type="category" dataKey="name" tick={{fontSize:11, fill:'#64748b', fontWeight: 600}} width={110} axisLine={false} tickLine={false} />
                     <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgb(var(--color-bg) / 0.8)'}} />
-                    <Bar dataKey="value" name="Pengeluaran" radius={[0,6,6,0]} maxBarSize={16}>
+                    <Bar dataKey="value" name="Pengeluaran Murni" radius={[0,6,6,0]} maxBarSize={16}>
                       {catData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                     </Bar>
                   </BarChart>
@@ -241,7 +272,7 @@ export default function Grafik() {
         {/* 3. ARUS KAS & RASIO */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm order-2 lg:order-1">
-            <PanelHeader title="Arus Kas (6 Bulan Terakhir)" />
+            <PanelHeader title="Arus Kas Murni (6 Bulan Terakhir)" />
             <div className="mt-4 h-[250px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={cashflowData} barGap={4} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
@@ -305,60 +336,17 @@ export default function Grafik() {
             </ResponsiveContainer>
           </div>
         </div>
-
       </div> 
 
-      {/* --- BOTTOM SHEET / SIDE DRAWER RESPONSIVE --- */}
-      {selectedDate && (
-        <div 
-          className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm transition-opacity animate-fade-in"
-          onClick={() => setSelectedDate(null)} 
-        >
-          <div 
-            className="fixed z-[101] bg-surface shadow-2xl flex flex-col transition-transform duration-300 ease-out 
-                       animate-fade-up md:animate-none
-                       bottom-0 left-0 right-0 max-h-[85vh] rounded-t-[32px]
-                       md:bottom-auto md:top-0 md:right-0 md:left-auto md:w-[400px] md:h-full md:rounded-none md:border-l md:border-border"
-            onClick={(e) => e.stopPropagation()} 
-          >
-            <div className="w-12 h-1.5 bg-border rounded-full mx-auto mt-4 mb-2 md:hidden flex-shrink-0" />
-
-            <div className="flex items-center justify-between px-6 pt-2 pb-5 md:pt-8 md:pb-6 border-b border-border bg-surface z-10 shrink-0">
-              <div>
-                <h3 className="font-bold text-xl text-text">Detail Pengeluaran</h3>
-                <p className="text-income text-sm font-bold mt-1 bg-income-light inline-block px-2.5 py-0.5 rounded-md">
-                  {selectedLabel}
-                </p>
-              </div>
-              <button 
-                onClick={() => setSelectedDate(null)} 
-                className="p-2 text-muted2 hover:text-expense hover:bg-expense-light rounded-full transition-all cursor-pointer bg-bg"
-              >
-                <X size={20} strokeWidth={2.5} />
-              </button>
-            </div>
-            
-            <div className="p-6 overflow-y-auto custom-scrollbar bg-bg flex-1">
-              <div className="space-y-2">
-                {selectedDayData.length > 0 ? (
-                  selectedDayData.map(t => (
-                    <TxItem 
-                      key={t.id} 
-                      t={t} 
-                      isInv={t.isInv} 
-                      walletName={walletData?.find(w => w.id === t.wallet_id)?.name} 
-                    />
-                  ))
-                ) : (
-                  <div className="py-12 text-center flex flex-col items-center justify-center opacity-60">
-                    <p className="text-muted font-medium">Data rincian tidak ditemukan.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* COMPONENT COMPOSITION: DRAWER DETAIL DIPANGGIL DI SINI */}
+      <DayDetailDrawer 
+        date={selectedDate} 
+        label={selectedLabel} 
+        data={selectedDayData} 
+        walletData={walletData} 
+        onClose={() => setSelectedDate(null)} 
+        onDelete={deleteTx} 
+      />
     </>
   )
 }

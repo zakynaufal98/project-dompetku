@@ -4,67 +4,85 @@
 
 @layer base {
   :root {
-    --color-primary: 232 53 58;
-    --color-primary-light: 255 107 111;
-    --color-primary-pale: 255 240 240;
-    --color-gold: 245 166 35;
-    --color-gold-light: 255 248 237;
-    --color-income: 33 150 243;
-    --color-income-light: 232 244 255;
-    --color-expense: 232 53 58;
-    --color-expense-light: 255 240 240;
-    --color-invest: 76 175 80;
-    --color-invest-light: 232 245 233;
-    --color-bg: 245 246 250;
-    --color-surface: 255 255 255;
-    --color-field: 255 255 255;
-    --color-border: 238 238 238;
-    --color-border-2: 224 224 224;
-    --color-text: 26 26 46;
-    --color-text-2: 74 74 104;
-    --color-muted: 158 158 158;
-    --color-muted-2: 189 189 189;
-    --chart-grid: #eeeeee;
+    /* ✨ Premium FinTech Palette: Teal & Purple ✨ */
+    --color-primary: 79 70 229; /* Deep Indigo (indigo-600) */
+    --color-primary-light: 99 102 241; /* indigo-500 */
+    --color-primary-pale: 238 242 255; /* indigo-50 */
+    
+    /* Pengeluaran ditaruh di variabel gold dan expense */
+    --color-gold: 168 85 247; /* Purple (purple-500) */
+    --color-gold-light: 243 232 255; /* purple-100 */
+    
+    --color-expense: 168 85 247; /* Purple (purple-500) */
+    --color-expense-light: 243 232 255; /* purple-100 */
+    
+    /* Pemasukan ditaruh di variabel income */
+    --color-income: 20 184 166; /* Teal (teal-500) */
+    --color-income-light: 204 251 241; /* teal-100 */
+    
+    /* Investasi ditaruh di variabel invest */
+    --color-invest: 245 158 11; /* Amber (amber-500) */
+    --color-invest-light: 254 243 199; /* amber-100 */
+    
+    --color-bg: 248 250 252; /* slate-50 */
+    --color-surface: 255 255 255; /* white */
+    --color-field: 255 255 255; /* white */
+    --color-border: 226 232 240; /* slate-200 */
+    --color-border-2: 203 213 225; /* slate-300 */
+    
+    --color-text: 15 23 42; /* slate-900 */
+    --color-text-2: 71 85 105; /* slate-600 */
+    --color-muted: 148 163 184; /* slate-400 */
+    --color-muted-2: 203 213 225; /* slate-300 */
+    
+    --chart-grid: #f1f5f9; /* slate-100 */
     --chart-tooltip-bg: #ffffff;
-    --chart-tooltip-border: #eeeeee;
-    --chart-tooltip-text: #1a1a2e;
-    --chart-tick: #9e9e9e;
+    --chart-tooltip-border: #e2e8f0; /* slate-200 */
+    --chart-tooltip-text: #0f172a; /* slate-900 */
+    --chart-tick: #94a3b8; /* slate-400 */
   }
 
   html.dark {
-    --color-primary: 251 113 133;
-    --color-primary-light: 244 63 94;
-    --color-primary-pale: 76 21 31;
-    --color-gold: 251 191 36;
-    --color-gold-light: 69 45 9;
-    --color-income: 96 165 250;
-    --color-income-light: 23 37 84;
-    --color-expense: 251 113 133;
-    --color-expense-light: 76 21 31;
-    --color-invest: 52 211 153;
-    --color-invest-light: 6 78 59;
-    --color-bg: 18 22 41;
-    --color-surface: 30 35 54;
-    --color-field: 18 22 41;
-    --color-border: 31 41 55;
-    --color-border-2: 51 65 85;
-    --color-text: 241 245 249;
-    --color-text-2: 203 213 225;
-    --color-muted: 148 163 184;
-    --color-muted-2: 100 116 139;
-    --chart-grid: #1e293b;
-    --chart-tooltip-bg: #1e2336;
-    --chart-tooltip-border: #334155;
-    --chart-tooltip-text: #f1f5f9;
-    --chart-tick: #64748b;
+    --color-primary: 129 140 248; /* indigo-400 */
+    --color-primary-light: 165 180 252; /* indigo-300 */
+    --color-primary-pale: 49 46 129; /* indigo-900 */
+    
+    --color-gold: 192 132 252; /* purple-400 */
+    --color-gold-light: 59 7 100; /* purple-950 */
+    
+    --color-expense: 192 132 252; /* purple-400 */
+    --color-expense-light: 59 7 100; /* purple-950 */
+    
+    --color-income: 45 212 191; /* teal-400 */
+    --color-income-light: 4 47 46; /* teal-950 */
+    
+    --color-invest: 251 191 36; /* amber-400 */
+    --color-invest-light: 69 45 9; /* amber-900/50 */
+    
+    --color-bg: 15 23 42; /* slate-900 */
+    --color-surface: 30 41 59; /* slate-800 */
+    --color-field: 15 23 42; /* slate-900 */
+    --color-border: 51 65 85; /* slate-700 */
+    --color-border-2: 71 85 105; /* slate-600 */
+    
+    --color-text: 248 250 252; /* slate-50 */
+    --color-text-2: 203 213 225; /* slate-300 */
+    --color-muted: 148 163 184; /* slate-400 */
+    --color-muted-2: 100 116 139; /* slate-500 */
+    
+    --chart-grid: #334155; /* slate-700 */
+    --chart-tooltip-bg: #1e293b; /* slate-800 */
+    --chart-tooltip-border: #475569; /* slate-600 */
+    --chart-tooltip-text: #f8fafc; /* slate-50 */
+    --chart-tick: #64748b; /* slate-500 */
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
   
   body {
-    @apply bg-bg text-text transition-colors duration-300;
-    font-family: 'Instrument Sans', sans-serif;
+    @apply bg-bg text-text;
+    font-family: 'Plus Jakarta Sans', sans-serif;
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
   }
@@ -74,7 +92,7 @@
   ::-webkit-scrollbar-thumb { @apply bg-border2 rounded-sm transition-colors; }
   input[type=number]::-webkit-inner-spin-button,
   input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
-  input, select, button { font-family: 'Instrument Sans', sans-serif; }
+  input, select, button { font-family: 'Plus Jakarta Sans', sans-serif; }
 }
 
 @layer utilities {
@@ -181,3 +199,9 @@
   color: var(--chart-tooltip-text) !important;
 }
 .recharts-text { fill: var(--chart-tick) !important; }
+
+/* Menghilangkan semua transisi saat ganti tema */
+.disable-transitions,
+.disable-transitions * {
+  transition: none !important;
+}

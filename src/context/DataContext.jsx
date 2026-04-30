@@ -15,7 +15,7 @@ export function DataProvider({ children }) {
 
   const mapTx = (r) => ({
     id: r.id, desc: r.keterangan, amount: parseFloat(r.amount),
-    type: r.tipe, cat: r.cat, date: r.tgl,
+    type: r.tipe, cat: r.cat, sub_cat: r.sub_cat, date: r.tgl, 
     wallet_id: r.wallet_id, 
     ts: new Date(r.created_at).getTime(),
   })
@@ -30,13 +30,8 @@ export function DataProvider({ children }) {
   })
 
   const mapTarget = (r) => ({
-    id: r.id,
-    name: r.name,
-    amount: parseFloat(r.target_amount || 0),
-    saved: parseFloat(r.saved_amount || 0),
-    monthlyBoost: parseFloat(r.monthly_boost || 0),
-    created_at: r.created_at,
-    updated_at: r.updated_at,
+    id: r.id, name: r.name, amount: parseFloat(r.target_amount || 0), saved: parseFloat(r.saved_amount || 0),
+    monthlyBoost: parseFloat(r.monthly_boost || 0), created_at: r.created_at, updated_at: r.updated_at,
   })
 
   const loadAll = useCallback(async () => {
@@ -44,7 +39,6 @@ export function DataProvider({ children }) {
     setLoading(true)
     
     const [txRes, invRes, billRes, walletRes, targetRes] = await Promise.all([
-      // PERBAIKAN: Diurutkan secara ganda (Tanggal lalu Waktu dibuat) agar akurat
       supabase.from('transaksi').select('*').eq('user_id', user.id).order('tgl', { ascending: false }).order('created_at', { ascending: false }),
       supabase.from('investasi').select('*').eq('user_id', user.id).order('tgl', { ascending: false }).order('created_at', { ascending: false }),
       supabase.from('tagihan').select('*').eq('user_id', user.id).order('jatuh_tempo', { ascending: true }),
@@ -79,12 +73,15 @@ export function DataProvider({ children }) {
     return error
   }
 
-  const addTx = async ({ desc, amount, type, cat, date, wallet_id = null }) => {
-    const { data, error } = await supabase.from('transaksi').insert({ user_id: user.id, keterangan: desc, amount, tipe: type, cat, tgl: date, wallet_id }).select().single()
+  const addTx = async ({ desc, amount, type, cat, sub_cat, date, wallet_id = null }) => {
+    const { data, error } = await supabase.from('transaksi')
+      .insert({ user_id: user.id, keterangan: desc, amount, tipe: type, cat, sub_cat, tgl: date, wallet_id })
+      .select().single()
     if (error) return error
     setTxData(prev => [mapTx(data), ...prev])
     return null
   }
+  
   const deleteTx = async (id) => {
     const { error } = await supabase.from('transaksi').delete().eq('id', id).eq('user_id', user.id)
     if (!error) setTxData(prev => prev.filter(t => t.id !== id))
@@ -109,18 +106,62 @@ export function DataProvider({ children }) {
     return null; 
   };
 
+  // 👇 PERBAIKAN BESAR: LOGIKA DOUBLE-ENTRY UNTUK INVESTASI 👇
   const addInv = async ({ invType, subType, desc, amount, action, unit, qty, date, wallet_id = null }) => {
+    let realizedPnL = 0;
+    let modalKembali = 0;
+
+    // 1. Jika Jual, Hitung Average Cost & Profit/Loss
     if (action === 'jual') {
       const err = validateSellInvestment(invType, subType, amount, qty);
       if (err) return err; 
+
+      let totalQty = 0; let totalModal = 0;
+      // Urutkan riwayat dari yang paling lama untuk menghitung Average Cost berjalan
+      const history = [...invData].filter(t => t.subType === subType).sort((a,b) => a.ts - b.ts);
+      
+      history.forEach(t => {
+        if (t.action === 'beli') {
+          totalQty += (t.qty || 0);
+          totalModal += t.amount;
+        } else if (t.action === 'jual') {
+          const avgCost = totalQty > 0 ? (totalModal / totalQty) : 0;
+          totalQty -= (t.qty || 0);
+          totalModal -= ((t.qty || 0) * avgCost);
+        }
+      });
+
+      const currentAvgCost = totalQty > 0 ? (totalModal / totalQty) : 0;
+      modalKembali = qty * currentAvgCost;
+      realizedPnL = amount - modalKembali;
     }
+
+    // 2. Simpan Catatan di Tabel Investasi
     const { data, error } = await supabase.from('investasi').insert({ user_id: user.id, inv_type: invType, sub_type: subType, keterangan: desc, amount, action, unit, qty, tgl: date, wallet_id }).select().single()
     if (error) return error
+
+    // 3. ✨ THE MAGIC: Otomatisasi Jurnal Transaksi (Cashflow) ✨
+    if (action === 'beli') {
+      // Catat sebagai Transfer Keluar (Kas berkurang, Aset bertambah)
+      await addTx({ desc: `Beli Aset: ${subType}`, amount, type: 'out', cat: 'Transfer', sub_cat: 'Beli Investasi', date, wallet_id });
+    } else if (action === 'jual') {
+      // Catat Pengembalian Modal sebagai Transfer Masuk
+      await addTx({ desc: `Tarik Modal: ${subType}`, amount: modalKembali, type: 'in', cat: 'Transfer', sub_cat: 'Tarik Investasi', date, wallet_id });
+      
+      // Catat Profit atau Loss secara murni
+      if (realizedPnL > 0) {
+        await addTx({ desc: `Profit: ${subType}`, amount: realizedPnL, type: 'in', cat: 'Pemasukan Utama', sub_cat: 'Profit Investasi', date, wallet_id });
+      } else if (realizedPnL < 0) {
+        await addTx({ desc: `Loss: ${subType}`, amount: Math.abs(realizedPnL), type: 'out', cat: 'Lainnya', sub_cat: 'Rugi Investasi', date, wallet_id });
+      }
+    }
+
     setInvData(prev => [mapInv(data), ...prev])
     return null
   }
 
   const updateInv = async (id, { invType, subType, desc, amount, action, unit, qty, date, wallet_id = null }) => {
+    // (Untuk MVP, update investasi kita biarkan manual, tapi akan kita perbaiki nanti jika perlu)
     if (action === 'jual') {
       const err = validateSellInvestment(invType, subType, amount, qty, id);
       if (err) return err; 
@@ -137,12 +178,16 @@ export function DataProvider({ children }) {
     return error
   }
 
-  // FUNGSI TRANSFER YANG DIPERBAIKI (MENGGUNAKAN KATEGORI "Transfer")
-  const transferWallet = async ({ fromId, toId, amount, descOut, descIn, date }) => {
+  const transferWallet = async ({ fromId, toId, amount, fee, descOut, descIn, date }) => {
     const errOut = await addTx({ desc: descOut, amount, type: 'out', cat: 'Transfer', date, wallet_id: fromId });
     if (errOut) return errOut;
     const errIn = await addTx({ desc: descIn, amount, type: 'in', cat: 'Transfer', date, wallet_id: toId });
-    return errIn;
+    if (errIn) return errIn;
+    if (fee && fee > 0) {
+      const errFee = await addTx({ desc: 'Biaya Admin Transfer', amount: fee, type: 'out', cat: 'Lainnya', sub_cat: 'Biaya Admin', date, wallet_id: fromId });
+      return errFee;
+    }
+    return null;
   }
 
   const addBill = async ({ nama_tagihan, amount, jatuh_tempo }) => {
@@ -150,65 +195,57 @@ export function DataProvider({ children }) {
     if (!error) setBillData(prev => [...prev, data].sort((a,b) => new Date(a.jatuh_tempo) - new Date(b.jatuh_tempo)))
     return error
   }
-  const toggleBill = async (id, currentStatus) => {
+  
+  const toggleBill = async (id, currentStatus, walletId = null) => {
     const isLunasNow = !currentStatus;
     const { error } = await supabase.from('tagihan').update({ is_lunas: isLunasNow }).eq('id', id).eq('user_id', user.id)
+    
     if (!error) {
       setBillData(prev => prev.map(b => b.id === id ? { ...b, is_lunas: isLunasNow } : b))
+      
       if (isLunasNow) {
         const bill = billData.find(b => b.id === id);
         if (bill) {
           const today = new Date().toISOString().split('T')[0];
-          await addTx({ desc: `Bayar Tagihan: ${bill.nama_tagihan}`, amount: Number(bill.amount), type: 'out', cat: 'Tagihan', date: today, wallet_id: null });
+          
+          // 👇 MAGIC: Mencatat pengeluaran menggunakan Dompet dan Kategori yang Benar 👇
+          await addTx({ 
+            desc: `Bayar Tagihan: ${bill.nama_tagihan}`, 
+            amount: Number(bill.amount), 
+            type: 'out', 
+            cat: 'Tagihan & Utilitas', // Sesuaikan dengan kategori di utils.js
+            sub_cat: 'Lain-lain',
+            date: today, 
+            wallet_id: walletId // Uang akan langsung terpotong dari dompet pilihan
+          });
+          
+          // Membuat duplikat untuk bulan depan
           const dateObj = new Date(bill.jatuh_tempo);
           dateObj.setMonth(dateObj.getMonth() + 1);
-          await addBill({ nama_tagihan: bill.nama_tagihan, amount: Number(bill.amount), jatuh_tempo: dateObj.toISOString().split('T')[0] });
+          await addBill({ 
+            nama_tagihan: bill.nama_tagihan, 
+            amount: Number(bill.amount), 
+            jatuh_tempo: dateObj.toISOString().split('T')[0] 
+          });
         }
       }
     }
   }
+  
   const deleteBill = async (id) => {
     const { error } = await supabase.from('tagihan').delete().eq('id', id).eq('user_id', user.id)
     if (!error) setBillData(prev => prev.filter(b => b.id !== id))
   }
 
   const addTarget = async ({ name, amount, saved, monthlyBoost }) => {
-    const { data, error } = await supabase.from('target_finansial')
-      .insert({
-        user_id: user.id,
-        name,
-        target_amount: amount,
-        saved_amount: saved,
-        monthly_boost: monthlyBoost,
-      })
-      .select()
-      .single()
-    if (!error) {
-      const mapped = mapTarget(data)
-      setTargetData(prev => [mapped, ...prev])
-      return { data: mapped, error: null }
-    }
+    const { data, error } = await supabase.from('target_finansial').insert({ user_id: user.id, name, target_amount: amount, saved_amount: saved, monthly_boost: monthlyBoost }).select().single()
+    if (!error) { const mapped = mapTarget(data); setTargetData(prev => [mapped, ...prev]); return { data: mapped, error: null } }
     return { data: null, error }
   }
 
   const updateTarget = async (id, { name, amount, saved, monthlyBoost }) => {
-    const { data, error } = await supabase.from('target_finansial')
-      .update({
-        name,
-        target_amount: amount,
-        saved_amount: saved,
-        monthly_boost: monthlyBoost,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id)
-      .eq('user_id', user.id)
-      .select()
-      .single()
-    if (!error) {
-      const mapped = mapTarget(data)
-      setTargetData(prev => prev.map(t => t.id === id ? mapped : t))
-      return { data: mapped, error: null }
-    }
+    const { data, error } = await supabase.from('target_finansial').update({ name, target_amount: amount, saved_amount: saved, monthly_boost: monthlyBoost, updated_at: new Date().toISOString() }).eq('id', id).eq('user_id', user.id).select().single()
+    if (!error) { const mapped = mapTarget(data); setTargetData(prev => prev.map(t => t.id === id ? mapped : t)); return { data: mapped, error: null } }
     return { data: null, error }
   }
 
@@ -218,33 +255,26 @@ export function DataProvider({ children }) {
     return error
   }
 
+  // 👇 LOGIKA TOTALS MENJADI SUPER BERSIH KARENA SEMUA ARUS KAS DITANGANI TABEL TRANSAKSI 👇
   const totals = useMemo(() => {
-    // PERBAIKAN: Total Global MENGABAIKAN Kategori 'Transfer'
     const totalIn = txData.filter(t => t.type === 'in' && t.cat !== 'Transfer').reduce((s, t) => s + t.amount, 0)
     const totalOut = txData.filter(t => t.type === 'out' && t.cat !== 'Transfer').reduce((s, t) => s + t.amount, 0)
+    
     const invBuy = invData.filter(t => t.action === 'beli').reduce((s, t) => s + t.amount, 0)
     const invSell = invData.filter(t => t.action === 'jual').reduce((s, t) => s + t.amount, 0)
-
-    const totalSaldoAwalDompet = walletData.reduce((sum, w) => sum + (Number(w.balance) || 0), 0);
-    const saldo = totalSaldoAwalDompet + (totalIn + invSell) - (totalOut + invBuy)
-    
     const invNet = invBuy - invSell
+
+    // Saldo fisik 100% dipantau oleh mutasi di tabel transaksi
+    const totalSaldoAwalDompet = walletData.reduce((sum, w) => sum + (Number(w.balance) || 0), 0);
+    const globalTxIn = txData.filter(t => t.type === 'in').reduce((s, t) => s + t.amount, 0);
+    const globalTxOut = txData.filter(t => t.type === 'out').reduce((s, t) => s + t.amount, 0);
+    const saldo = totalSaldoAwalDompet + globalTxIn - globalTxOut;
 
     const walletBalances = walletData.map(w => {
       const wTxs = txData.filter(t => t.wallet_id === w.id);
-      
-      // PERBAIKAN: Dompet spesifik TETAP MENGHITUNG 'Transfer' agar saldonya berubah
       const wIn = wTxs.filter(t => t.type === 'in').reduce((s, t) => s + t.amount, 0);
       const wOut = wTxs.filter(t => t.type === 'out').reduce((s, t) => s + t.amount, 0);
-      
-      const wInvs = invData.filter(i => i.wallet_id === w.id);
-      const invJual = wInvs.filter(i => i.action === 'jual').reduce((s, i) => s + i.amount, 0);
-      const invBeli = wInvs.filter(i => i.action === 'beli').reduce((s, i) => s + i.amount, 0);
-      
-      return {
-        ...w,
-        calculatedBalance: (Number(w.balance) || 0) + (wIn + invJual) - (wOut + invBeli) 
-      };
+      return { ...w, calculatedBalance: (Number(w.balance) || 0) + wIn - wOut };
     });
 
     return { totalIn, totalOut, invBuy, invSell, invNet, saldo, walletBalances }

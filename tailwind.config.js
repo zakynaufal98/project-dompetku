@@ -6,7 +6,7 @@ export default {
     extend: {
       fontFamily: {
         syne: ['Syne', 'sans-serif'],
-        sans: ['Instrument Sans', 'sans-serif'],
+        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
       },
       colors: {
         primary: 'rgb(var(--color-primary) / <alpha-value>)',

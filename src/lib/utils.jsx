@@ -19,7 +19,9 @@ import {
   TrendingUp,
   Coins,
   Wallet,
-  CreditCard
+  CreditCard,
+  Briefcase,
+  Laptop
 } from 'lucide-react'
 
 // Fungsi untuk format Rupiah penuh
@@ -62,13 +64,25 @@ export const today = () => new Date().toISOString().split('T')[0]
 export const MONTHS      = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des']
 export const MONTHS_FULL = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember']
 
-export const CATEGORIES = [
-  'Tagihan','Kebutuhan Rumah Tangga','Konsumsi & Makan',
-  'Transportasi','Kewajiban', 'Bayar Cicilan','Tabungan & Investasi',
-  'Kesehatan','Pakaian','Kejadian Tak Terduga',
-  'Pelatihan & Lainnya','Jajan Adek','Belanja Lainnya',
-  'Kosmetik','Laundry','Parkir','Lainnya'
-]
+// 👇 PENGGANTI `CATEGORIES` - SEKARANG BERBENTUK POHON (TREE) 👇
+export const CATEGORY_TREE = {
+  "in": { // Khusus Pemasukan
+    "Pemasukan Utama": ["Gaji Bulanan", "Tunjangan", "Lembur", "Bonus", "Lainnya"],
+    "Bisnis & Sampingan": ["Penjualan", "Freelance", "Laba Usaha", "Lainnya"],
+    "Lainnya": ["Hadiah/Pemberian", "Pencairan Dana", "Cashback", "Lainnya"]
+  },
+  "out": { // Khusus Pengeluaran
+    "Konsumsi & Makan": ["Bahan Dapur", "Makan di Luar", "Kopi & Jajan", "Jajan Adek", "Lainnya"],
+    "Transportasi": ["Bensin", "Parkir", "Tol", "Transportasi Umum", "Servis Kendaraan", "Lainnya"],
+    "Tagihan & Utilitas": ["Listrik", "Air", "Internet & WiFi", "Pulsa & Paket Data", "Lainnya"],
+    "Kebutuhan Rumah": ["Belanja Bulanan", "Perabotan", "Kebersihan", "Laundry", "Elektronik & Gadget", "Lainnya"],
+    "Kewajiban & Cicilan": ["Bayar Cicilan", "Kewajiban", "Pajak", "Asuransi", "Lainnya"],
+    "Kesehatan": ["Obat-obatan", "Dokter / RS", "Perawatan", "Lainnya"],
+    "Gaya Hidup": ["Pakaian", "Kosmetik & Skincare", "Langganan Digital", "Hobi", "Lainnya"],
+    "Edukasi & Pelatihan": ["Buku", "Kursus / Pelatihan", "Keperluan Sekolah", "Lainnya"],
+    "Lainnya": ["Kejadian Tak Terduga", "Sedekah & Donasi", "Belanja Lainnya", "Lainnya"]
+  }
+};
 
 export const CHART_COLORS = [
   '#E8353A','#2196F3','#4CAF50','#F5A623','#9C27B0',
@@ -76,27 +90,24 @@ export const CHART_COLORS = [
   '#009688','#FFC107','#8BC34A','#FF9800','#795548',
 ]
 
-// Emoji diganti dengan komponen Lucide React dan ditambah adaptasi Dark Mode
+// 👇 CAT_ICONS DIRINGKAS HANYA UNTUK KATEGORI INDUK 👇
 export const CAT_ICONS = {
-  'Tagihan':               <Receipt size={16} className="inline-block mr-1.5 text-indigo-500 dark:text-indigo-400" />,
-  'Kebutuhan Rumah Tangga':<Home size={16} className="inline-block mr-1.5 text-teal-500 dark:text-teal-400" />,
+  // Induk Pengeluaran
   'Konsumsi & Makan':      <Utensils size={16} className="inline-block mr-1.5 text-orange-500 dark:text-orange-400" />,
   'Transportasi':          <Car size={16} className="inline-block mr-1.5 text-sky-500 dark:text-sky-400" />,
-  'Kewajiban':             <ClipboardList size={16} className="inline-block mr-1.5 text-slate-500 dark:text-slate-400" />,
-  'Bayar Cicilan':         <CreditCard size={18} className="text-rose-500 dark:text-rose-400" />,
-  'Tabungan & Investasi':  <PiggyBank size={16} className="inline-block mr-1.5 text-emerald-500 dark:text-emerald-400" />,
+  'Tagihan & Utilitas':    <Receipt size={16} className="inline-block mr-1.5 text-indigo-500 dark:text-indigo-400" />,
+  'Kebutuhan Rumah':       <Home size={16} className="inline-block mr-1.5 text-teal-500 dark:text-teal-400" />,
+  'Kewajiban & Cicilan':   <CreditCard size={18} className="text-rose-500 dark:text-rose-400" />,
   'Kesehatan':             <Pill size={16} className="inline-block mr-1.5 text-rose-500 dark:text-rose-400" />,
-  'Pakaian':               <Shirt size={16} className="inline-block mr-1.5 text-pink-500 dark:text-pink-400" />,
-  'Kejadian Tak Terduga':  <Zap size={16} className="inline-block mr-1.5 text-yellow-500 dark:text-yellow-400" />,
-  'Pelatihan & Lainnya':   <BookOpen size={16} className="inline-block mr-1.5 text-cyan-500 dark:text-cyan-400" />,
-  'Jajan Adek':            <IceCream size={16} className="inline-block mr-1.5 text-fuchsia-500 dark:text-fuchsia-400" />,
-  'Belanja Lainnya':       <ShoppingBag size={16} className="inline-block mr-1.5 text-purple-500 dark:text-purple-400" />,
-  'Kosmetik':              <Sparkles size={16} className="inline-block mr-1.5 text-rose-400 dark:text-rose-300" />,
-  'Laundry':               <Droplets size={16} className="inline-block mr-1.5 text-sky-400 dark:text-sky-300" />,
-  'Parkir':                <CircleParking size={16} className="inline-block mr-1.5 text-slate-400 dark:text-slate-300" />,
-  'Pemasukan':             <Banknote size={16} className="inline-block mr-1.5 text-emerald-600 dark:text-emerald-400" />,
+  'Gaya Hidup':            <Shirt size={16} className="inline-block mr-1.5 text-pink-500 dark:text-pink-400" />,
+  'Edukasi & Pelatihan':   <BookOpen size={16} className="inline-block mr-1.5 text-cyan-500 dark:text-cyan-400" />,
+  
+  // Induk Pemasukan & Investasi
+  'Pemasukan Utama':       <Banknote size={16} className="inline-block mr-1.5 text-emerald-600 dark:text-emerald-400" />,
+  'Bisnis & Sampingan':    <Briefcase size={16} className="inline-block mr-1.5 text-blue-500 dark:text-blue-400" />,
   'Investasi':             <TrendingUp size={16} className="inline-block mr-1.5 text-blue-500 dark:text-blue-400" />, 
   'Lainnya':               <Sparkles size={16} className="inline-block mr-1.5 text-slate-400 dark:text-slate-300" />, 
+  'Elektronik & Gadget': <Laptop size={16} />
 }
 
 export const INV_TYPES = {

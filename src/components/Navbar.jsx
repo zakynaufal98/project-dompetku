@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Sun, Moon, Bell, LogOut, User } from 'lucide-react'
+import { Sun, Moon, LogOut, User } from 'lucide-react' // Hapus import Bell
 import { useAuth } from '../context/AuthContext'
+import NotificationMenu from './NotificationMenu' // 👇 Import Komponen Baru
 
 export default function Navbar() {
-  const { user, signOut } = useAuth()
+  const { user, logout } = useAuth()
   const [isDark, setIsDark] = useState(false)
 
   useEffect(() => {
@@ -18,6 +19,8 @@ export default function Navbar() {
   }, [])
 
   const toggleTheme = () => {
+    document.documentElement.classList.add('disable-transitions');
+
     if (isDark) {
       document.documentElement.classList.remove('dark')
       localStorage.setItem('theme', 'light')
@@ -27,11 +30,14 @@ export default function Navbar() {
       localStorage.setItem('theme', 'dark')
       setIsDark(true)
     }
+
+    // Force reflow to apply changes without transition
+    window.getComputedStyle(document.documentElement).opacity;
+    document.documentElement.classList.remove('disable-transitions');
   }
 
   return (
-    // Menggunakan tag <nav> di dalam header untuk struktur landmark yang lebih baik
-    <header className="bg-surface border-b border-border sticky top-0 z-40 transition-colors duration-300">
+    <header className="bg-surface border-b border-border sticky top-0 z-40">
       <nav className="flex items-center justify-between px-4 lg:px-8 py-3 lg:py-4" aria-label="Navigasi Utama">
         
         {/* Bagian Kiri: Sapaan */}
@@ -44,10 +50,10 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Bagian Ranan: Menu */}
+        {/* Bagian Kanan: Menu */}
         <div className="flex items-center gap-2 lg:gap-4">
           
-          {/* TOMBOL DARK MODE: Ditambah aria-label dan title yang dinamis */}
+          {/* TOMBOL DARK MODE */}
           <button 
             onClick={toggleTheme} 
             className="w-10 h-10 flex items-center justify-center rounded-full text-muted2 hover:text-income hover:bg-income-light transition-all focus:outline-none focus:ring-2 focus:ring-income/20"
@@ -57,24 +63,17 @@ export default function Navbar() {
             {isDark ? <Sun size={20} strokeWidth={2.5} /> : <Moon size={20} strokeWidth={2.5} />}
           </button>
 
-          {/* TOMBOL NOTIFIKASI: Ditambah aria-label */}
-          <button 
-            className="w-10 h-10 flex items-center justify-center rounded-full text-muted2 hover:text-income hover:bg-income-light transition-all relative focus:outline-none focus:ring-2 focus:ring-income/20"
-            aria-label="Buka Notifikasi"
-            title="Buka Notifikasi"
-          >
-            <Bell size={20} strokeWidth={2.5} />
-            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-expense rounded-full border-2 border-surface" aria-hidden="true"></span>
-          </button>
+          {/* 👇 KOMPONEN NOTIFIKASI CERDAS DIPASANG DI SINI 👇 */}
+          <NotificationMenu />
 
           {/* TOMBOL LOGOUT MOBILE */}
           <button
-            onClick={signOut}
+            onClick={() => logout()} 
             className="lg:hidden w-10 h-10 flex items-center justify-center rounded-full text-muted2 hover:text-expense hover:bg-expense-light transition-all focus:outline-none focus:ring-2 focus:ring-expense/20"
             title="Keluar dari Aplikasi"
             aria-label="Keluar dari Aplikasi"
           >
-            <LogOut size={20} strokeWidth={2.5} />
+            <LogOut size={20} strokeWidth={2.5} /> 
           </button>
 
           {/* Bagian Desktop Profil */}
@@ -87,7 +86,7 @@ export default function Navbar() {
               <p className="text-[11px] font-semibold text-muted2">Pro Member</p>
             </div>
             <button 
-              onClick={signOut} 
+              onClick={() => logout()}
               className="ml-2 w-9 h-9 flex items-center justify-center text-muted2 hover:text-expense transition-colors focus:outline-none focus:ring-2 focus:ring-expense/20 rounded-lg" 
               title="Keluar"
               aria-label="Keluar"

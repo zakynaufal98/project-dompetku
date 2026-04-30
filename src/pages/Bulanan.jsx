@@ -1,25 +1,12 @@
-import { useMemo, useState } from 'react'
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
+import { useMemo, useState, useEffect } from 'react'
 import { useData } from '../context/DataContext'
 import { fmt, fmtShort, MONTHS_FULL, CHART_COLORS, CAT_ICONS } from '../lib/utils'
-import { TxItem, Empty, PanelHeader, DonutLegend, ProgressBar } from '../components/UI'
-import { PieChart as PieChartIcon, ClipboardList, CalendarX, CalendarDays } from 'lucide-react'
-
-const CustomTooltip = ({ active, payload, label }) => {
-  if (!active || !payload?.length) return null
-  return (
-    <div className="bg-surface border border-border rounded-xl p-3 text-xs shadow-lg">
-      {payload.map((p, i) => (
-        <p key={i} className="tabular-nums font-bold text-text">
-          {p.name}: <span style={{ color: p.color }}>{fmtShort(p.value)}</span>
-        </p>
-      ))}
-    </div>
-  )
-}
+import { TxItem, Empty, PanelHeader, ProgressBar, InteractiveDonut } from '../components/UI'
+import { ClipboardList, CalendarX, CalendarDays } from 'lucide-react'
 
 export default function Bulanan() {
-  const { txData, invData } = useData()
+  // 👇 PERBAIKAN 1: Tambahkan walletData untuk menampilkan badge dompet di riwayat
+  const { txData, invData, walletData } = useData()
   const now = new Date()
   const [month, setMonth] = useState(now.getMonth()+1)
   const [year,  setYear]  = useState(now.getFullYear())
@@ -32,51 +19,51 @@ export default function Bulanan() {
 
   const ym = `${year}-${String(month).padStart(2,'0')}`
   
-  // Data Bulan Ini
-  const txBln  = txData.filter(t=>t.date?.startsWith(ym))
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('updateExportDate', { detail: ym }))
+  }, [ym])
+  
+  // Ambil semua arus kas bulan ini
+  const txBln = txData.filter(t=>t.date?.startsWith(ym));
+  
+  // 👇 PERBAIKAN 2: Hitung Pemasukan & Pengeluaran Murni (Abaikan Transfer)
+  const txIn  = txBln.filter(t=>t.type==='in' && t.cat !== 'Transfer').reduce((s,t)=>s+t.amount,0)
+  const txOut = txBln.filter(t=>t.type==='out' && t.cat !== 'Transfer').reduce((s,t)=>s+t.amount,0)
+  
+  // Netto (Uang yang berhasil disisihkan bulan ini, investasi tidak dihitung sebagai pengeluaran)
+  const nettoBulanIni = txIn - txOut;
+
+  // Tetap ambil data invData hanya untuk menampilkan metrik volume investasi bulan ini (bukan untuk cashflow)
   const invBln = invData.filter(t=>t.date?.startsWith(ym))
-  
-  // PERBAIKAN LOGIKA: Hitung Pemasukan dan Pengeluaran Total
-  const txIn   = txBln.filter(t=>t.type==='in').reduce((s,t)=>s+t.amount,0)
-  const txOut  = txBln.filter(t=>t.type==='out').reduce((s,t)=>s+t.amount,0)
-  
   const invBuy = invBln.filter(t=>t.action==='beli').reduce((s,t)=>s+t.amount,0)
   const invSell= invBln.filter(t=>t.action==='jual').reduce((s,t)=>s+t.amount,0)
-
-  // Total Arus Kas
-  const totalIn  = txIn + invSell
-  const totalOut = txOut + invBuy
-  
-  // Netto Investasi
   const invNet = invBuy - invSell
 
-  // Saldo
-  const saldo = totalIn - totalOut
+  // Filter khusus untuk Interactive Donut & Progress Bar (Hanya Pengeluaran Murni)
+  const txBlnOut = useMemo(() => txBln.filter(t => t.type === 'out' && t.cat !== 'Transfer'), [txBln]);
 
-  // Data Distribusi Pengeluaran (Hanya dari Kategori Transaksi)
+  // Data Murni untuk PROGRESS BAR KANAN
   const catOut = useMemo(()=>{
     const m={}
-    txBln.filter(t=>t.type==='out').forEach(t=>{m[t.cat]=(m[t.cat]||0)+t.amount})
+    txBlnOut.forEach(t=>{
+      const mainCat = t.cat || 'Lainnya'
+      m[mainCat]=(m[mainCat]||0)+t.amount
+    })
     return m
-  },[txBln])
+  },[txBlnOut])
 
   const sorted  = Object.entries(catOut).sort((a,b)=>b[1]-a[1])
   const maxCat  = sorted[0]?.[1]||1
-  const donutD  = sorted.filter(([,v])=>v>0).map(([name,value],i)=>({name,value,fill:CHART_COLORS[i]}))
 
-  // Gabungkan semua riwayat transaksi & investasi bulan ini untuk ditampilkan di bawah
+  // 👇 PERBAIKAN 3: Riwayat hanya menggunakan txData agar tidak ada duplikasi
   const allHistory = useMemo(() => {
-    const combined = [
-      ...txBln,
-      ...invBln.map(i => ({
-        ...i,
-        type: i.action === 'beli' ? 'out' : 'in',
-        cat: 'Investasi'
-      }))
-    ];
-    // Urutkan dari yang terbaru
-    return combined.sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [txBln, invBln]);
+    return txBln.sort((a, b) => {
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      if (dateA !== dateB) return dateB - dateA; 
+      return (b.ts || 0) - (a.ts || 0); 
+    });
+  }, [txBln]);
 
   return (
     <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
@@ -84,7 +71,12 @@ export default function Bulanan() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="tabular-nums font-bold text-2xl text-text tracking-tight">Ringkasan Bulanan</h1>
-          <p className="text-muted text-sm font-medium mt-1">Analisis arus kas per bulan</p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-muted text-sm font-medium">Analisis arus kas per bulan</p>
+            <span className="bg-surface border border-border px-2 py-0.5 rounded text-[10px] text-muted2 font-bold uppercase tracking-wider">
+              Murni (Tanpa Transfer)
+            </span>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 bg-surface border border-border rounded-full p-1.5 shadow-sm px-4">
@@ -99,19 +91,18 @@ export default function Bulanan() {
         </div>
       </div>
 
-      {/* SUMMARY CARDS GRID */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm col-span-2 md:col-span-1">
           <p className="text-muted text-xs font-bold uppercase tracking-wider mb-2">Netto Bulan Ini</p>
-          <p className={`tabular-nums font-bold text-3xl tracking-tight ${saldo >= 0 ? 'text-text' : 'text-expense'}`}>{fmt(saldo)}</p>
+          <p className={`tabular-nums font-bold text-3xl tracking-tight ${nettoBulanIni >= 0 ? 'text-text' : 'text-expense'}`}>{fmt(nettoBulanIni)}</p>
         </div>
         <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm">
           <p className="text-muted text-xs font-bold uppercase tracking-wider mb-2">Pemasukan</p>
-          <p className="tabular-nums font-bold text-2xl text-income tracking-tight">{fmtShort(totalIn)}</p>
+          <p className="tabular-nums font-bold text-2xl text-income tracking-tight">{fmtShort(txIn)}</p>
         </div>
         <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm">
           <p className="text-muted text-xs font-bold uppercase tracking-wider mb-2">Pengeluaran</p>
-          <p className="tabular-nums font-bold text-2xl text-gold tracking-tight">{fmtShort(totalOut)}</p>
+          <p className="tabular-nums font-bold text-2xl text-gold tracking-tight">{fmtShort(txOut)}</p>
         </div>
         <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm">
           <p className="text-muted text-xs font-bold uppercase tracking-wider mb-2">Investasi</p>
@@ -120,29 +111,18 @@ export default function Bulanan() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        
+        {/* KARTU DISTRIBUSI PENGELUARAN */}
         <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm lg:col-span-2 flex flex-col">
           <PanelHeader title="Distribusi Pengeluaran" />
-          <div className="flex-1 flex flex-col justify-center mt-4">
-            {donutD.length > 0 ? (
-              <>
-                <ResponsiveContainer width="100%" height={200}>
-                  <PieChart>
-                    <Pie data={donutD} cx="50%" cy="50%" innerRadius={70} outerRadius={90} dataKey="value" stroke="none">
-                      {donutD.map((_,i)=><Cell key={i} fill={CHART_COLORS[i]}/>)}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="mt-6"><DonutLegend data={catOut} /></div>
-              </>
-            ) : <div className="h-full flex flex-col justify-center items-center opacity-50"><PieChartIcon size={48} className="text-muted2 mb-2"/><p className="text-sm font-medium">Data kosong</p></div>}
-          </div>
+          <InteractiveDonut data={txBlnOut} />
         </div>
 
+        {/* KARTU PROGRESS BAR (Sisi Kanan) */}
         <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm lg:col-span-3">
-          <PanelHeader title="Rincian Pengeluaran" />
+          <PanelHeader title="Progress Pengeluaran Utama" />
           {sorted.length > 0 ? (
-            <div className="space-y-5 mt-4 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+            <div className="space-y-5 mt-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
               {sorted.map(([cat,val],i)=>(
                 <div key={cat} className="group">
                   <div className="flex justify-between items-end mb-1.5">
@@ -160,7 +140,18 @@ export default function Bulanan() {
       <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm">
         <PanelHeader title="Transaksi Bulan Ini" badge={`${allHistory.length} transaksi`}/>
         <div className="space-y-1.5 mt-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-          {allHistory.length > 0 ? allHistory.map(t => <TxItem key={t.id} t={t} isInv={t.action !== undefined} />) : <div className="py-8"><Empty icon={<CalendarX size={40} className="text-muted2 mb-2" strokeWidth={1.5} />} text="Tidak ada transaksi bulan ini" /></div>}
+          {allHistory.length > 0 ? (
+            allHistory.map(t => (
+              <TxItem 
+                key={t.id} 
+                t={t} 
+                isInv={false} // Selalu false karena investasi sekarang berbentuk "Transfer" di txData
+                walletName={walletData?.find(w => w.id === t.wallet_id)?.name} // Tampilkan dompet
+              />
+            ))
+          ) : (
+            <div className="py-8"><Empty icon={<CalendarX size={40} className="text-muted2 mb-2" strokeWidth={1.5} />} text="Tidak ada transaksi bulan ini" /></div>
+          )}
         </div>
       </div>
     </div>
