@@ -131,8 +131,12 @@ export default function Transaksi() {
     filtered.forEach(t => {
       if (!groups[t.date]) groups[t.date] = { items: [], totalIn: 0, totalOut: 0 }
       groups[t.date].items.push(t)
-      if (t.type === 'in') groups[t.date].totalIn += t.amount
-      if (t.type === 'out') groups[t.date].totalOut += t.amount
+      
+      // LOGIKA MURNI: Jangan hitung Transfer di Pemasukan/Pengeluaran Harian
+      if (t.cat !== 'Transfer' && !(t.cat && t.cat.startsWith('Transfer'))) {
+        if (t.type === 'in') groups[t.date].totalIn += t.amount
+        if (t.type === 'out') groups[t.date].totalOut += t.amount
+      }
     })
     return groups
   }, [filtered])
@@ -144,7 +148,7 @@ export default function Transaksi() {
       if (selectedMonth && !t.date.startsWith(selectedMonth)) return;
       
       // LOGIKA MURNI: Jangan hitung Transfer di Pemasukan/Pengeluaran
-      if (t.cat !== 'Transfer' && !t.cat.startsWith('Transfer')) {
+      if (t.cat !== 'Transfer' && !(t.cat && t.cat.startsWith('Transfer'))) {
         if (t.type === 'in') inMonth += t.amount;
         if (t.type === 'out') outMonth += t.amount;
       }

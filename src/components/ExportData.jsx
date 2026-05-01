@@ -30,7 +30,7 @@ export default function ExportData({ isYearly = false }) {
     const targetPeriod = exportDate || (isYearly ? fallbackYear : fallbackYM)
     const filterFn = (t) => t.date?.startsWith(targetPeriod)
     
-    const expenses = txData.filter(t => t.type === 'out' && t.cat !== 'Transfer' && filterFn(t))
+    const expenses = txData.filter(t => t.type === 'out' && (t.cat !== 'Transfer' || t.sub_cat === 'Bayar Pinjaman') && filterFn(t))
     const incomes = txData.filter(t => t.type === 'in' && t.cat !== 'Transfer' && filterFn(t))
     const investments = invData.filter(t => t.action === 'beli' && filterFn(t))
     
@@ -40,6 +40,9 @@ export default function ExportData({ isYearly = false }) {
     
     const netto = masuk - keluar
     const savingsRate = masuk > 0 ? (((netto > 0 ? netto : 0) + invest) / masuk * 100).toFixed(1) : 0
+    
+    const totalGain = txData.filter(t => t.sub_cat === 'Profit Investasi' && filterFn(t)).reduce((s, t) => s + t.amount, 0)
+    const totalLoss = txData.filter(t => t.sub_cat === 'Rugi Investasi' && filterFn(t)).reduce((s, t) => s + t.amount, 0)
     
     const catMap = {}
     expenses.forEach(t => { 
@@ -88,6 +91,7 @@ export default function ExportData({ isYearly = false }) {
 
     return { 
       masuk, keluar, invest, netto, savingsRate, topCategories, allCategories, incomeCategories,
+      totalGain, totalLoss,
       insightText: insight, insightColor: insightCol, 
       allTransaksi: combinedTx, periodeText: pText,
       saldoSaatIni: totals?.saldo || 0, totalTx: combinedTx.length
@@ -110,9 +114,11 @@ export default function ExportData({ isYearly = false }) {
             <tr><td colspan="5" style="color: #64748B; font-size: 14px; padding-bottom: 20px;">Periode: ${reportData.periodeText.toUpperCase()}</td></tr>
             <tr><td colspan="5" style="background-color: ${reportData.insightColor}15; color: ${reportData.insightColor}; font-weight: bold; padding: 15px; border-left: 4px solid ${reportData.insightColor};">💡 EXECUTIVE INSIGHT: ${reportData.insightText}</td></tr>
             <tr><td colspan="5"></td></tr>
-            <tr><td colspan="5" style="background-color: #1E1B4B; color: white; font-weight: bold; padding: 10px;">📈 RINGKASAN ARUS KAS</td></tr>
+            <tr><td colspan="5" style="background-color: #1E1B4B; color: white; font-weight: bold; padding: 10px;">📈 RINGKASAN ARUS KAS & INVESTASI</td></tr>
             <tr><td colspan="2" style="background-color: #F8FAFC; border-bottom: 1px solid #E2E8F0; padding: 10px; font-weight: bold;">Pemasukan</td><td colspan="3" style="background-color: #F8FAFC; border-bottom: 1px solid #E2E8F0; padding: 10px; font-weight: bold; color: #10B981;">+ ${formatRp(reportData.masuk)}</td></tr>
             <tr><td colspan="2" style="background-color: #FFFFFF; border-bottom: 1px solid #E2E8F0; padding: 10px; font-weight: bold;">Pengeluaran</td><td colspan="3" style="background-color: #FFFFFF; border-bottom: 1px solid #E2E8F0; padding: 10px; font-weight: bold; color: #E11D48;">- ${formatRp(reportData.keluar)}</td></tr>
+            <tr><td colspan="2" style="background-color: #F8FAFC; border-bottom: 1px solid #E2E8F0; padding: 10px; font-weight: bold;">Profit (Gain)</td><td colspan="3" style="background-color: #F8FAFC; border-bottom: 1px solid #E2E8F0; padding: 10px; font-weight: bold; color: #10B981;">+ ${formatRp(reportData.totalGain)}</td></tr>
+            <tr><td colspan="2" style="background-color: #FFFFFF; border-bottom: 1px solid #E2E8F0; padding: 10px; font-weight: bold;">Rugi (Loss)</td><td colspan="3" style="background-color: #FFFFFF; border-bottom: 1px solid #E2E8F0; padding: 10px; font-weight: bold; color: #E11D48;">- ${formatRp(reportData.totalLoss)}</td></tr>
             <tr><td colspan="2" style="background-color: #EEF2FF; padding: 10px; font-weight: bold;">Arus Kas Bersih</td><td colspan="3" style="background-color: #EEF2FF; padding: 10px; font-weight: bold; color: ${reportData.netto >= 0 ? '#10B981' : '#E11D48'};">${formatRp(reportData.netto)}</td></tr>
             <tr><td colspan="5"></td></tr>
             <tr><td colspan="5" style="background-color: #1E1B4B; color: white; font-weight: bold; padding: 10px;">🔥 TOP SUMBER PENGELUARAN</td></tr>
@@ -192,27 +198,32 @@ export default function ExportData({ isYearly = false }) {
       y += 30
 
       // Summary Cards
-      const cardW = (W - 30) / 4
+      const cardW = (W - 30) / 3
       const cards = [
         { label: 'SALDO SAAT INI', value: formatRp(reportData.saldoSaatIni), color: [79, 70, 229] },
         { label: 'PEMASUKAN', value: `+${formatRp(reportData.masuk)}`, color: [16, 185, 129] },
         { label: 'PENGELUARAN', value: `-${formatRp(reportData.keluar)}`, color: [225, 29, 72] },
         { label: 'ARUS KAS BERSIH', value: formatRp(reportData.netto), color: reportData.netto >= 0 ? [16, 185, 129] : [225, 29, 72] },
+        { label: 'PROFIT (GAIN)', value: `+${formatRp(reportData.totalGain)}`, color: [16, 185, 129] },
+        { label: 'RUGI (LOSS)', value: `-${formatRp(reportData.totalLoss)}`, color: [225, 29, 72] },
       ]
       cards.forEach((c, i) => {
-        const x = 10 + i * (cardW + 3.3)
+        const row = Math.floor(i / 3)
+        const col = i % 3
+        const x = 10 + col * (cardW + 5)
+        const currentY = y + row * 30
         pdf.setFillColor(248, 250, 252)
-        pdf.roundedRect(x, y, cardW, 26, 3, 3, 'F')
+        pdf.roundedRect(x, currentY, cardW, 26, 3, 3, 'F')
         pdf.setFontSize(6)
         pdf.setTextColor(c.color[0], c.color[1], c.color[2])
-        pdf.text(c.label, x + 4, y + 8)
+        pdf.text(c.label, x + 4, currentY + 8)
         pdf.setFontSize(11)
         pdf.setTextColor(30, 41, 59)
         pdf.setFont(undefined, 'bold')
-        pdf.text(c.value, x + 4, y + 19)
+        pdf.text(c.value, x + 4, currentY + 19)
         pdf.setFont(undefined, 'normal')
       })
-      y += 34
+      y += 60
 
       // Savings Rate
       pdf.setFillColor(79, 70, 229)
@@ -250,7 +261,7 @@ export default function ExportData({ isYearly = false }) {
       pdf.setFontSize(8)
       pdf.setTextColor(255)
       pdf.setFont(undefined, 'bold')
-      pdf.text('📊  DISTRIBUSI PENGELUARAN PER KATEGORI', 16, y + 5.5)
+      pdf.text('DISTRIBUSI PENGELUARAN PER KATEGORI', 16, y + 5.5)
       pdf.setFont(undefined, 'normal')
       y += 12
 
@@ -301,7 +312,7 @@ export default function ExportData({ isYearly = false }) {
         pdf.setFontSize(8)
         pdf.setTextColor(255)
         pdf.setFont(undefined, 'bold')
-        pdf.text('💰  SUMBER PEMASUKAN', 16, y + 5.5)
+        pdf.text('SUMBER PEMASUKAN', 16, y + 5.5)
         pdf.setFont(undefined, 'normal')
         y += 12
 
@@ -328,7 +339,7 @@ export default function ExportData({ isYearly = false }) {
       pdf.setFontSize(8)
       pdf.setTextColor(255)
       pdf.setFont(undefined, 'bold')
-      pdf.text(`📋  RIWAYAT TRANSAKSI (${reportData.totalTx} transaksi)`, 16, y + 5.5)
+      pdf.text(`RIWAYAT TRANSAKSI (${reportData.totalTx} transaksi)`, 16, y + 5.5)
       pdf.setFont(undefined, 'normal')
       y += 12
 

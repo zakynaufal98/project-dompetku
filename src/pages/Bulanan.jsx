@@ -28,7 +28,7 @@ export default function Bulanan() {
   
   // 👇 PERBAIKAN 2: Hitung Pemasukan & Pengeluaran Murni (Abaikan Transfer)
   const txIn  = txBln.filter(t=>t.type==='in' && t.cat !== 'Transfer').reduce((s,t)=>s+t.amount,0)
-  const txOut = txBln.filter(t=>t.type==='out' && t.cat !== 'Transfer').reduce((s,t)=>s+t.amount,0)
+  const txOut = txBln.filter(t=>t.type==='out' && (t.cat !== 'Transfer' || t.sub_cat === 'Bayar Pinjaman')).reduce((s,t)=>s+t.amount,0)
   
   // Netto (Uang yang berhasil disisihkan bulan ini, investasi tidak dihitung sebagai pengeluaran)
   const nettoBulanIni = txIn - txOut;
@@ -40,7 +40,7 @@ export default function Bulanan() {
   const invNet = invBuy - invSell
 
   // Filter khusus untuk Interactive Donut & Progress Bar (Hanya Pengeluaran Murni)
-  const txBlnOut = useMemo(() => txBln.filter(t => t.type === 'out' && t.cat !== 'Transfer'), [txBln]);
+  const txBlnOut = useMemo(() => txBln.filter(t => t.type === 'out' && (t.cat !== 'Transfer' || t.sub_cat === 'Bayar Pinjaman')), [txBln]);
 
   // Data Murni untuk PROGRESS BAR KANAN
   const catOut = useMemo(()=>{

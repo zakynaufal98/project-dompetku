@@ -26,31 +26,39 @@ import {
 
 // Fungsi untuk format Rupiah penuh
 export const fmt = (n) => {
-  if (!n) return 'Rp 0'; 
+  if (!n) return 'Rp\u00A00'; 
   const isNegative = n < 0; 
   const formatted = Math.abs(n).toLocaleString('id-ID'); 
-  return (isNegative ? '-' : '') + 'Rp ' + formatted;
+  return (isNegative ? '-' : '') + 'Rp\u00A0' + formatted;
 }
 
-// Fungsi untuk format Rupiah singkatan 
+// Fungsi untuk format Rupiah penuh (bisa dipanggil di mana saja)
 export const fmtShort = (n) => {
   if (!n) return 'Rp\u00A00'; 
+  const isNegative = n < 0;
+  const val = Math.abs(n).toLocaleString('id-ID');
+  return (isNegative ? '-' : '') + 'Rp\u00A0' + val;
+}
+
+// Khusus untuk label sumbu Y pada grafik agar tidak terpotong
+export const fmtChartAxis = (n) => {
+  if (!n) return '0'; 
   
   const isNegative = n < 0;
   const a = Math.abs(n);
   
   let val = '';
   if (a >= 1e9) {
-    val = parseFloat((a / 1e9).toFixed(2)).toString().replace('.', ',') + 'M';
+    val = parseFloat((a / 1e9).toFixed(1)).toString().replace('.', ',') + 'M';
   } else if (a >= 1e6) {
-    val = parseFloat((a / 1e6).toFixed(2)).toString().replace('.', ',') + 'jt';
+    val = parseFloat((a / 1e6).toFixed(1)).toString().replace('.', ',') + 'Jt';
   } else if (a >= 1e3) {
-    val = parseFloat((a / 1e3).toFixed(2)).toString().replace('.', ',') + 'rb';
+    val = parseFloat((a / 1e3).toFixed(1)).toString().replace('.', ',') + 'K';
   } else {
-    val = a.toLocaleString('id-ID');
+    val = a.toString();
   }
 
-  return (isNegative ? '-' : '') + 'Rp\u00A0' + val;
+  return (isNegative ? '-' : '') + val;
 }
 
 // Fungsi untuk memformat Unit/Qty investasi

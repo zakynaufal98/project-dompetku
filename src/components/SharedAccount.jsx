@@ -151,7 +151,7 @@ export default function SharedAccount() {
                   <div className="w-7 h-7 rounded-full bg-indigo-500 text-white flex items-center justify-center text-[10px] font-black flex-shrink-0">
                     {inv.owner_email?.charAt(0).toUpperCase()}
                   </div>
-                  <span className="text-xs font-bold text-text-2 truncate">{inv.owner_email}</span>
+                  <span className="text-xs font-bold text-text-2 break-all">{inv.owner_email}</span>
                 </div>
                 <span className={`text-[9px] font-bold px-2 py-0.5 rounded ${inv.role === 'editor' ? 'bg-income-light text-income' : 'bg-border text-muted'}`}>
                   {inv.role === 'editor' ? 'Editor' : 'Viewer'}
@@ -231,7 +231,7 @@ export default function SharedAccount() {
                   {pendingIncoming.map(inv => (
                     <div key={inv.id} className="flex items-center justify-between bg-invest-light/50 border border-invest/20 rounded-xl p-3">
                       <div className="min-w-0">
-                        <p className="text-sm font-bold text-text truncate">{inv.owner_email}</p>
+                        <p className="text-sm font-bold text-text break-all">{inv.owner_email}</p>
                         <p className="text-[10px] text-muted font-medium">mengundangmu sebagai <strong>{inv.role === 'editor' ? 'Editor' : 'Viewer'}</strong></p>
                       </div>
                       <div className="flex gap-1.5 flex-shrink-0 ml-2">
@@ -258,7 +258,7 @@ export default function SharedAccount() {
                           {inv.member_email?.charAt(0).toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-bold text-text truncate">{inv.member_email}</p>
+                          <p className="text-sm font-bold text-text break-all">{inv.member_email}</p>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
                               inv.status === 'accepted' ? 'bg-income-light text-income' : 
@@ -294,7 +294,7 @@ export default function SharedAccount() {
                           {inv.owner_email?.charAt(0).toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-bold text-text truncate">{inv.owner_email}</p>
+                          <p className="text-sm font-bold text-text break-all">{inv.owner_email}</p>
                           <span className="text-[9px] font-bold text-muted2 flex items-center gap-0.5 mt-0.5">
                             {inv.role === 'editor' ? <><Edit3 size={10} /> Bisa edit</> : <><Eye size={10} /> Hanya lihat</>}
                           </span>

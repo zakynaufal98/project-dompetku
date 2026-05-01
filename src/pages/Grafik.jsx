@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts'
 import { useData } from '../context/DataContext'
-import { fmt, fmtShort, MONTHS, CHART_COLORS } from '../lib/utils'
+import { fmt, fmtShort, fmtChartAxis, MONTHS, CHART_COLORS } from '../lib/utils'
 import { Empty, PanelHeader, ProgressBar, TxItem } from '../components/UI'
 import { LineChart, BarChartHorizontal, PieChart as PieChartIcon, X } from 'lucide-react'
 
@@ -34,17 +35,21 @@ const CustomTooltip = ({ active, payload, label }) => {
 // ==========================================
 const DayDetailDrawer = ({ date, label, data, walletData, onClose, onDelete }) => {
   if (!date) return null;
-  return (
-    <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm transition-opacity animate-fade-in" onClick={onClose}>
+  return createPortal(
+    <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm transition-opacity animate-fade-in flex items-center justify-center p-4 sm:p-6" onClick={onClose}>
       <div 
-        className="fixed z-[101] bg-surface shadow-2xl flex flex-col transition-transform duration-300 ease-out animate-fade-up md:animate-none bottom-0 left-0 right-0 max-h-[85vh] rounded-t-[32px] md:bottom-auto md:top-0 md:right-0 md:left-auto md:w-[400px] md:h-full md:rounded-none md:border-l md:border-border"
+        className="bg-surface shadow-2xl flex flex-col transition-all duration-300 ease-out animate-fade-up w-full max-w-md max-h-[85vh] rounded-[32px] overflow-hidden border border-border"
         onClick={(e) => e.stopPropagation()} 
       >
-        <div className="w-12 h-1.5 bg-border rounded-full mx-auto mt-4 mb-2 md:hidden flex-shrink-0" />
-        <div className="flex items-center justify-between px-6 pt-2 pb-5 md:pt-8 md:pb-6 border-b border-border bg-surface z-10 shrink-0">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-border bg-surface z-10 shrink-0">
           <div>
-            <h3 className="font-bold text-xl text-text">Detail Buku Besar</h3>
-            <p className="text-income text-sm font-bold mt-1 bg-income-light inline-block px-2.5 py-0.5 rounded-md">{label}</p>
+            <h3 className="font-bold text-xl text-text">Detail Pengeluaran</h3>
+            <div className="flex items-center gap-2 mt-1.5">
+              <p className="text-text-2 text-xs font-bold bg-bg inline-block px-2.5 py-1 rounded-md border border-border2">{label}</p>
+              <p className="text-expense text-xs font-bold bg-expense-light inline-block px-2.5 py-1 rounded-md border border-expense/20">
+                Total: {fmtShort(data.reduce((s, t) => s + t.amount, 0))}
+              </p>
+            </div>
           </div>
           <button onClick={onClose} className="p-2 text-muted2 hover:text-expense hover:bg-expense-light rounded-full transition-all cursor-pointer bg-bg">
             <X size={20} strokeWidth={2.5} />
@@ -71,7 +76,8 @@ const DayDetailDrawer = ({ date, label, data, walletData, onClose, onDelete }) =
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -164,7 +170,7 @@ export default function Grafik() {
       const dateStr = `${prefix}${String(i).padStart(2, '0')}`;
       
       // HANYA hitung pengeluaran gaya hidup, abaikan transfer investasi
-      const val = txData.filter(t => t.type === 'out' && t.cat !== 'Transfer' && t.date === dateStr).reduce((s, t) => s + t.amount, 0);
+      const val = txData.filter(t => t.type === 'out' && (t.cat !== 'Transfer' || t.sub_cat === 'Bayar Pinjaman') && t.date === dateStr).reduce((s, t) => s + t.amount, 0);
 
       data.push({ tanggal: String(i), "Pengeluaran Murni": val, labelInfo: `${i} ${MONTHS[m]}`, fullDate: dateStr });
       if (val > maxDay.value) maxDay = { date: `${i} ${MONTHS[m]}`, value: val };
@@ -172,11 +178,12 @@ export default function Grafik() {
     return { data, maxDay, currentMonthLabel: `${MONTHS[m]} ${y}` };
   }, [txData, now])
 
-  // 7. Data Detail Harian (Menampilkan SELURUH aktivitas buku besar hari itu)
+  // 7. Data Detail Harian (Menampilkan HANYA pengeluaran murni yang sesuai dengan chart)
   const selectedDayData = useMemo(() => {
     if (!selectedDate) return [];
-    // Menarik semua data di hari itu agar pengguna tahu uangnya bergerak ke mana saja
-    return txData.filter(t => t.date === selectedDate).sort((a,b) => b.ts - a.ts);
+    return txData
+      .filter(t => t.date === selectedDate && t.type === 'out' && (t.cat !== 'Transfer' || t.sub_cat === 'Bayar Pinjaman'))
+      .sort((a,b) => b.ts - a.ts);
   }, [selectedDate, txData])
 
 
@@ -205,7 +212,7 @@ export default function Grafik() {
               <BarChart data={dailyExpense.data} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
                 <XAxis dataKey="tanggal" tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} dy={10} />
-                <YAxis tickFormatter={fmtShort} tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
+                <YAxis tickFormatter={fmtChartAxis} tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
                 <Tooltip cursor={{fill: 'rgb(var(--color-bg) / 0.8)'}} content={<CustomTooltip />} />
                 <Bar 
                   dataKey="Pengeluaran Murni" radius={[4, 4, 0, 0]} maxBarSize={30}
@@ -240,7 +247,7 @@ export default function Grafik() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
                     <XAxis dataKey="date" tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} dy={10} minTickGap={30} />
-                    <YAxis width={60} tickFormatter={fmtShort} tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
+                    <YAxis width={60} tickFormatter={fmtChartAxis} tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
                     <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--chart-tick)', strokeWidth: 1, strokeDasharray: '4 4' }} />
                     <Area type="monotone" dataKey="saldo" name="Pertumbuhan Saldo" stroke="#4F46E5" strokeWidth={3} fill="url(#saldoGrad)" activeDot={{ r: 6, fill: '#4F46E5', stroke: '#fff', strokeWidth: 2 }} />
                   </AreaChart>
@@ -256,7 +263,7 @@ export default function Grafik() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={catData} layout="vertical" margin={{ left: 0, right: 10 }}>
                     <CartesianGrid horizontal={false} strokeDasharray="3 3" stroke="var(--chart-grid)" />
-                    <XAxis type="number" tickFormatter={fmtShort} tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
+                    <XAxis type="number" tickFormatter={fmtChartAxis} tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
                     <YAxis type="category" dataKey="name" tick={{fontSize:11, fill:'#64748b', fontWeight: 600}} width={110} axisLine={false} tickLine={false} />
                     <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgb(var(--color-bg) / 0.8)'}} />
                     <Bar dataKey="value" name="Pengeluaran Murni" radius={[0,6,6,0]} maxBarSize={16}>
@@ -278,7 +285,7 @@ export default function Grafik() {
                 <BarChart data={cashflowData} barGap={4} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="var(--chart-grid)" />
                   <XAxis dataKey="name" tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} dy={10} />
-                  <YAxis width={60} tickFormatter={fmtShort} tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
+                  <YAxis width={60} tickFormatter={fmtChartAxis} tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
                   <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgb(var(--color-bg) / 0.8)'}} />
                   <Bar dataKey="Pemasukan" fill="#4F46E5" radius={[4,4,0,0]} maxBarSize={24} />
                   <Bar dataKey="Pengeluaran" fill="#FF8A00" radius={[4,4,0,0]} maxBarSize={24} />
@@ -328,7 +335,7 @@ export default function Grafik() {
               <BarChart data={invLine} barGap={4} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="var(--chart-grid)" />
                 <XAxis dataKey="name" tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} dy={10} />
-                <YAxis width={60} tickFormatter={fmtShort} tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
+                <YAxis width={60} tickFormatter={fmtChartAxis} tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgb(var(--color-bg) / 0.8)'}} />
                 <Bar dataKey="Beli" fill="#10B981" radius={[4,4,0,0]} maxBarSize={24} />
                 <Bar dataKey="Jual" fill="#FF8A00" radius={[4,4,0,0]} maxBarSize={24} />

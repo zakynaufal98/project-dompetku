@@ -115,7 +115,7 @@ export default function BillTracker() {
                 </span>
               )}
             </div>
-            <p className="text-[11px] font-bold text-muted mt-1 truncate">Total: {fmtShort(totalPending)}</p>
+            <p className="text-[11px] font-bold text-muted mt-1">Total: {fmtShort(totalPending)}</p>
           </div>
         </div>
       )}
@@ -186,7 +186,7 @@ export default function BillTracker() {
                     <CreditCard size={16} strokeWidth={2.5} />
                   </button>
                   <div className="overflow-hidden">
-                    <p className="text-sm font-bold truncate text-text-2">
+                    <p className="text-sm font-bold line-clamp-2 text-text-2">
                       {bill.nama_tagihan}
                     </p>
                     <div className="flex items-center gap-1.5 mt-0.5">
@@ -266,7 +266,7 @@ export default function BillTracker() {
                       <input type="radio" name="payWallet" value={w.id} checked={payWalletId === w.id} onChange={() => setPayWalletId(w.id)} className="hidden" />
                       <BankLogo name={w.name} size="sm" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-text truncate">{w.name}</p>
+                        <p className="text-sm font-bold text-text line-clamp-2">{w.name}</p>
                         <p className="text-[11px] font-bold text-muted tabular-nums">{fmt(bal)}</p>
                       </div>
                       {payWalletId === w.id && <CheckCircle2 size={18} className="text-income flex-shrink-0" />}

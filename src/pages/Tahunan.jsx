@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { useData } from '../context/DataContext'
-import { fmt, fmtShort, MONTHS, MONTHS_FULL, CHART_COLORS, CAT_ICONS } from '../lib/utils'
+import { fmt, fmtShort, fmtChartAxis, MONTHS, MONTHS_FULL, CHART_COLORS, CAT_ICONS } from '../lib/utils'
 import { Empty, PanelHeader, InteractiveDonut, ProgressBar } from '../components/UI'
 import { CalendarDays, ClipboardList, TrendingUp, TrendingDown, Crown, AlertTriangle, Zap, Award } from 'lucide-react'
 
@@ -40,7 +40,7 @@ export default function Tahunan() {
   const invT = invData.filter(t => t.date?.startsWith(year))
   
   const txIn   = txT.filter(t => t.type === 'in' && t.cat !== 'Transfer').reduce((s,t) => s + t.amount, 0)
-  const txOut  = txT.filter(t => t.type === 'out' && t.cat !== 'Transfer').reduce((s,t) => s + t.amount, 0)
+  const txOut  = txT.filter(t => t.type === 'out' && (t.cat !== 'Transfer' || t.sub_cat === 'Bayar Pinjaman')).reduce((s,t) => s + t.amount, 0)
   
   const invBuy  = invT.filter(t => t.action === 'beli').reduce((s,t) => s + t.amount, 0)
   const invSell = invT.filter(t => t.action === 'jual').reduce((s,t) => s + t.amount, 0)
@@ -51,14 +51,14 @@ export default function Tahunan() {
   const monthData = useMemo(() => MONTHS.map((name, i) => {
     const ym = `${year}-${String(i + 1).padStart(2, '0')}`
     const masuk  = txData.filter(t => t.type === 'in' && t.cat !== 'Transfer' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0)
-    const keluar = txData.filter(t => t.type === 'out' && t.cat !== 'Transfer' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0)
+    const keluar = txData.filter(t => t.type === 'out' && (t.cat !== 'Transfer' || t.sub_cat === 'Bayar Pinjaman') && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0)
     return { name, fullName: MONTHS_FULL[i], masuk, keluar, net: masuk - keluar, index: i }
   }), [txData, year])
 
   // YoY Comparison
   const lastYear = String(Number(year) - 1)
   const lastTxIn = txData.filter(t => t.type === 'in' && t.cat !== 'Transfer' && t.date?.startsWith(lastYear)).reduce((s,t) => s + t.amount, 0)
-  const lastTxOut = txData.filter(t => t.type === 'out' && t.cat !== 'Transfer' && t.date?.startsWith(lastYear)).reduce((s,t) => s + t.amount, 0)
+  const lastTxOut = txData.filter(t => t.type === 'out' && (t.cat !== 'Transfer' || t.sub_cat === 'Bayar Pinjaman') && t.date?.startsWith(lastYear)).reduce((s,t) => s + t.amount, 0)
   const yoyInChange = lastTxIn > 0 ? ((txIn - lastTxIn) / lastTxIn * 100).toFixed(1) : null
   const yoyOutChange = lastTxOut > 0 ? ((txOut - lastTxOut) / lastTxOut * 100).toFixed(1) : null
 
@@ -79,7 +79,7 @@ export default function Tahunan() {
   // Top 10 transaksi terbesar
   const topTransactions = useMemo(() => {
     return txT
-      .filter(t => t.type === 'out' && t.cat !== 'Transfer')
+      .filter(t => t.type === 'out' && (t.cat !== 'Transfer' || t.sub_cat === 'Bayar Pinjaman'))
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 10)
   }, [txT])
@@ -89,7 +89,7 @@ export default function Tahunan() {
 
   // Donut data
   const txYearOut = useMemo(() => {
-    return txT.filter(t => t.type === 'out' && t.cat !== 'Transfer');
+    return txT.filter(t => t.type === 'out' && (t.cat !== 'Transfer' || t.sub_cat === 'Bayar Pinjaman'));
   }, [txT]);
 
   // Category breakdown with progress
@@ -202,7 +202,7 @@ export default function Tahunan() {
             <BarChart data={monthData} barGap={4} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="var(--chart-grid)" />
               <XAxis dataKey="name" tick={{fontSize:12, fill:'#94a3b8'}} axisLine={false} tickLine={false} dy={10} />
-              <YAxis width={60} tickFormatter={fmtShort} tick={{fontSize:12, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
+              <YAxis width={45} tickFormatter={fmtChartAxis} tick={{fontSize:12, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgb(var(--color-bg) / 0.8)'}} />
               <Bar dataKey="masuk" name="Pemasukan Murni" fill="#4F46E5" radius={[6,6,0,0]} maxBarSize={24} />
               <Bar dataKey="keluar" name="Pengeluaran Murni" fill="#FF8A00" radius={[6,6,0,0]} maxBarSize={24} />

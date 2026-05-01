@@ -162,7 +162,7 @@ export default function Dashboard() {
             <span className="text-[11px] font-bold text-muted2 bg-bg px-2 py-1 rounded-md uppercase tracking-wider">Total</span>
           </div>
           <div>
-            <p className="tabular-nums font-bold text-3xl xl:text-4xl text-text tracking-tight truncate">{fmt(totals.saldo)}</p>
+            <p className="tabular-nums font-bold text-2xl lg:text-3xl text-text tracking-tight whitespace-nowrap">{fmt(totals.saldo)}</p>
             <div className="flex items-center gap-2 mt-3 text-sm">
               {renderTrendBadge(trends.saldo, false)}
               <span className="text-muted2 text-xs font-medium">vs bln lalu</span>
@@ -176,7 +176,7 @@ export default function Dashboard() {
             <span className="text-[11px] font-bold bg-white/20 px-2 py-1 rounded-md uppercase tracking-wider text-white">HARI INI</span>
           </div>
           <div>
-            <p className="tabular-nums font-bold text-3xl xl:text-4xl tracking-tight truncate">
+            <p className="tabular-nums font-bold text-2xl lg:text-3xl tracking-tight whitespace-nowrap">
               {todayOut > 0 ? `-${fmt(todayOut)}` : 'Rp 0'}
             </p>
             <div className="mt-3 text-[13px] font-medium text-indigo-100 flex items-center gap-1.5">
@@ -191,7 +191,7 @@ export default function Dashboard() {
             <span className="text-[11px] font-bold text-muted2 bg-bg px-2 py-1 rounded-md uppercase tracking-wider">Bulan Ini</span>
           </div>
           <div>
-            <p className="tabular-nums font-bold text-3xl xl:text-4xl text-[#FF8A00] tracking-tight truncate">{currOut > 0 ? `-${fmt(currOut)}` : fmt(currOut)}</p>
+            <p className="tabular-nums font-bold text-2xl lg:text-3xl text-[#FF8A00] tracking-tight whitespace-nowrap">{currOut > 0 ? `-${fmt(currOut)}` : fmt(currOut)}</p>
             <div className="flex items-center gap-2 mt-3 text-sm">
               {renderTrendBadge(trends.keluar, true)}
               <span className="text-muted2 text-xs font-medium">vs bln lalu</span>
@@ -205,7 +205,7 @@ export default function Dashboard() {
             <span className="text-[11px] font-bold text-muted2 bg-bg px-2 py-1 rounded-md uppercase tracking-wider">Bulan Ini</span>
           </div>
           <div>
-            <p className="tabular-nums font-bold text-3xl xl:text-4xl text-[#10B981] tracking-tight truncate">{currIn > 0 ? `+${fmt(currIn)}` : fmt(currIn)}</p>
+            <p className="tabular-nums font-bold text-2xl lg:text-3xl text-[#10B981] tracking-tight whitespace-nowrap">{currIn > 0 ? `+${fmt(currIn)}` : fmt(currIn)}</p>
             <div className="flex items-center gap-2 mt-3 text-sm">
               {renderTrendBadge(trends.masuk, false)}
               <span className="text-muted2 text-xs font-medium">vs bln lalu</span>
@@ -240,7 +240,7 @@ export default function Dashboard() {
               <Link key={target.id} to="/target" className="bg-bg border border-border rounded-2xl p-4 hover:border-income/30 transition-colors">
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="min-w-0">
-                    <p className="font-bold text-text truncate">{target.name}</p>
+                    <p className="font-bold text-text line-clamp-2">{target.name}</p>
                     <p className="text-xs font-medium text-muted mt-0.5">Sisa {fmtShort(target.remaining)}</p>
                   </div>
                   <span className="text-[11px] font-black text-income tabular-nums">{Math.round(target.progress)}%</span>
