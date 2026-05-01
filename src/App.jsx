@@ -20,6 +20,7 @@ const Investasi     = lazy(() => import('./pages/Investasi'))
 const Laporan       = lazy(() => import('./pages/Laporan'))
 const Hutang        = lazy(() => import('./pages/Hutang'))
 const TargetCerdas  = lazy(() => import('./pages/TargetCerdas'))
+const Insights      = lazy(() => import('./pages/Insights'))
 
 // Fallback loading saat lazy page sedang dimuat
 const PageLoader = () => (
@@ -94,6 +95,7 @@ function AppLayout() {
                 <Route path="/grafik"        element={<Navigate to="/laporan/grafik" replace />} />
                 <Route path="/hutang"        element={<Hutang />} />
                 <Route path="/target"        element={<TargetCerdas />} />
+                <Route path="/insights"      element={<Insights />} />
                 <Route path="*"             element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>

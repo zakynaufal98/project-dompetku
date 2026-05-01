@@ -3,6 +3,7 @@ import { useData } from '../context/DataContext'
 import { fmt, fmtShort, today, CATEGORY_TREE } from '../lib/utils'
 import { TxItem, Empty, Tabs, Field, PanelHeader, SummaryRow } from '../components/UI'
 import DescInput from '../components/DescInput'
+import RecurringWidget from '../components/RecurringWidget'
 import { 
   ArrowDownLeft, ArrowUpRight, Banknote, 
   Calendar, PlusCircle, ReceiptText, Loader2, Search,
@@ -488,6 +489,10 @@ export default function Transaksi() {
           )}
         </div>
       </div>
+
+      {/* Transaksi Berulang */}
+      <RecurringWidget />
+
     </div>
   )
 }

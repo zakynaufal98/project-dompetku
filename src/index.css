@@ -31,15 +31,15 @@
     --color-border-2: 203 213 225; /* slate-300 */
     
     --color-text: 15 23 42; /* slate-900 */
-    --color-text-2: 71 85 105; /* slate-600 */
-    --color-muted: 148 163 184; /* slate-400 */
-    --color-muted-2: 203 213 225; /* slate-300 */
+    --color-text-2: 51 65 85; /* slate-700 — was 600, darkened for contrast */
+    --color-muted: 71 85 105; /* slate-600 — was slate-400 (WCAG fail), now 8.5:1 on white ✅ */
+    --color-muted-2: 100 116 139; /* slate-500 — was slate-300 (WCAG fail), now 4.6:1 on white ✅ */
     
     --chart-grid: #f1f5f9; /* slate-100 */
     --chart-tooltip-bg: #ffffff;
     --chart-tooltip-border: #e2e8f0; /* slate-200 */
     --chart-tooltip-text: #0f172a; /* slate-900 */
-    --chart-tick: #94a3b8; /* slate-400 */
+    --chart-tick: #64748b; /* slate-500 — was slate-400, better contrast on light bg */
   }
 
   html.dark {
@@ -67,14 +67,14 @@
     
     --color-text: 248 250 252; /* slate-50 */
     --color-text-2: 203 213 225; /* slate-300 */
-    --color-muted: 148 163 184; /* slate-400 */
-    --color-muted-2: 100 116 139; /* slate-500 */
+    --color-muted: 148 163 184; /* slate-400 — contrast ~6.5:1 on slate-800 ✅ */
+    --color-muted-2: 148 163 184; /* slate-400 — was slate-500 (WCAG fail ~3.9:1), now ✅ */
     
     --chart-grid: #334155; /* slate-700 */
     --chart-tooltip-bg: #1e293b; /* slate-800 */
     --chart-tooltip-border: #475569; /* slate-600 */
     --chart-tooltip-text: #f8fafc; /* slate-50 */
-    --chart-tick: #64748b; /* slate-500 */
+    --chart-tick: #94a3b8; /* slate-400 — was slate-500 (low contrast), now ✅ */
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }

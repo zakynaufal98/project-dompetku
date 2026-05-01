@@ -7,11 +7,10 @@ import { fmt, fmtShort, MONTHS } from '../lib/utils'
 import { Spinner, InteractiveDonut } from '../components/UI'
 import { Target, TrendingUp, TrendingDown, Users, ArrowLeft } from 'lucide-react'
 import BillTracker from '../components/BillTracker'
-import WalletWidget from '../components/WalletWidget' 
-import ShareReport from '../components/ShareReport'
+import WalletWidget from '../components/WalletWidget'
 import SharedAccount from '../components/SharedAccount'
-import BudgetWidget from '../components/BudgetWidget'
-import RecurringWidget from '../components/RecurringWidget'
+import ShareReport from '../components/ShareReport'
+import QuickAdd from '../components/QuickAdd'
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null
@@ -218,54 +217,13 @@ export default function Dashboard() {
 
       <WalletWidget totals={totals} addWallet={updateWallet} updateWallet={updateWallet} deleteWallet={deleteWallet} />
 
-      <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm transition-colors">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-income-light text-income flex items-center justify-center">
-              <Target size={20} strokeWidth={2.5} />
-            </div>
-            <div>
-              <h3 className="font-bold text-lg text-text">Target Cerdas</h3>
-              <p className="text-xs font-medium text-muted">
-                {targetData.length} target aktif, sisa total {fmtShort(targetSummary.totalRemaining)}
-              </p>
-            </div>
+      {/* Grafik + Tagihan + Donut */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm lg:col-span-2 flex flex-col transition-colors">
+          <div className="flex justify-between items-center mb-5">
+            <h2 className="font-bold text-base text-text">Tren Keuangan (6 Bulan)</h2>
           </div>
-          <Link to="/target" className="btn-secondary px-4 py-2.5">
-            Kelola Target
-          </Link>
-        </div>
-
-        {targetSummary.rows.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {targetSummary.rows.map((target) => (
-              <Link key={target.id} to="/target" className="bg-bg border border-border rounded-2xl p-4 hover:border-income/30 transition-colors">
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="min-w-0">
-                    <p className="font-bold text-text line-clamp-2">{target.name}</p>
-                    <p className="text-xs font-medium text-muted mt-0.5">Sisa {fmtShort(target.remaining)}</p>
-                  </div>
-                  <span className="text-[11px] font-black text-income tabular-nums">{Math.round(target.progress)}%</span>
-                </div>
-                <div className="w-full h-2.5 bg-border rounded-full overflow-hidden">
-                  <div className="h-full bg-income rounded-full transition-all" style={{ width: `${target.progress}%` }} />
-                </div>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <div className="bg-bg rounded-2xl p-5 text-sm font-medium text-muted">
-            Belum ada target. Buat target seperti laptop, dana darurat, atau liburan agar progresnya muncul di sini.
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm lg:col-span-2 flex flex-col transition-colors">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-lg text-text">Total Keuangan (6 Bulan)</h3>
-          </div>
-          <div className="flex-1 min-h-[250px] w-full">
+          <div className="flex-1 min-h-[220px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={tren6} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                 <defs>
@@ -273,45 +231,81 @@ export default function Dashboard() {
                   <linearGradient id="colorOut" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#FF8A00" stopOpacity={0.2}/><stop offset="95%" stopColor="#FF8A00" stopOpacity={0}/></linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" tick={{fontSize:12, fill:'#94a3b8'}} axisLine={false} tickLine={false} dy={10} minTickGap={20} />
-                <YAxis width={85} tickFormatter={fmtShort} tick={{fontSize:12, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
+                <XAxis dataKey="name" tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} dy={10} minTickGap={20} />
+                <YAxis width={75} tickFormatter={fmtShort} tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} wrapperStyle={{ zIndex: 40, pointerEvents: 'none' }} />
-                <Area type="monotone" dataKey="Pemasukan" stroke="#4F46E5" strokeWidth={3} fillOpacity={1} fill="url(#colorIn)" activeDot={{ r: 6, strokeWidth: 0 }} />
-                <Area type="monotone" dataKey="Pengeluaran" stroke="#FF8A00" strokeWidth={3} fillOpacity={1} fill="url(#colorOut)" activeDot={{ r: 6, strokeWidth: 0 }} />
+                <Area type="monotone" dataKey="Pemasukan" stroke="#4F46E5" strokeWidth={2.5} fillOpacity={1} fill="url(#colorIn)" activeDot={{ r: 5, strokeWidth: 0 }} />
+                <Area type="monotone" dataKey="Pengeluaran" stroke="#FF8A00" strokeWidth={2.5} fillOpacity={1} fill="url(#colorOut)" activeDot={{ r: 5, strokeWidth: 0 }} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
-          <div className="flex gap-6 mt-4 pt-4 border-t border-border">
-            <div className="flex items-center gap-2 text-sm font-semibold text-text-2"><div className="w-3.5 h-3.5 rounded-full bg-income" />Pemasukan</div>
-            <div className="flex items-center gap-2 text-sm font-semibold text-text-2"><div className="w-3.5 h-3.5 rounded-full bg-gold" />Pengeluaran</div>
+          <div className="flex gap-5 mt-3 pt-3 border-t border-border">
+            <div className="flex items-center gap-2 text-xs font-semibold text-text-2"><div className="w-3 h-3 rounded-full bg-income" />Pemasukan</div>
+            <div className="flex items-center gap-2 text-xs font-semibold text-text-2"><div className="w-3 h-3 rounded-full bg-gold" />Pengeluaran</div>
           </div>
         </div>
 
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-5">
           <BillTracker />
-          
-          {/* 👇 KARTU PENGELUARAN MENGGUNAKAN KOMPONEN REUSABLE 👇 */}
-          <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm flex flex-col flex-1 transition-colors">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="font-bold text-lg text-text">Total Pengeluaran</h3>
-              <span className="text-[11px] font-bold text-muted2 bg-bg px-2 py-1 rounded-md uppercase tracking-wider">Bulan Ini</span>
+          <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm flex flex-col flex-1 transition-colors">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="font-bold text-base text-text">Distribusi Pengeluaran</h2>
+              <span className="text-[10px] font-bold text-muted2 bg-bg px-2 py-1 rounded-md uppercase tracking-wider">Bulan Ini</span>
             </div>
             <InteractiveDonut data={txBlnOut} />
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <BudgetWidget />
-        <RecurringWidget />
+      {/* Target Finansial */}
+      <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm transition-colors">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-income-light text-income flex items-center justify-center flex-shrink-0">
+              <Target size={18} strokeWidth={2.5} />
+            </div>
+            <div>
+              <h2 className="font-bold text-base text-text">Target Finansial</h2>
+              <p className="text-xs font-medium text-muted">
+                {targetData.length} target aktif · sisa {fmtShort(targetSummary.totalRemaining)}
+              </p>
+            </div>
+          </div>
+          <Link to="/target" className="btn-secondary px-4 py-2 text-sm">Kelola Target</Link>
+        </div>
+        {targetSummary.rows.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {targetSummary.rows.map((target) => (
+              <Link key={target.id} to="/target" className="bg-bg border border-border rounded-2xl p-4 hover:border-income/30 transition-colors">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="min-w-0">
+                    <p className="font-bold text-text text-sm line-clamp-1">{target.name}</p>
+                    <p className="text-xs font-medium text-muted mt-0.5">Sisa {fmtShort(target.remaining)}</p>
+                  </div>
+                  <span className="text-[11px] font-black text-income tabular-nums flex-shrink-0">{Math.round(target.progress)}%</span>
+                </div>
+                <div className="w-full h-2 bg-border rounded-full overflow-hidden">
+                  <div className="h-full bg-income rounded-full transition-all" style={{ width: `${target.progress}%` }} />
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-bg rounded-2xl p-4 text-sm font-medium text-muted">
+            Belum ada target. Buat target seperti dana darurat atau liburan agar progresnya tampil di sini.
+          </div>
+        )}
       </div>
 
-      {/* SHARED ACCOUNT WIDGET */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Quick Add FAB */}
+      <QuickAdd />
+
+      {/* Shared Account — di bawah, kontekstual */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <SharedAccount />
         <ShareReport />
       </div>
-      
+
     </div>
   )
 }

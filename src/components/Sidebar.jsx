@@ -1,13 +1,14 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, ReceiptText, BriefcaseBusiness, BarChart3, ChevronLeft, ChevronRight, CreditCard, Target, HelpCircle } from 'lucide-react'
+import { LayoutDashboard, ReceiptText, BriefcaseBusiness, BarChart3, ChevronLeft, ChevronRight, CreditCard, Target, Sparkles } from 'lucide-react'
 
 const NAV_LINKS = [
-  { path: '/', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
-  { path: '/transaksi', icon: <ReceiptText size={20} />, label: 'Transaksi' },
+  { path: '/',          icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
+  { path: '/transaksi', icon: <ReceiptText size={20} />,     label: 'Transaksi' },
   { path: '/investasi', icon: <BriefcaseBusiness size={20} />, label: 'Investasi' },
-  { path: '/laporan', icon: <BarChart3 size={20} />, label: 'Laporan' },
-  { path: '/target', icon: <Target size={20} />, label: 'Target Cerdas' },
-  { path: '/hutang', icon: <CreditCard size={20} />, label: 'Hutang' },
+  { path: '/laporan',   icon: <BarChart3 size={20} />,       label: 'Laporan' },
+  { path: '/insights',  icon: <Sparkles size={20} />,        label: 'Insights' },
+  { path: '/target',    icon: <Target size={20} />,          label: 'Target' },
+  { path: '/hutang',    icon: <CreditCard size={20} />,      label: 'Hutang' },
 ]
 
 export default function Sidebar({ collapsed, setCollapsed }) {

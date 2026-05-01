@@ -4,6 +4,7 @@ import Bulanan from './Bulanan'
 import Tahunan from './Tahunan'
 import Grafik from './Grafik'
 import ExportData from '../components/ExportData'
+import BudgetWidget from '../components/BudgetWidget'
 
 const TABS = [
   { value: 'bulanan', label: 'Bulanan', icon: <CalendarDays size={16} aria-hidden="true" /> },
@@ -73,10 +74,13 @@ export default function Laporan() {
         ))}
       </nav>
 
-      {/* KONTEN HALAMAN UTAMA - Area ini yang akan difoto jadi PDF */}
+      {/* KONTEN HALAMAN UTAMA */}
       <main id="report-content" aria-live="polite" className="bg-surface border border-border rounded-[32px] p-2 md:p-6 shadow-sm min-h-[500px]">
         <CurrentPage />
       </main>
+
+      {/* Anggaran Bulanan — cocok di sini, user review laporan sambil cek limit anggaran */}
+      <BudgetWidget />
       
     </div>
   )
