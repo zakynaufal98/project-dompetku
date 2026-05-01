@@ -6,7 +6,7 @@ import DescInput from '../components/DescInput'
 import { 
   ArrowDownLeft, ArrowUpRight, Banknote, 
   Calendar, PlusCircle, ReceiptText, Loader2, Search,
-  Wallet, ChevronDown, Sparkles, BriefcaseBusiness
+  Wallet, ChevronDown, Sparkles, BriefcaseBusiness, ArrowUpDown
 } from 'lucide-react'
 
 export default function Transaksi() {
@@ -28,6 +28,7 @@ export default function Transaksi() {
   const [err,     setErr]    = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedMonth, setSelectedMonth] = useState(today().substring(0, 7)) 
+  const [sortBy, setSortBy] = useState('terbaru')
 
   useEffect(() => {
     if (walletData && walletData.length > 0 && !walletId) {
@@ -109,10 +110,20 @@ export default function Transaksi() {
       return matchTab && matchMonth && matchSearch
     })
     .sort((a, b) => {
-      const dateA = new Date(a.date).getTime();
-      const dateB = new Date(b.date).getTime();
-      if (dateA !== dateB) return dateB - dateA; 
-      return b.ts - a.ts; 
+      switch (sortBy) {
+        case 'terlama':
+          return new Date(a.date).getTime() - new Date(b.date).getTime() || a.ts - b.ts;
+        case 'terbesar':
+          return b.amount - a.amount;
+        case 'terkecil':
+          return a.amount - b.amount;
+        case 'az':
+          return (a.desc || '').localeCompare(b.desc || '', 'id');
+        case 'za':
+          return (b.desc || '').localeCompare(a.desc || '', 'id');
+        default: // terbaru
+          return new Date(b.date).getTime() - new Date(a.date).getTime() || b.ts - a.ts;
+      }
     })
 
   const groupedTx = useMemo(() => {
@@ -382,21 +393,41 @@ export default function Transaksi() {
             { value: 'out',   label: 'Pengeluaran' },
           ]} />
           
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
             {selectedMonth && (
               <button 
                 onClick={() => setSelectedMonth('')}
                 className="bg-bg hover:bg-border text-muted hover:text-text-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors shrink-0"
               >
-                Semua
+              Semua
               </button>
             )}
             <input 
               type="month" 
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="bg-field border border-border2 rounded-xl px-4 py-2.5 text-sm font-bold text-text-2 focus:border-income outline-none cursor-pointer hover:bg-bg transition-colors w-full sm:w-auto flex-1"
+              className="bg-field border border-border2 rounded-xl px-4 py-2.5 text-sm font-bold text-text-2 focus:border-income outline-none cursor-pointer hover:bg-bg transition-colors flex-1 min-w-[140px]"
             />
+            <div className="relative">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted2 z-10 pointer-events-none">
+                <ArrowUpDown size={14} />
+              </div>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="bg-field border border-border2 rounded-xl pl-8 pr-8 py-2.5 text-sm font-bold text-text-2 focus:border-income outline-none cursor-pointer hover:bg-bg transition-colors appearance-none"
+              >
+                <option value="terbaru">Terbaru</option>
+                <option value="terlama">Terlama</option>
+                <option value="terbesar">Terbesar</option>
+                <option value="terkecil">Terkecil</option>
+                <option value="az">A → Z</option>
+                <option value="za">Z → A</option>
+              </select>
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted2">
+                <ChevronDown size={14} />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -439,6 +470,7 @@ export default function Transaksi() {
                         onDelete={deleteTx} 
                         isInv={false} // Selalu false, karena tabel transaksi sudah memuat mutasi investasi & hutang
                         walletName={walletData?.find(w => w.id === t.wallet_id)?.name}
+                        inputterName={t.created_by_email || null}
                       />
                     ))}
                   </div>

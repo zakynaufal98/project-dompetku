@@ -12,11 +12,21 @@ export function DataProvider({ children }) {
   const [walletData, setWalletData] = useState([]) 
   const [targetData, setTargetData] = useState([])
   const [loading, setLoading] = useState(false)
+  
+  // Shared Account: siapa yang sedang dilihat datanya
+  const [activeOwnerId, setActiveOwnerId] = useState(null) // null = data sendiri
+  const [sharedOwners, setSharedOwners] = useState([]) // akun yang share ke saya
+  const effectiveUserId = activeOwnerId || user?.id
+  const activeSharedRole = activeOwnerId ? sharedOwners.find(s => s.owner_id === activeOwnerId)?.role || null : null
+  const canWriteActiveAccount = !activeOwnerId || activeSharedRole === 'editor'
+  const readonlyError = { message: 'Akses hanya lihat. Minta role Editor untuk mengubah data akun ini.' }
 
   const mapTx = (r) => ({
     id: r.id, desc: r.keterangan, amount: parseFloat(r.amount),
     type: r.tipe, cat: r.cat, sub_cat: r.sub_cat, date: r.tgl, 
     wallet_id: r.wallet_id, 
+    created_by_email: r.created_by_email || null,
+    user_id: r.user_id,
     ts: new Date(r.created_at).getTime(),
   })
 
@@ -38,12 +48,14 @@ export function DataProvider({ children }) {
     if (!user) return
     setLoading(true)
     
+    const uid = effectiveUserId
+    
     const [txRes, invRes, billRes, walletRes, targetRes] = await Promise.all([
-      supabase.from('transaksi').select('*').eq('user_id', user.id).order('tgl', { ascending: false }).order('created_at', { ascending: false }),
-      supabase.from('investasi').select('*').eq('user_id', user.id).order('tgl', { ascending: false }).order('created_at', { ascending: false }),
-      supabase.from('tagihan').select('*').eq('user_id', user.id).order('jatuh_tempo', { ascending: true }),
-      supabase.from('wallets').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
-      supabase.from('target_finansial').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }) 
+      supabase.from('transaksi').select('*').eq('user_id', uid).order('tgl', { ascending: false }).order('created_at', { ascending: false }),
+      supabase.from('investasi').select('*').eq('user_id', uid).order('tgl', { ascending: false }).order('created_at', { ascending: false }),
+      supabase.from('tagihan').select('*').eq('user_id', uid).order('jatuh_tempo', { ascending: true }),
+      supabase.from('wallets').select('*').eq('user_id', uid).order('created_at', { ascending: true }),
+      supabase.from('target_finansial').select('*').eq('user_id', uid).order('updated_at', { ascending: false }) 
     ])
     
     if (!txRes.error)  setTxData((txRes.data  || []).map(mapTx))
@@ -52,30 +64,38 @@ export function DataProvider({ children }) {
     if (!walletRes.error) setWalletData(walletRes.data || []) 
     if (!targetRes.error) setTargetData((targetRes.data || []).map(mapTarget))
     
+    // Load shared owners (akun yang share ke saya)
+    const { data: sharedData } = await supabase.from('shared_accounts').select('*').eq('member_id', user.id).eq('status', 'accepted')
+    setSharedOwners(sharedData || [])
+    
     setLoading(false)
-  }, [user])
+  }, [user, effectiveUserId])
 
   useEffect(() => { loadAll() }, [loadAll])
 
   const addWallet = async ({ name, balance, color }) => {
-    const { data, error } = await supabase.from('wallets').insert({ user_id: user.id, name, balance, color }).select().single()
+    if (!canWriteActiveAccount) return readonlyError
+    const { data, error } = await supabase.from('wallets').insert({ user_id: effectiveUserId, name, balance, color }).select().single()
     if (!error) setWalletData(prev => [...prev, data])
     return error
   }
   const updateWallet = async (id, { name, balance, color }) => {
-    const { data, error } = await supabase.from('wallets').update({ name, balance, color }).eq('id', id).eq('user_id', user.id).select().single()
+    if (!canWriteActiveAccount) return readonlyError
+    const { data, error } = await supabase.from('wallets').update({ name, balance, color }).eq('id', id).eq('user_id', effectiveUserId).select().single()
     if (!error) setWalletData(prev => prev.map(w => w.id === id ? data : w))
     return error
   }
   const deleteWallet = async (id) => {
-    const { error } = await supabase.from('wallets').delete().eq('id', id).eq('user_id', user.id)
+    if (!canWriteActiveAccount) return readonlyError
+    const { error } = await supabase.from('wallets').delete().eq('id', id).eq('user_id', effectiveUserId)
     if (!error) setWalletData(prev => prev.filter(w => w.id !== id))
     return error
   }
 
   const addTx = async ({ desc, amount, type, cat, sub_cat, date, wallet_id = null }) => {
+    if (!canWriteActiveAccount) return readonlyError
     const { data, error } = await supabase.from('transaksi')
-      .insert({ user_id: user.id, keterangan: desc, amount, tipe: type, cat, sub_cat, tgl: date, wallet_id })
+      .insert({ user_id: effectiveUserId, keterangan: desc, amount, tipe: type, cat, sub_cat, tgl: date, wallet_id, created_by_email: user.email })
       .select().single()
     if (error) return error
     setTxData(prev => [mapTx(data), ...prev])
@@ -83,7 +103,8 @@ export function DataProvider({ children }) {
   }
   
   const deleteTx = async (id) => {
-    const { error } = await supabase.from('transaksi').delete().eq('id', id).eq('user_id', user.id)
+    if (!canWriteActiveAccount) return readonlyError
+    const { error } = await supabase.from('transaksi').delete().eq('id', id).eq('user_id', effectiveUserId)
     if (!error) setTxData(prev => prev.filter(t => t.id !== id))
     return error
   }
@@ -108,6 +129,7 @@ export function DataProvider({ children }) {
 
   // 👇 PERBAIKAN BESAR: LOGIKA DOUBLE-ENTRY UNTUK INVESTASI 👇
   const addInv = async ({ invType, subType, desc, amount, action, unit, qty, date, wallet_id = null }) => {
+    if (!canWriteActiveAccount) return readonlyError
     let realizedPnL = 0;
     let modalKembali = 0;
 
@@ -137,7 +159,7 @@ export function DataProvider({ children }) {
     }
 
     // 2. Simpan Catatan di Tabel Investasi
-    const { data, error } = await supabase.from('investasi').insert({ user_id: user.id, inv_type: invType, sub_type: subType, keterangan: desc, amount, action, unit, qty, tgl: date, wallet_id }).select().single()
+    const { data, error } = await supabase.from('investasi').insert({ user_id: effectiveUserId, inv_type: invType, sub_type: subType, keterangan: desc, amount, action, unit, qty, tgl: date, wallet_id }).select().single()
     if (error) return error
 
     // 3. ✨ THE MAGIC: Otomatisasi Jurnal Transaksi (Cashflow) ✨
@@ -161,6 +183,7 @@ export function DataProvider({ children }) {
   }
 
   const updateInv = async (id, { invType, subType, desc, amount, action, unit, qty, date, wallet_id = null }) => {
+    if (!canWriteActiveAccount) return readonlyError
     // (Untuk MVP, update investasi kita biarkan manual, tapi akan kita perbaiki nanti jika perlu)
     if (action === 'jual') {
       const err = validateSellInvestment(invType, subType, amount, qty, id);
@@ -168,12 +191,13 @@ export function DataProvider({ children }) {
     }
     const { data, error } = await supabase.from('investasi')
       .update({ inv_type: invType, sub_type: subType, keterangan: desc, amount, action, unit, qty, tgl: date, wallet_id })
-      .eq('id', id).eq('user_id', user.id).select().single()
+      .eq('id', id).eq('user_id', effectiveUserId).select().single()
     if (!error) setInvData(prev => prev.map(t => t.id === id ? mapInv(data) : t))
     return error
   }
   const deleteInv = async (id) => {
-    const { error } = await supabase.from('investasi').delete().eq('id', id).eq('user_id', user.id)
+    if (!canWriteActiveAccount) return readonlyError
+    const { error } = await supabase.from('investasi').delete().eq('id', id).eq('user_id', effectiveUserId)
     if (!error) setInvData(prev => prev.filter(t => t.id !== id))
     return error
   }
@@ -191,14 +215,16 @@ export function DataProvider({ children }) {
   }
 
   const addBill = async ({ nama_tagihan, amount, jatuh_tempo }) => {
-    const { data, error } = await supabase.from('tagihan').insert({ user_id: user.id, nama_tagihan, amount, jatuh_tempo }).select().single()
+    if (!canWriteActiveAccount) return readonlyError
+    const { data, error } = await supabase.from('tagihan').insert({ user_id: effectiveUserId, nama_tagihan, amount, jatuh_tempo }).select().single()
     if (!error) setBillData(prev => [...prev, data].sort((a,b) => new Date(a.jatuh_tempo) - new Date(b.jatuh_tempo)))
     return error
   }
   
   const toggleBill = async (id, currentStatus, walletId = null) => {
+    if (!canWriteActiveAccount) return readonlyError
     const isLunasNow = !currentStatus;
-    const { error } = await supabase.from('tagihan').update({ is_lunas: isLunasNow }).eq('id', id).eq('user_id', user.id)
+    const { error } = await supabase.from('tagihan').update({ is_lunas: isLunasNow }).eq('id', id).eq('user_id', effectiveUserId)
     
     if (!error) {
       setBillData(prev => prev.map(b => b.id === id ? { ...b, is_lunas: isLunasNow } : b))
@@ -233,24 +259,28 @@ export function DataProvider({ children }) {
   }
   
   const deleteBill = async (id) => {
-    const { error } = await supabase.from('tagihan').delete().eq('id', id).eq('user_id', user.id)
+    if (!canWriteActiveAccount) return readonlyError
+    const { error } = await supabase.from('tagihan').delete().eq('id', id).eq('user_id', effectiveUserId)
     if (!error) setBillData(prev => prev.filter(b => b.id !== id))
   }
 
   const addTarget = async ({ name, amount, saved, monthlyBoost }) => {
-    const { data, error } = await supabase.from('target_finansial').insert({ user_id: user.id, name, target_amount: amount, saved_amount: saved, monthly_boost: monthlyBoost }).select().single()
+    if (!canWriteActiveAccount) return { data: null, error: readonlyError }
+    const { data, error } = await supabase.from('target_finansial').insert({ user_id: effectiveUserId, name, target_amount: amount, saved_amount: saved, monthly_boost: monthlyBoost }).select().single()
     if (!error) { const mapped = mapTarget(data); setTargetData(prev => [mapped, ...prev]); return { data: mapped, error: null } }
     return { data: null, error }
   }
 
   const updateTarget = async (id, { name, amount, saved, monthlyBoost }) => {
-    const { data, error } = await supabase.from('target_finansial').update({ name, target_amount: amount, saved_amount: saved, monthly_boost: monthlyBoost, updated_at: new Date().toISOString() }).eq('id', id).eq('user_id', user.id).select().single()
+    if (!canWriteActiveAccount) return { data: null, error: readonlyError }
+    const { data, error } = await supabase.from('target_finansial').update({ name, target_amount: amount, saved_amount: saved, monthly_boost: monthlyBoost, updated_at: new Date().toISOString() }).eq('id', id).eq('user_id', effectiveUserId).select().single()
     if (!error) { const mapped = mapTarget(data); setTargetData(prev => prev.map(t => t.id === id ? mapped : t)); return { data: mapped, error: null } }
     return { data: null, error }
   }
 
   const deleteTarget = async (id) => {
-    const { error } = await supabase.from('target_finansial').delete().eq('id', id).eq('user_id', user.id)
+    if (!canWriteActiveAccount) return readonlyError
+    const { error } = await supabase.from('target_finansial').delete().eq('id', id).eq('user_id', effectiveUserId)
     if (!error) setTargetData(prev => prev.filter(t => t.id !== id))
     return error
   }
@@ -280,13 +310,25 @@ export function DataProvider({ children }) {
     return { totalIn, totalOut, invBuy, invSell, invNet, saldo, walletBalances }
   }, [txData, invData, walletData])
 
+  // Switch ke akun shared
+  const switchAccount = (ownerId) => {
+    setActiveOwnerId(ownerId)
+  }
+
+  // Re-load saat switch account
+  useEffect(() => { loadAll() }, [activeOwnerId])
+
+  const isViewingShared = !!activeOwnerId
+
   return (
     <DataContext.Provider value={{ 
       txData, invData, billData, walletData, targetData, loading, loadAll, 
       addWallet, updateWallet, deleteWallet,
       addTx, deleteTx, addInv, updateInv, deleteInv,
       transferWallet, addBill, toggleBill, deleteBill,
-      addTarget, updateTarget, deleteTarget, totals 
+      addTarget, updateTarget, deleteTarget, totals,
+      // Shared Account
+      sharedOwners, activeOwnerId, switchAccount, isViewingShared, activeSharedRole
     }}>
       {children}
     </DataContext.Provider>

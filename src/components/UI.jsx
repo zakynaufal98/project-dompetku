@@ -31,7 +31,7 @@ export const BankLogo = ({ name = '', size = 'md' }) => {
   )
 }
 
-export const TxItem = ({ t, onDelete, isInv, walletName }) => { 
+export const TxItem = ({ t, onDelete, isInv, walletName, inputterName }) => { 
   const isOut = isInv ? t.action === 'beli' : t.type === 'out';
   
   let IconElement;
@@ -65,15 +65,16 @@ export const TxItem = ({ t, onDelete, isInv, walletName }) => {
   const dateDisplay = t.date ? new Date(t.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
 
   return (
-    <div className="flex items-center justify-between p-3.5 bg-surface border border-border rounded-2xl hover:border-border2 transition-colors group">
-      <div className="flex items-center gap-3.5">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
+    <div className="flex items-start sm:items-center justify-between p-3.5 bg-surface border border-border rounded-2xl hover:border-border2 transition-colors group gap-3">
+      {/* LEFT: Icon + Info */}
+      <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors mt-0.5 sm:mt-0 ${
           isOut ? 'bg-gold-light text-gold' : 'bg-income-light text-income'
         }`}>
           {IconElement}
         </div>
-        <div>
-          <p className="font-bold text-sm text-text line-clamp-1 leading-tight">{t.desc}</p>
+        <div className="min-w-0 flex-1">
+          <p className="font-bold text-sm text-text leading-tight break-words">{t.desc}</p>
           
           <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
             {dateDisplay && (
@@ -81,22 +82,47 @@ export const TxItem = ({ t, onDelete, isInv, walletName }) => {
                 {dateDisplay}
               </span>
             )}
-            <span className="text-[11px] font-semibold text-muted2 flex items-center">
+            <span className="text-[11px] font-semibold text-muted2 flex items-center flex-wrap">
               {catText}
             </span>
             {walletName && (
               <>
-                <span className="w-1 h-1 rounded-full bg-border2 ml-1"></span>
-                <span className="flex items-center gap-1 ml-1">
+                <span className="w-1 h-1 rounded-full bg-border2"></span>
+                <span className="flex items-center gap-1">
                   <BankLogo name={walletName} size="sm" />
                   <span className="text-[10px] font-bold text-muted2 uppercase">{walletName}</span>
                 </span>
               </>
             )}
+            {inputterName && (
+              <>
+                <span className="w-1 h-1 rounded-full bg-border2"></span>
+                <span className="text-[9px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/50 dark:text-indigo-300 px-1.5 py-0.5 rounded">
+                  ✏️ {inputterName}
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Amount shown inline on mobile only */}
+          <div className="flex items-center gap-2 mt-2 sm:hidden">
+            <span className={`font-black text-sm tabular-nums tracking-tight ${isOut ? 'text-text-2' : 'text-income'}`}>
+              {isOut ? '-' : '+'}{fmtShort(t.amount)}
+            </span>
+            {onDelete && (
+              <button onClick={(e) => {
+                e.stopPropagation();
+                onDelete(t.id);
+              }} className="w-7 h-7 flex items-center justify-center text-muted2 hover:text-expense hover:bg-expense-light rounded-full transition-colors">
+                <Trash2 size={14} />
+              </button>
+            )}
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-3">
+
+      {/* RIGHT: Amount + Delete (Desktop only) */}
+      <div className="hidden sm:flex items-center gap-3 flex-shrink-0">
         <span className={`font-black text-sm tabular-nums tracking-tight ${isOut ? 'text-text-2' : 'text-income'}`}>
           {isOut ? '-' : '+'}{fmtShort(t.amount)}
         </span>

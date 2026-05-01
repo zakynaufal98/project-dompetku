@@ -2,12 +2,14 @@ import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { useData } from '../context/DataContext'
+import { useAuth } from '../context/AuthContext'
 import { fmt, fmtShort, MONTHS } from '../lib/utils'
 import { Spinner, InteractiveDonut } from '../components/UI'
-import { Target, TrendingUp, TrendingDown } from 'lucide-react'
+import { Target, TrendingUp, TrendingDown, Users, ArrowLeft } from 'lucide-react'
 import BillTracker from '../components/BillTracker'
 import WalletWidget from '../components/WalletWidget' 
 import ShareReport from '../components/ShareReport'
+import SharedAccount from '../components/SharedAccount'
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null
@@ -24,7 +26,8 @@ const CustomTooltip = ({ active, payload, label }) => {
 }
 
 export default function Dashboard() {
-  const { txData, invData, targetData, loading, totals, addWallet, updateWallet, deleteWallet } = useData() 
+  const { txData, invData, targetData, loading, totals, addWallet, updateWallet, deleteWallet, sharedOwners, activeOwnerId, switchAccount, isViewingShared, activeSharedRole } = useData() 
+  const { user } = useAuth()
   const now = new Date()
   
   const { currIn, currOut, trends } = useMemo(() => {
@@ -114,6 +117,37 @@ export default function Dashboard() {
 
   return (
     <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
+      {/* SHARED ACCOUNT BANNER */}
+      {isViewingShared && (
+        <div className="bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 rounded-2xl p-4 flex items-center justify-between animate-fade-in">
+          <div className="flex items-center gap-3">
+            <Users size={20} className="text-indigo-500" />
+            <div>
+              <p className="text-sm font-bold text-indigo-700 dark:text-indigo-300">Melihat data milik: <span className="underline">{sharedOwners.find(s => s.owner_id === activeOwnerId)?.owner_email}</span></p>
+              <p className="text-[10px] font-bold text-indigo-400">Mode: {activeSharedRole === 'editor' ? 'Editor (bisa edit)' : 'Viewer (hanya lihat)'}</p>
+            </div>
+          </div>
+          <button onClick={() => switchAccount(null)} className="flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 rounded-xl text-sm font-bold text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors">
+            <ArrowLeft size={14} /> Kembali ke akun saya
+          </button>
+        </div>
+      )}
+
+      {/* ACCOUNT SWITCHER */}
+      {!isViewingShared && sharedOwners.length > 0 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
+          <span className="text-[10px] font-bold text-muted uppercase tracking-widest flex-shrink-0">Akun:</span>
+          <button onClick={() => switchAccount(null)} className="px-3 py-1.5 rounded-full text-xs font-bold bg-income text-white shadow-sm flex-shrink-0">
+            Milik Saya
+          </button>
+          {sharedOwners.map(s => (
+            <button key={s.id} onClick={() => switchAccount(s.owner_id)} className="px-3 py-1.5 rounded-full text-xs font-bold bg-surface border border-border2 text-text-2 hover:border-income/30 transition-colors flex-shrink-0">
+              {s.owner_email}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
       <div>
         <h1 className="tabular-nums font-bold text-2xl text-text tracking-tight">Overview</h1>
@@ -265,7 +299,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="mt-8">
+      {/* SHARED ACCOUNT WIDGET */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <SharedAccount />
         <ShareReport />
       </div>
       
