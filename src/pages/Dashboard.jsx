@@ -10,6 +10,8 @@ import BillTracker from '../components/BillTracker'
 import WalletWidget from '../components/WalletWidget' 
 import ShareReport from '../components/ShareReport'
 import SharedAccount from '../components/SharedAccount'
+import BudgetWidget from '../components/BudgetWidget'
+import RecurringWidget from '../components/RecurringWidget'
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null
@@ -297,6 +299,11 @@ export default function Dashboard() {
             <InteractiveDonut data={txBlnOut} />
           </div>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <BudgetWidget />
+        <RecurringWidget />
       </div>
 
       {/* SHARED ACCOUNT WIDGET */}

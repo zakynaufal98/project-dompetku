@@ -32,33 +32,45 @@ export const fmt = (n) => {
   return (isNegative ? '-' : '') + 'Rp\u00A0' + formatted;
 }
 
-// Fungsi untuk format Rupiah penuh (bisa dipanggil di mana saja)
+// Format singkatan untuk kartu & label agar muat di mobile (Rp 1,5 Jt / Rp 2,3 M)
 export const fmtShort = (n) => {
-  if (!n) return 'Rp\u00A00'; 
-  const isNegative = n < 0;
-  const val = Math.abs(n).toLocaleString('id-ID');
-  return (isNegative ? '-' : '') + 'Rp\u00A0' + val;
+  if (!n) return 'Rp\u00A00'
+  const isNegative = n < 0
+  const a = Math.abs(n)
+
+  let val = ''
+  if (a >= 1e9) {
+    val = parseFloat((a / 1e9).toFixed(2)).toString().replace('.', ',') + ' M'
+  } else if (a >= 1e6) {
+    val = parseFloat((a / 1e6).toFixed(2)).toString().replace('.', ',') + ' Jt'
+  } else if (a >= 1e3) {
+    // Ratusan ribu tetap disingkat agar muat di kartu mobile
+    val = parseFloat((a / 1e3).toFixed(1)).toString().replace('.', ',') + ' rb'
+  } else {
+    val = a.toLocaleString('id-ID')
+  }
+
+  return (isNegative ? '-' : '') + 'Rp\u00A0' + val
 }
 
 // Khusus untuk label sumbu Y pada grafik agar tidak terpotong
 export const fmtChartAxis = (n) => {
-  if (!n) return '0'; 
-  
-  const isNegative = n < 0;
-  const a = Math.abs(n);
-  
-  let val = '';
+  if (!n) return '0'
+  const isNegative = n < 0
+  const a = Math.abs(n)
+
+  let val = ''
   if (a >= 1e9) {
-    val = parseFloat((a / 1e9).toFixed(1)).toString().replace('.', ',') + 'M';
+    val = parseFloat((a / 1e9).toFixed(1)).toString().replace('.', ',') + 'M'
   } else if (a >= 1e6) {
-    val = parseFloat((a / 1e6).toFixed(1)).toString().replace('.', ',') + 'Jt';
+    val = parseFloat((a / 1e6).toFixed(1)).toString().replace('.', ',') + 'Jt'
   } else if (a >= 1e3) {
-    val = parseFloat((a / 1e3).toFixed(1)).toString().replace('.', ',') + 'K';
+    val = parseFloat((a / 1e3).toFixed(1)).toString().replace('.', ',') + 'K'
   } else {
-    val = a.toString();
+    val = a.toString()
   }
 
-  return (isNegative ? '-' : '') + val;
+  return (isNegative ? '-' : '') + val
 }
 
 // Fungsi untuk memformat Unit/Qty investasi
@@ -67,7 +79,13 @@ export const fmtUnit = (num) => {
   return Number(num.toFixed(4)).toString();
 }
 
-export const today = () => new Date().toISOString().split('T')[0]
+export const today = () => {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
 
 export const MONTHS      = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des']
 export const MONTHS_FULL = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember']

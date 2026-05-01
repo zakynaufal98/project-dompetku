@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+
+# Blokir halaman yang tidak perlu diindex mesin pencari
+Disallow: /login
+Disallow: /register
+Disallow: /laporan/
+Disallow: /hutang
+Disallow: /investasi
+Disallow: /transaksi
+Disallow: /target
+
+# Sitemap
+Sitemap: https://dompetku-react.vercel.app/sitemap.xml

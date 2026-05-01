@@ -11,6 +11,8 @@ export function DataProvider({ children }) {
   const [billData, setBillData] = useState([])
   const [walletData, setWalletData] = useState([]) 
   const [targetData, setTargetData] = useState([])
+  const [budgetData, setBudgetData] = useState([])
+  const [recurringData, setRecurringData] = useState([])
   const [loading, setLoading] = useState(false)
   
   // Shared Account: siapa yang sedang dilihat datanya
@@ -50,12 +52,14 @@ export function DataProvider({ children }) {
     
     const uid = effectiveUserId
     
-    const [txRes, invRes, billRes, walletRes, targetRes] = await Promise.all([
+    const [txRes, invRes, billRes, walletRes, targetRes, budgetRes, recurringRes] = await Promise.all([
       supabase.from('transaksi').select('*').eq('user_id', uid).order('tgl', { ascending: false }).order('created_at', { ascending: false }),
       supabase.from('investasi').select('*').eq('user_id', uid).order('tgl', { ascending: false }).order('created_at', { ascending: false }),
       supabase.from('tagihan').select('*').eq('user_id', uid).order('jatuh_tempo', { ascending: true }),
       supabase.from('wallets').select('*').eq('user_id', uid).order('created_at', { ascending: true }),
-      supabase.from('target_finansial').select('*').eq('user_id', uid).order('updated_at', { ascending: false }) 
+      supabase.from('target_finansial').select('*').eq('user_id', uid).order('updated_at', { ascending: false }),
+      supabase.from('budgets').select('*').eq('user_id', uid),
+      supabase.from('recurring_tx').select('*').eq('user_id', uid).order('next_date', { ascending: true })
     ])
     
     if (!txRes.error)  setTxData((txRes.data  || []).map(mapTx))
@@ -63,6 +67,8 @@ export function DataProvider({ children }) {
     if (!billRes.error) setBillData(billRes.data || [])
     if (!walletRes.error) setWalletData(walletRes.data || []) 
     if (!targetRes.error) setTargetData((targetRes.data || []).map(mapTarget))
+    if (!budgetRes.error) setBudgetData(budgetRes.data || [])
+    if (!recurringRes.error) setRecurringData(recurringRes.data || [])
     
     // Load shared owners (akun yang share ke saya)
     const { data: sharedData } = await supabase.from('shared_accounts').select('*').eq('member_id', user.id).eq('status', 'accepted')
@@ -72,6 +78,46 @@ export function DataProvider({ children }) {
   }, [user, effectiveUserId])
 
   useEffect(() => { loadAll() }, [loadAll])
+
+  // --- AUTO PROCESS RECURRING TX ---
+  useEffect(() => {
+    const processRecurring = async () => {
+      if (recurringData.length === 0 || activeOwnerId) return; // Jangan proses jika sedang melihat akun orang lain
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      
+      for (const r of recurringData) {
+        if (!r.is_active) continue;
+        const nextDate = new Date(r.next_date);
+        nextDate.setHours(0,0,0,0);
+        
+        if (nextDate <= today) {
+          // 1. Eksekusi transaksi
+          await addTx({
+            desc: r.desc_text,
+            amount: r.amount,
+            type: r.tx_type,
+            cat: r.cat,
+            sub_cat: r.sub_cat || 'Lain-lain',
+            date: r.next_date,
+            wallet_id: r.wallet_id
+          });
+          
+          // 2. Hitung tanggal berikutnya
+          const newDate = new Date(r.next_date);
+          if (r.frequency === 'daily') newDate.setDate(newDate.getDate() + 1);
+          else if (r.frequency === 'weekly') newDate.setDate(newDate.getDate() + 7);
+          else if (r.frequency === 'monthly') newDate.setMonth(newDate.getMonth() + 1);
+          else if (r.frequency === 'yearly') newDate.setFullYear(newDate.getFullYear() + 1);
+          
+          // 3. Update data recurring di Supabase
+          const dateStr = newDate.toISOString().split('T')[0];
+          await updateRecurring(r.id, { next_date: dateStr });
+        }
+      }
+    };
+    processRecurring();
+  }, [recurringData, activeOwnerId]);
 
   const addWallet = async ({ name, balance, color }) => {
     if (!canWriteActiveAccount) return readonlyError
@@ -107,6 +153,55 @@ export function DataProvider({ children }) {
     const { error } = await supabase.from('transaksi').delete().eq('id', id).eq('user_id', effectiveUserId)
     if (!error) setTxData(prev => prev.filter(t => t.id !== id))
     return error
+  }
+
+  // --- BUDGETS ---
+  const saveBudget = async (category, amount) => {
+    if (!canWriteActiveAccount) return readonlyError;
+    const existing = budgetData.find(b => b.category === category);
+    let result, err;
+    if (existing) {
+      const { data, error } = await supabase.from('budgets').update({ amount }).eq('id', existing.id).eq('user_id', effectiveUserId).select().single();
+      result = data; err = error;
+    } else {
+      const { data, error } = await supabase.from('budgets').insert({ user_id: effectiveUserId, category, amount }).select().single();
+      result = data; err = error;
+    }
+    if (!err) {
+      setBudgetData(prev => existing ? prev.map(b => b.id === result.id ? result : b) : [...prev, result]);
+    }
+    return err;
+  }
+  
+  const deleteBudget = async (id) => {
+    if (!canWriteActiveAccount) return readonlyError;
+    const { error } = await supabase.from('budgets').delete().eq('id', id).eq('user_id', effectiveUserId);
+    if (!error) setBudgetData(prev => prev.filter(b => b.id !== id));
+    return error;
+  }
+
+  // --- RECURRING TX ---
+  const addRecurring = async (dataObj) => {
+    if (!canWriteActiveAccount) return readonlyError;
+    const { data, error } = await supabase.from('recurring_tx')
+      .insert({ ...dataObj, user_id: effectiveUserId })
+      .select().single();
+    if (!error) setRecurringData(prev => [...prev, data]);
+    return error;
+  }
+
+  const updateRecurring = async (id, updates) => {
+    if (!canWriteActiveAccount) return readonlyError;
+    const { data, error } = await supabase.from('recurring_tx').update(updates).eq('id', id).eq('user_id', effectiveUserId).select().single();
+    if (!error) setRecurringData(prev => prev.map(r => r.id === id ? data : r));
+    return error;
+  }
+
+  const deleteRecurring = async (id) => {
+    if (!canWriteActiveAccount) return readonlyError;
+    const { error } = await supabase.from('recurring_tx').delete().eq('id', id).eq('user_id', effectiveUserId);
+    if (!error) setRecurringData(prev => prev.filter(r => r.id !== id));
+    return error;
   }
 
   const validateSellInvestment = (invType, subType, amount, qty, excludeId = null) => {
@@ -326,7 +421,10 @@ export function DataProvider({ children }) {
       addWallet, updateWallet, deleteWallet,
       addTx, deleteTx, addInv, updateInv, deleteInv,
       transferWallet, addBill, toggleBill, deleteBill,
-      addTarget, updateTarget, deleteTarget, totals,
+      addTarget, updateTarget, deleteTarget,
+      budgetData, saveBudget, deleteBudget,
+      recurringData, addRecurring, updateRecurring, deleteRecurring,
+      totals,
       // Shared Account
       sharedOwners, activeOwnerId, switchAccount, isViewingShared, activeSharedRole
     }}>

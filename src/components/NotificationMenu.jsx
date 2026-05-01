@@ -1,12 +1,22 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { Bell, CheckCircle2, AlertCircle, Clock, Check } from 'lucide-react'
+import { Bell, CheckCircle2, AlertCircle, Clock, Check, X } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { fmtShort } from '../lib/utils'
 
 export default function NotificationMenu() {
   const { billData, txData } = useData()
   const [isOpen, setIsOpen] = useState(false)
+  const [dismissedNotifs, setDismissedNotifs] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('dompetku_dismissed_notifs')) || [] } catch { return [] }
+  })
   const menuRef = useRef(null)
+
+  const handleDismiss = (e, id) => {
+    e.stopPropagation()
+    const newDismissed = [...dismissedNotifs, id]
+    setDismissedNotifs(newDismissed)
+    localStorage.setItem('dompetku_dismissed_notifs', JSON.stringify(newDismissed))
+  }
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -83,11 +93,13 @@ export default function NotificationMenu() {
       }
     })
 
-    return notifs.sort((a, b) => {
-      if (a.priority !== b.priority) return a.priority - b.priority
-      return b.date - a.date 
-    })
-  }, [billData, txData])
+    return notifs
+      .filter(n => !dismissedNotifs.includes(n.id))
+      .sort((a, b) => {
+        if (a.priority !== b.priority) return a.priority - b.priority
+        return b.date - a.date 
+      })
+  }, [billData, txData, dismissedNotifs])
 
   // Menghitung jumlah tagihan yang belum dibayar (Danger + Warning) untuk header popup
   const unreadCount = notifications.filter(n => n.type === 'danger' || n.type === 'warning').length
@@ -127,14 +139,14 @@ export default function NotificationMenu() {
                 notifications.map((n) => (
                   <div 
                     key={n.id} 
-                    className={`p-4 border-b border-border last:border-0 hover:bg-bg transition-colors flex gap-3 ${
+                    className={`relative p-4 border-b border-border last:border-0 hover:bg-bg transition-colors flex gap-3 ${
                       n.type === 'danger' ? 'bg-expense-light/30' : ''
                     }`}
                   >
                     <div className="mt-0.5 flex-shrink-0">
                       {n.icon}
                     </div>
-                    <div>
+                    <div className="pr-6">
                       <h4 className={`text-sm font-bold ${
                         n.type === 'danger' ? 'text-expense' : n.type === 'warning' ? 'text-gold' : 'text-text-2'
                       }`}>
@@ -144,6 +156,13 @@ export default function NotificationMenu() {
                         {n.desc}
                       </p>
                     </div>
+                    <button 
+                      onClick={(e) => handleDismiss(e, n.id)}
+                      className="absolute top-2 right-2 p-1 text-muted2 hover:text-expense hover:bg-surface rounded-md transition-colors"
+                      title="Tutup Notifikasi"
+                    >
+                      <X size={14} />
+                    </button>
                   </div>
                 ))
               ) : (

@@ -108,10 +108,27 @@ export function AuthProvider({ children }) {
     return error
   }
 
+  const updateProfile = async ({ name, avatar }) => {
+    const currentMeta = user?.user_metadata || {}
+    const updates = { ...currentMeta }
+    if (name   !== undefined) updates.full_name = name
+    if (avatar !== undefined) updates.avatar    = avatar
+
+    const { error } = await supabase.auth.updateUser({ data: updates })
+    if (error) return error
+
+    // refreshSession() memaksa Supabase menerbitkan JWT baru dengan metadata terbaru
+    // Ini penting untuk user Google OAuth yang punya field `name` dari Google
+    const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession()
+    if (!refreshErr && refreshed?.user) setUser(refreshed.user)
+
+    return null
+  }
+
   return (
     <AuthContext.Provider value={{ 
       user, loading, login, register, logout, loginWithGoogle,
-      resetPassword, updatePassword, recoveryMode, setRecoveryMode
+      resetPassword, updatePassword, updateProfile, recoveryMode, setRecoveryMode
     }}>
       {children}
     </AuthContext.Provider>

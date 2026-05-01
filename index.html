@@ -1,29 +1,80 @@
 <!DOCTYPE html>
-<!-- 1. Tambahkan lang="id" untuk membantu Screen Reader (Accessibility) -->
 <html lang="id">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#121629" /> <!-- Sesuaikan dengan warna bg dark mode Anda -->
-    
-    <!-- 2. SEO: Meta description sudah ada, ini sudah bagus -->
-    <meta name="description" content="DompetKu - Kelola keuangan, tabungan, dan investasi Anda dengan lebih cerdas dan teratur.">
+    <meta name="theme-color" content="#121629" />
+
+    <!-- ✅ SEO: Meta description & keywords -->
+    <meta name="description" content="DompetKu Pro — Aplikasi manajemen keuangan pribadi untuk mencatat pengeluaran, pantau investasi, kelola hutang, dan raih target finansial Anda dengan mudah." />
+    <meta name="keywords" content="aplikasi keuangan, catat pengeluaran, manajemen keuangan, investasi, tabungan, budgeting, finansial pribadi" />
+    <meta name="author" content="DompetKu Pro" />
+    <meta name="robots" content="index, follow" />
+
+    <!-- ✅ SEO: Canonical URL -->
+    <link rel="canonical" href="https://dompetku-react.vercel.app/" />
+
+    <!-- ✅ SEO: Open Graph (Facebook, WhatsApp, LinkedIn preview) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="DompetKu Pro – Kelola Keuangan Lebih Cerdas" />
+    <meta property="og:description" content="Catat pengeluaran, pantau investasi, dan capai kebebasan finansial Anda bersama DompetKu Pro." />
+    <meta property="og:url" content="https://dompetku-react.vercel.app/" />
+    <meta property="og:site_name" content="DompetKu Pro" />
+    <meta property="og:locale" content="id_ID" />
+
+    <!-- ✅ SEO: Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="DompetKu Pro – Kelola Keuangan Lebih Cerdas" />
+    <meta name="twitter:description" content="Catat pengeluaran, pantau investasi, dan capai kebebasan finansial Anda." />
 
     <title>DompetKu Pro - Kelola Keuangan Lebih Cerdas</title>
 
-    <!-- 3. PERBAIKAN ICON: Path href tidak boleh mengandung kurung kurawal. 
-         Pindahkan file Logo.png ke folder /public/ agar bisa diakses langsung -->
+    <!-- ✅ PERFORMANCE: Favicon -->
     <link rel="icon" type="image/png" href="/Logo.png" />
 
-    <!-- 4. PERFORMANCE: Preconnect sudah ada, sangat membantu FCP (Performance) -->
+    <!-- ✅ PERFORMANCE: Preconnect DNS untuk Google Fonts sebelum stylesheet dimuat -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" crossorigin="anonymous" />
+
+    <!-- ✅ PERFORMANCE: Muat font secara async dengan media trick (non-render-blocking) -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <!-- Fallback jika JS tidak aktif -->
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      />
+    </noscript>
+
+    <!-- ✅ ACCESSIBILITY: Skip to main content link (disembunyikan, muncul saat Tab ditekan) -->
+    <style>
+      .skip-link {
+        position: absolute;
+        top: -100px;
+        left: 16px;
+        z-index: 9999;
+        padding: 8px 16px;
+        background: #4F46E5;
+        color: white;
+        font-weight: 700;
+        border-radius: 8px;
+        text-decoration: none;
+        transition: top 0.2s;
+      }
+      .skip-link:focus {
+        top: 16px;
+      }
+    </style>
   </head>
   <body>
-    <!-- 5. ACCESSIBILITY: No-script sangat disarankan untuk SEO dan aksesibilitas dasar -->
-    <noscript>Anda perlu mengaktifkan JavaScript untuk menjalankan aplikasi ini.</noscript>
-    
+    <!-- ✅ ACCESSIBILITY: Skip link agar keyboard user bisa langsung ke konten -->
+    <a class="skip-link" href="#main-content">Lewati ke konten utama</a>
+
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
