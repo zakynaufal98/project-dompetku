@@ -47,9 +47,8 @@ export default function Transaksi() {
       
       if (pastMatch && pastMatch.cat) {
         setType(pastMatch.type); 
-        const parts = pastMatch.cat.split(' - ');
-        setMainCat(parts[0] || '');
-        setSubCat(parts[1] || '');
+        setMainCat(pastMatch.cat);
+        setSubCat(pastMatch.sub_cat || '');
       }
     }
   }
@@ -244,7 +243,7 @@ export default function Transaksi() {
             <Field label="Kategori Induk">
               <div className="relative">
                 <select 
-                  className="form-input py-3 pl-4 pr-10 cursor-pointer appearance-none bg-transparent relative z-0 font-semibold text-text-2 text-sm w-full"
+                  className="form-input py-3 pl-4 pr-10 cursor-pointer appearance-none relative z-0 font-semibold text-text-2 text-sm w-full"
                   value={mainCat}
                   onChange={(e) => {
                     setMainCat(e.target.value);
@@ -263,7 +262,7 @@ export default function Transaksi() {
             <Field label="Sub Kategori">
               <div className="relative">
                 <select 
-                  className="form-input py-3 pl-4 pr-10 cursor-pointer appearance-none bg-transparent relative z-0 font-semibold text-text-2 text-sm w-full disabled:opacity-50"
+                  className="form-input py-3 pl-4 pr-10 cursor-pointer appearance-none relative z-0 font-semibold text-text-2 text-sm w-full disabled:opacity-50"
                   value={subCat}
                   onChange={(e) => setSubCat(e.target.value)}
                   disabled={!mainCat || availableSubCats.length === 0}
@@ -287,7 +286,7 @@ export default function Transaksi() {
                     <Wallet size={16} strokeWidth={2.5} />
                   </div>
                   <select
-                    className="form-input pl-14 pr-10 py-3 cursor-pointer appearance-none bg-transparent relative z-0 font-semibold text-text-2"
+                    className="form-input pl-14 pr-10 py-3 cursor-pointer appearance-none relative z-0 font-semibold text-text-2"
                     value={walletId}
                     onChange={(e) => setWalletId(e.target.value)}
                   >

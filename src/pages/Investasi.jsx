@@ -289,7 +289,7 @@ export default function Investasi() {
                     <Wallet size={16} strokeWidth={2.5} />
                   </div>
                   <select
-                    className="form-input pl-14 pr-10 py-3 text-sm cursor-pointer appearance-none bg-transparent relative z-0 font-semibold text-text-2"
+                    className="form-input pl-14 pr-10 py-3 text-sm cursor-pointer appearance-none relative z-0 font-semibold text-text-2"
                     value={walletId}
                     onChange={(e) => setWalletId(e.target.value)}
                   >

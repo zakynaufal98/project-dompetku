@@ -175,7 +175,7 @@ export default function Hutang() {
                       <Wallet size={16} strokeWidth={2.5} />
                     </div>
                     <select
-                      className="form-input pl-14 pr-10 py-3 cursor-pointer appearance-none bg-transparent relative z-0 font-semibold text-text-2 w-full"
+                      className="form-input pl-14 pr-10 py-3 cursor-pointer appearance-none relative z-0 font-semibold text-text-2 w-full"
                       value={walletId}
                       onChange={(e) => setWalletId(e.target.value)}
                     >

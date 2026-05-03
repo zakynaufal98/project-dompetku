@@ -215,7 +215,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <WalletWidget totals={totals} addWallet={updateWallet} updateWallet={updateWallet} deleteWallet={deleteWallet} />
+      <WalletWidget totals={totals} addWallet={addWallet} updateWallet={updateWallet} deleteWallet={deleteWallet} />
 
       {/* Grafik + Tagihan + Donut */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

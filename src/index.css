@@ -200,6 +200,12 @@
 }
 .recharts-text { fill: var(--chart-tick) !important; }
 
+/* Dark mode: Fix native <option> text visibility in <select> dropdowns */
+html.dark select option {
+  background-color: #1e293b; /* slate-800 */
+  color: #f8fafc; /* slate-50 */
+}
+
 /* Menghilangkan semua transisi saat ganti tema */
 .disable-transitions,
 .disable-transitions * {

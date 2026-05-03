@@ -109,7 +109,7 @@ export default function Tahunan() {
         </div>
         <div className="flex items-center gap-2 bg-surface border border-border rounded-full p-1.5 shadow-sm px-4 self-start">
           <CalendarDays size={16} className="text-income" />
-          <select className="bg-transparent text-sm font-bold text-text-2 outline-none cursor-pointer appearance-none ml-1 pr-2" value={year} onChange={e => setYear(e.target.value)}>
+          <select className="bg-surface text-sm font-bold text-text-2 outline-none cursor-pointer appearance-none ml-1 pr-2" value={year} onChange={e => setYear(e.target.value)}>
             {years.map(y => <option key={y} value={y}>Tahun {y}</option>)}
           </select>
         </div>

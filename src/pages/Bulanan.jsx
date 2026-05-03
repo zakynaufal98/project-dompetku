@@ -77,11 +77,11 @@ export default function Bulanan() {
         {/* Date Picker — full width on mobile */}
         <div className="flex items-center gap-2 bg-surface border border-border rounded-full p-1.5 shadow-sm px-4 w-full sm:w-auto self-start">
           <CalendarDays size={16} className="text-income flex-shrink-0" />
-          <select className="bg-transparent text-sm font-bold text-text-2 outline-none cursor-pointer appearance-none ml-1 flex-1 min-w-0" value={month} onChange={e=>setMonth(+e.target.value)}>
+          <select className="bg-surface text-sm font-bold text-text-2 outline-none cursor-pointer appearance-none ml-1 flex-1 min-w-0" value={month} onChange={e=>setMonth(+e.target.value)}>
             {MONTHS_FULL.map((m,i)=><option key={i} value={i+1}>{m}</option>)}
           </select>
           <span className="text-muted2 flex-shrink-0">/</span>
-          <select className="bg-transparent text-sm font-bold text-text-2 outline-none cursor-pointer appearance-none flex-shrink-0" value={year} onChange={e=>setYear(+e.target.value)}>
+          <select className="bg-surface text-sm font-bold text-text-2 outline-none cursor-pointer appearance-none flex-shrink-0" value={year} onChange={e=>setYear(+e.target.value)}>
             {years.map(y=><option key={y} value={y}>{y}</option>)}
           </select>
         </div>
