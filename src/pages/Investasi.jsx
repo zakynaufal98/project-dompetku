@@ -16,8 +16,8 @@ export default function Investasi() {
   
   const [editId,  setEditId]  = useState(null)
   const [action,  setAction]  = useState('beli')
-  const [invType, setInvType] = useState('Saham')
-  const [subType, setSubType] = useState(INV_TYPES['Saham'].subTypes[0])
+  const [invType, setInvType] = useState('Reksadana')
+  const [subType, setSubType] = useState(INV_TYPES['Reksadana'].subTypes[0])
   const [desc,    setDesc]    = useState('')
   const [amount,  setAmount]  = useState('')
   const [qty,     setQty]     = useState('')

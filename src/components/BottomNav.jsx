@@ -41,16 +41,18 @@ export default function BottomNav() {
         <div
           className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm lg:hidden"
           onClick={() => setShowMore(false)}
+          aria-hidden="true"
         />
       )}
 
       {/* Drawer "Lainnya" */}
       {showMore && (
-        <div className="fixed bottom-16 left-2 right-2 z-50 lg:hidden bg-surface border border-border rounded-3xl shadow-2xl overflow-hidden animate-fade-up">
+        <div className="fixed bottom-16 left-2 right-2 z-50 lg:hidden bg-surface border border-border rounded-3xl shadow-2xl overflow-hidden animate-fade-up" role="dialog" aria-modal="true" aria-labelledby="more-menu-title">
           <div className="flex items-center justify-between px-5 pt-4 pb-2">
-            <p className="text-xs font-black text-muted uppercase tracking-widest">Menu Lainnya</p>
+            <p id="more-menu-title" className="text-xs font-black text-muted uppercase tracking-widest">Menu Lainnya</p>
             <button onClick={() => setShowMore(false)}
-              className="w-7 h-7 flex items-center justify-center rounded-full bg-bg text-muted hover:text-text transition-colors">
+              aria-label="Tutup menu lainnya"
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-bg text-muted hover:text-text transition-colors">
               <X size={14} />
             </button>
           </div>
@@ -62,6 +64,7 @@ export default function BottomNav() {
                   key={m.path}
                   to={m.path}
                   onClick={() => setShowMore(false)}
+                  aria-current={isActive ? 'page' : undefined}
                   className={`flex flex-col items-center justify-center gap-1.5 py-5 transition-colors ${
                     isActive ? 'bg-primary/10' : 'hover:bg-bg'
                   }`}
@@ -80,7 +83,8 @@ export default function BottomNav() {
       )}
 
       {/* Bottom Nav Bar */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-border z-50 transition-colors"
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-border z-50 transition-colors"
+        aria-label="Navigasi bawah"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="flex items-stretch h-16">
 
@@ -91,6 +95,8 @@ export default function BottomNav() {
               <Link
                 key={m.path}
                 to={m.path}
+                aria-label={m.label}
+                aria-current={isActive ? 'page' : undefined}
                 className="flex flex-col items-center justify-center flex-1 gap-1 transition-colors"
               >
                 <div className={`transition-all duration-200 p-1.5 rounded-xl ${
@@ -110,6 +116,9 @@ export default function BottomNav() {
           {/* Tombol Lainnya */}
           <button
             onClick={() => setShowMore(p => !p)}
+            aria-label={showMore ? 'Tutup menu lainnya' : 'Buka menu lainnya'}
+            aria-expanded={showMore}
+            aria-haspopup="dialog"
             className="flex flex-col items-center justify-center flex-1 gap-1 transition-colors"
           >
             <div className={`transition-all duration-200 p-1.5 rounded-xl ${
@@ -125,7 +134,7 @@ export default function BottomNav() {
           </button>
 
         </div>
-      </div>
+      </nav>
     </>
   )
 }

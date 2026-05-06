@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
-import { Trash2, Loader2, ReceiptText, BriefcaseBusiness, PieChart as PieChartIcon, ArrowLeft, ChevronDown } from 'lucide-react'
-import { fmtShort, CAT_ICONS, INV_TYPES, CHART_COLORS } from '../lib/utils' 
+import { Trash2, Loader2, ReceiptText, BriefcaseBusiness, PieChart as PieChartIcon, ArrowLeft, ChevronDown, Pencil, Check, X } from 'lucide-react'
+import { fmtShort, CAT_ICONS, INV_TYPES, CHART_COLORS } from '../lib/utils'
 
 export const BankLogo = ({ name = '', size = 'md' }) => {
   if (!name) return null;
@@ -31,7 +31,8 @@ export const BankLogo = ({ name = '', size = 'md' }) => {
   )
 }
 
-export const TxItem = ({ t, onDelete, isInv, walletName, inputterName }) => { 
+export const TxItem = ({ t, onDelete, onEdit, isInv, walletName, inputterName }) => {
+  const [confirmDel, setConfirmDel] = useState(false)
   const isOut = isInv ? t.action === 'beli' : t.type === 'out';
   
   let IconElement;
@@ -65,17 +66,17 @@ export const TxItem = ({ t, onDelete, isInv, walletName, inputterName }) => {
   const dateDisplay = t.date ? new Date(t.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
 
   return (
-    <div className="flex items-start sm:items-center justify-between p-3.5 bg-surface border border-border rounded-2xl hover:border-border2 transition-colors group gap-3">
+    <div className="flex items-center justify-between p-3.5 bg-surface border border-border rounded-2xl hover:border-border2 transition-colors group gap-3">
       {/* LEFT: Icon + Info */}
-      <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors mt-0.5 sm:mt-0 ${
+      <div className="flex items-center gap-3 min-w-0 flex-1">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
           isOut ? 'bg-gold-light text-gold' : 'bg-income-light text-income'
         }`}>
           {IconElement}
         </div>
         <div className="min-w-0 flex-1">
           <p className="font-bold text-sm text-text leading-tight break-words">{t.desc}</p>
-          
+
           <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
             {dateDisplay && (
               <span className="text-[9px] font-bold text-muted bg-border px-1.5 py-0.5 rounded uppercase tracking-wider">
@@ -104,35 +105,76 @@ export const TxItem = ({ t, onDelete, isInv, walletName, inputterName }) => {
             )}
           </div>
 
-          {/* Amount shown inline on mobile only */}
+          {/* Amount + actions — mobile only */}
           <div className="flex items-center gap-2 mt-2 sm:hidden">
             <span className={`font-black text-sm tabular-nums tracking-tight ${isOut ? 'text-text-2' : 'text-income'}`}>
               {isOut ? '-' : '+'}{fmtShort(t.amount)}
             </span>
-            {onDelete && (
-              <button onClick={(e) => {
-                e.stopPropagation();
-                onDelete(t.id);
-              }} className="w-7 h-7 flex items-center justify-center text-muted2 hover:text-expense hover:bg-expense-light rounded-full transition-colors">
-                <Trash2 size={14} />
-              </button>
+            {!confirmDel && (
+              <>
+                {onEdit && (
+                  <button onClick={(e) => { e.stopPropagation(); onEdit(t) }}
+                    className="w-7 h-7 flex items-center justify-center text-muted2 hover:text-primary hover:bg-primary/10 rounded-full transition-colors">
+                    <Pencil size={13} />
+                  </button>
+                )}
+                {onDelete && (
+                  <button onClick={(e) => { e.stopPropagation(); setConfirmDel(true) }}
+                    className="w-7 h-7 flex items-center justify-center text-muted2 hover:text-expense hover:bg-expense-light rounded-full transition-colors">
+                    <Trash2 size={13} />
+                  </button>
+                )}
+              </>
+            )}
+            {confirmDel && (
+              <div className="flex items-center gap-1.5 animate-fade-in">
+                <span className="text-[10px] font-bold text-expense">Hapus?</span>
+                <button onClick={(e) => { e.stopPropagation(); onDelete(t.id); setConfirmDel(false) }}
+                  className="w-6 h-6 flex items-center justify-center bg-expense text-white rounded-full hover:bg-expense/80 transition-colors">
+                  <Check size={11} />
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); setConfirmDel(false) }}
+                  className="w-6 h-6 flex items-center justify-center bg-border text-muted rounded-full hover:bg-border2 transition-colors">
+                  <X size={11} />
+                </button>
+              </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* RIGHT: Amount + Delete (Desktop only) */}
-      <div className="hidden sm:flex items-center gap-3 flex-shrink-0">
-        <span className={`font-black text-sm tabular-nums tracking-tight ${isOut ? 'text-text-2' : 'text-income'}`}>
-          {isOut ? '-' : '+'}{fmtShort(t.amount)}
-        </span>
-        {onDelete && (
-          <button onClick={(e) => {
-            e.stopPropagation();
-            onDelete(t.id);
-          }} className="w-8 h-8 flex items-center justify-center text-muted2 hover:text-expense hover:bg-expense-light rounded-full transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
-            <Trash2 size={16} />
-          </button>
+      {/* RIGHT: Amount + actions (Desktop) */}
+      <div className="hidden sm:flex items-center gap-1.5 flex-shrink-0">
+        {!confirmDel ? (
+          <>
+            <span className={`font-black text-sm tabular-nums tracking-tight mr-1 ${isOut ? 'text-text-2' : 'text-income'}`}>
+              {isOut ? '-' : '+'}{fmtShort(t.amount)}
+            </span>
+            {onEdit && (
+              <button onClick={(e) => { e.stopPropagation(); onEdit(t) }}
+                className="w-8 h-8 flex items-center justify-center text-muted2 hover:text-primary hover:bg-primary/10 rounded-full transition-colors opacity-0 group-hover:opacity-100">
+                <Pencil size={14} />
+              </button>
+            )}
+            {onDelete && (
+              <button onClick={(e) => { e.stopPropagation(); setConfirmDel(true) }}
+                className="w-8 h-8 flex items-center justify-center text-muted2 hover:text-expense hover:bg-expense-light rounded-full transition-colors opacity-0 group-hover:opacity-100">
+                <Trash2 size={15} />
+              </button>
+            )}
+          </>
+        ) : (
+          <div className="flex items-center gap-1.5 animate-fade-in">
+            <span className="text-[11px] font-bold text-expense">Hapus?</span>
+            <button onClick={(e) => { e.stopPropagation(); onDelete(t.id); setConfirmDel(false) }}
+              className="w-7 h-7 flex items-center justify-center bg-expense text-white rounded-full hover:bg-expense/80 transition-colors">
+              <Check size={13} />
+            </button>
+            <button onClick={(e) => { e.stopPropagation(); setConfirmDel(false) }}
+              className="w-7 h-7 flex items-center justify-center bg-border text-muted rounded-full hover:bg-border2 transition-colors">
+              <X size={13} />
+            </button>
+          </div>
         )}
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, ReceiptText, BriefcaseBusiness, BarChart3, ChevronLeft, ChevronRight, CreditCard, Target, Sparkles } from 'lucide-react'
+import { LayoutDashboard, ReceiptText, BriefcaseBusiness, BarChart3, ChevronLeft, ChevronRight, CreditCard, Target, Sparkles, HelpCircle } from 'lucide-react'
 
 const NAV_LINKS = [
   { path: '/',          icon: <LayoutDashboard size={20} />, label: 'Dashboard' },

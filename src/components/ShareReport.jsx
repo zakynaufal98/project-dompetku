@@ -1,5 +1,4 @@
 import { useRef, useState, useMemo } from 'react'
-import { toPng } from 'html-to-image'
 import { Share2, Sparkles, Loader2, Flame, Trophy, ChevronRight, ChevronLeft, Target, TrendingUp, TrendingDown, CalendarDays, BarChart3 } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { fmtShort, MONTHS_FULL } from '../lib/utils'
@@ -67,6 +66,7 @@ export default function ShareReport() {
     if (!reportRef.current) return
     setIsCapturing(true)
     try {
+      const { toPng } = await import('html-to-image')
       const dataUrl = await toPng(reportRef.current, { quality: 1, pixelRatio: 3 })
       const blob = await (await fetch(dataUrl)).blob()
       const file = new File([blob], `wrapped-${mode}-slide-${activeSlide + 1}.png`, { type: blob.type })

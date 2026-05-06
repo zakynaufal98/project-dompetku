@@ -4,7 +4,8 @@ import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContai
 import { useData } from '../context/DataContext'
 import { fmt, fmtShort, fmtChartAxis, MONTHS, CHART_COLORS } from '../lib/utils'
 import { Empty, PanelHeader, ProgressBar, TxItem } from '../components/UI'
-import { LineChart, BarChartHorizontal, PieChart as PieChartIcon, X } from 'lucide-react'
+import { LineChart, BarChartHorizontal, PieChart as PieChartIcon, X, BarChart2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 // ==========================================
 // 1. KOMPONEN TOOLTIP RECHARTS
@@ -195,6 +196,19 @@ export default function Grafik() {
           <h1 className="tabular-nums font-bold text-2xl text-text tracking-tight">Grafik & Analisis</h1>
           <p className="text-muted text-sm font-medium mt-1">Visualisasi mendalam arus kas murnimu</p>
         </div>
+
+        {txData.length === 0 && (
+          <div className="bg-surface border border-border rounded-[24px] p-12 text-center shadow-sm">
+            <div className="w-16 h-16 rounded-2xl bg-bg text-muted2 flex items-center justify-center mx-auto mb-4">
+              <BarChart2 size={28} strokeWidth={1.5} />
+            </div>
+            <p className="font-bold text-text text-base mb-1">Belum ada data untuk ditampilkan</p>
+            <p className="text-sm text-muted mb-5">Mulai catat transaksi agar grafik dan analisis muncul di sini.</p>
+            <Link to="/transaksi" className="inline-flex items-center gap-2 bg-primary text-white text-sm font-bold px-5 py-2.5 rounded-xl hover:opacity-90 transition-opacity">
+              Tambah Transaksi
+            </Link>
+          </div>
+        )}
 
         {/* 1. GRAFIK PENGELUARAN HARIAN */}
         <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm">

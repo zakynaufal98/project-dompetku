@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useData } from '../context/DataContext'
 import { fmtShort, MONTHS } from '../lib/utils'
-import { Landmark, TrendingUp, TrendingDown, Wallet, BriefcaseBusiness, ShieldCheck } from 'lucide-react'
+import { Landmark, TrendingUp, TrendingDown, Wallet, BriefcaseBusiness, AlertTriangle } from 'lucide-react'
 import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
 
 const ChartTooltip = ({ active, payload, label }) => {
@@ -20,8 +20,8 @@ export default function NetWorthWidget() {
   const d = useMemo(() => {
     const now = new Date()
 
-    const kasAset  = totals.walletBalances?.reduce((s, w) => s + Math.max(0, w.calculatedBalance || 0), 0) || 0
-    const invAset  = Math.max(0, totals.invNet || 0)
+    const kasAset   = totals.walletBalances?.reduce((s, w) => s + Math.max(0, w.calculatedBalance || 0), 0) || 0
+    const invAset   = Math.max(0, totals.invNet || 0)
     const totalAset = kasAset + invAset
 
     const today = new Date()
@@ -57,99 +57,75 @@ export default function NetWorthWidget() {
 
   const naik = d.delta >= 0
 
+  const stats = [
+    { icon: <Wallet size={14} />, label: 'Saldo Dompet', value: fmtShort(d.kasAset), color: '#10B981', bg: 'bg-emerald-500/10 border-emerald-500/20' },
+    { icon: <BriefcaseBusiness size={14} />, label: 'Investasi', value: fmtShort(d.invAset), color: '#4F46E5', bg: 'bg-indigo-500/10 border-indigo-500/20' },
+    { icon: <AlertTriangle size={14} />, label: 'Tagihan Overdue', value: fmtShort(d.overdueAmt), color: d.overdueAmt > 0 ? '#EF4444' : '#10B981', bg: d.overdueAmt > 0 ? 'bg-red-500/10 border-red-500/20' : 'bg-emerald-500/10 border-emerald-500/20' },
+  ]
+
   return (
-    <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm flex flex-col gap-5">
+    <div className="bg-surface border border-border rounded-2xl shadow-sm overflow-hidden flex flex-col">
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Landmark size={17} className="text-primary" />
-          <h2 className="font-bold text-sm text-text">Kekayaan Bersih</h2>
+      {/* Dark gradient hero */}
+      <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-7 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/10 blur-[60px] rounded-full pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-cyan-500/10 blur-[50px] rounded-full pointer-events-none" />
+
+        <div className="relative z-10 flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <Landmark size={17} className="text-slate-400" />
+            <h2 className="font-bold text-sm text-slate-300">Kekayaan Bersih</h2>
+          </div>
+          {d.deltaPct !== null && (
+            <span className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+              naik ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30'
+            }`}>
+              {naik ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+              {naik ? '+' : ''}{d.deltaPct}% bln ini
+            </span>
+          )}
         </div>
-        {d.deltaPct !== null && (
-          <span className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold ${
-            naik ? 'bg-income-light text-income' : 'bg-expense-light text-expense'
-          }`}>
-            {naik ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-            {naik ? '+' : ''}{d.deltaPct}% bln ini
-          </span>
-        )}
+
+        <div className="relative z-10">
+          <p className="text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-widest">Estimasi Total</p>
+          <p className={`text-4xl font-black tabular-nums tracking-tight ${d.netWorth >= 0 ? 'text-white' : 'text-red-400'}`}>
+            {fmtShort(d.netWorth)}
+          </p>
+          <p className="text-xs text-slate-500 mt-1.5">
+            Dompet + Investasi{d.overdueAmt > 0 ? ' − Tagihan overdue' : ''}
+          </p>
+        </div>
+
+        {/* Mini chart di dalam hero */}
+        <div className="relative z-10 mt-5 -mb-2">
+          <ResponsiveContainer width="100%" height={70}>
+            <AreaChart data={d.tren} margin={{ top: 4, right: 2, left: 2, bottom: 0 }}>
+              <defs>
+                <linearGradient id="nwHeroGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor="#6366f1" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <XAxis dataKey="mo" tick={{ fontSize: 9, fill: '#64748b' }} axisLine={false} tickLine={false} />
+              <Tooltip content={<ChartTooltip />} />
+              <Area type="monotone" dataKey="nw" stroke="#818cf8" strokeWidth={2}
+                fill="url(#nwHeroGrad)" dot={false}
+                activeDot={{ r: 4, strokeWidth: 0, fill: '#818cf8' }} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
-      {/* Angka Utama */}
-      <div>
-        <p className="text-[10px] font-semibold text-muted mb-1">Estimasi Kekayaan Bersih</p>
-        <p className={`text-3xl font-black tabular-nums tracking-tight ${d.netWorth >= 0 ? 'text-text' : 'text-expense'}`}>
-          {fmtShort(d.netWorth)}
-        </p>
-        <p className="text-xs text-muted mt-1">Dompet + Investasi{d.overdueAmt > 0 ? ' − Tagihan overdue' : ''}</p>
-      </div>
-
-      {/* Separator */}
-      <div className="border-t border-border" />
-
-      {/* 3 chips — semua tampilan identik, hanya warna berbeda */}
-      <div className="grid grid-cols-3 gap-2">
-        {[
-          {
-            icon: <Wallet size={13} />,
-            label: 'Saldo Dompet',
-            value: fmtShort(d.kasAset),
-            color: '#10B981',
-            alpha: '1a',   // hex opacity 10%
-          },
-          {
-            icon: <BriefcaseBusiness size={13} />,
-            label: 'Investasi',
-            value: fmtShort(d.invAset),
-            color: '#4F46E5',
-            alpha: '1a',
-          },
-          {
-            icon: <ShieldCheck size={13} />,
-            label: 'Tagihan Overdue',
-            value: fmtShort(d.overdueAmt),
-            color: d.overdueAmt > 0 ? '#EF4444' : '#10B981',
-            alpha: '1a',
-          },
-        ].map(c => (
-          <div
-            key={c.label}
-            className="rounded-xl p-3 flex flex-col gap-2 border border-border"
-            style={{ background: `${c.color}${c.alpha}` }}
-          >
-            <div className="flex items-center gap-1" style={{ color: c.color }}>
-              {c.icon}
-            </div>
+      {/* 3 stat chips */}
+      <div className="p-5 grid grid-cols-3 gap-2.5">
+        {stats.map(c => (
+          <div key={c.label} className={`rounded-2xl p-3.5 flex flex-col gap-2 border ${c.bg}`}>
+            <div style={{ color: c.color }}>{c.icon}</div>
             <p className="text-sm font-black tabular-nums leading-none" style={{ color: c.color }}>{c.value}</p>
-            <p className="text-[9px] font-semibold text-muted leading-none">{c.label}</p>
+            <p className="text-[9px] font-semibold text-muted leading-tight">{c.label}</p>
           </div>
         ))}
       </div>
-
-      {/* Tren chart */}
-      <div>
-        <p className="text-[10px] font-semibold text-muted mb-2">Tren 6 Bulan</p>
-        <ResponsiveContainer width="100%" height={80}>
-          <AreaChart data={d.tren} margin={{ top: 4, right: 2, left: 2, bottom: 0 }}>
-            <defs>
-              <linearGradient id="nwGrad2" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor="#4F46E5" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#4F46E5" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <XAxis dataKey="mo" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-            <Tooltip content={<ChartTooltip />} />
-            <Area
-              type="monotone" dataKey="nw"
-              stroke="#4F46E5" strokeWidth={2.5}
-              fill="url(#nwGrad2)" dot={false}
-              activeDot={{ r: 4, strokeWidth: 0, fill: '#4F46E5' }}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
-
     </div>
   )
 }

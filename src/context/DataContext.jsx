@@ -26,7 +26,8 @@ export function DataProvider({ children }) {
   const mapTx = (r) => ({
     id: r.id, desc: r.keterangan, amount: parseFloat(r.amount),
     type: r.tipe, cat: r.cat, sub_cat: r.sub_cat, date: r.tgl, 
-    wallet_id: r.wallet_id, 
+    wallet_id: r.wallet_id,
+    bill_id: r.bill_id || null,
     created_by_email: r.created_by_email || null,
     user_id: r.user_id,
     ts: new Date(r.created_at).getTime(),
@@ -138,20 +139,100 @@ export function DataProvider({ children }) {
     return error
   }
 
-  const addTx = async ({ desc, amount, type, cat, sub_cat, date, wallet_id = null }) => {
+  const isMissingBillIdColumn = (error) => (
+    error?.code === 'PGRST204' &&
+    String(error?.message || '').toLowerCase().includes('bill_id')
+  )
+
+  const isMissingSourceBillIdColumn = (error) => (
+    error?.code === 'PGRST204' &&
+    String(error?.message || '').toLowerCase().includes('source_bill_id')
+  )
+
+  const withoutField = (obj, field) => {
+    const { [field]: _removed, ...rest } = obj
+    return rest
+  }
+
+  const addTx = async ({ desc, amount, type, cat, sub_cat, date, wallet_id = null, bill_id = null }) => {
     if (!canWriteActiveAccount) return readonlyError
+    const payload = { user_id: effectiveUserId, keterangan: desc, amount, tipe: type, cat, sub_cat, tgl: date, wallet_id, created_by_email: user.email }
+    if (bill_id) payload.bill_id = bill_id
+
     const { data, error } = await supabase.from('transaksi')
-      .insert({ user_id: effectiveUserId, keterangan: desc, amount, tipe: type, cat, sub_cat, tgl: date, wallet_id, created_by_email: user.email })
+      .insert(payload)
       .select().single()
+    if (error && bill_id && isMissingBillIdColumn(error)) {
+      const { data: fallbackData, error: fallbackError } = await supabase.from('transaksi')
+        .insert(withoutField(payload, 'bill_id'))
+        .select().single()
+      if (fallbackError) return fallbackError
+      setTxData(prev => [mapTx(fallbackData), ...prev])
+      return null
+    }
     if (error) return error
     setTxData(prev => [mapTx(data), ...prev])
     return null
   }
   
+  const updateTx = async (id, { desc, amount, type, cat, sub_cat, date, wallet_id = null }) => {
+    if (!canWriteActiveAccount) return readonlyError
+    const { data, error } = await supabase.from('transaksi')
+      .update({ keterangan: desc, amount, tipe: type, cat, sub_cat, tgl: date, wallet_id })
+      .eq('id', id).eq('user_id', effectiveUserId).select().single()
+    if (!error) setTxData(prev => prev.map(t => t.id === id ? mapTx(data) : t))
+    return error
+  }
+
   const deleteTx = async (id) => {
     if (!canWriteActiveAccount) return readonlyError
+    const tx = txData.find(t => t.id === id)
+    const paidBillId = tx?.type === 'out' ? tx.bill_id : null
+    const paidBillName = tx?.type === 'out' && tx?.desc?.startsWith('Bayar Tagihan:')
+      ? tx.desc.replace('Bayar Tagihan:', '').trim()
+      : ''
+
     const { error } = await supabase.from('transaksi').delete().eq('id', id).eq('user_id', effectiveUserId)
-    if (!error) setTxData(prev => prev.filter(t => t.id !== id))
+    if (!error) {
+      setTxData(prev => prev.filter(t => t.id !== id))
+
+      if (paidBillId || paidBillName) {
+        const paidBill = paidBillId
+          ? billData.find(b => b.id === paidBillId && b.is_lunas)
+          : billData
+          .filter(b =>
+            b.is_lunas &&
+            b.nama_tagihan?.toLowerCase() === paidBillName.toLowerCase() &&
+            Number(b.amount) === Number(tx.amount)
+          )
+          .sort((a, b) => Math.abs(new Date(a.jatuh_tempo) - new Date(tx.date)) - Math.abs(new Date(b.jatuh_tempo) - new Date(tx.date)))[0]
+
+        if (paidBill) {
+          const { error: restoreError } = await supabase
+            .from('tagihan')
+            .update({ is_lunas: false })
+            .eq('id', paidBill.id)
+            .eq('user_id', effectiveUserId)
+
+          if (!restoreError) {
+            setBillData(prev => prev.map(b => b.id === paidBill.id ? { ...b, is_lunas: false } : b))
+          }
+
+          const generatedNextBill = billData.find(b => b.source_bill_id === paidBill.id && !b.is_lunas)
+          if (generatedNextBill) {
+            const { error: deleteGeneratedError } = await supabase
+              .from('tagihan')
+              .delete()
+              .eq('id', generatedNextBill.id)
+              .eq('user_id', effectiveUserId)
+
+            if (!deleteGeneratedError) {
+              setBillData(prev => prev.filter(b => b.id !== generatedNextBill.id))
+            }
+          }
+        }
+      }
+    }
     return error
   }
 
@@ -309,9 +390,21 @@ export function DataProvider({ children }) {
     return null;
   }
 
-  const addBill = async ({ nama_tagihan, amount, jatuh_tempo }) => {
+  const addBill = async ({ nama_tagihan, amount, jatuh_tempo, source_bill_id = null }) => {
     if (!canWriteActiveAccount) return readonlyError
-    const { data, error } = await supabase.from('tagihan').insert({ user_id: effectiveUserId, nama_tagihan, amount, jatuh_tempo }).select().single()
+    const payload = { user_id: effectiveUserId, nama_tagihan, amount, jatuh_tempo }
+    if (source_bill_id) payload.source_bill_id = source_bill_id
+
+    const { data, error } = await supabase.from('tagihan').insert(payload).select().single()
+    if (error && source_bill_id && isMissingSourceBillIdColumn(error)) {
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('tagihan')
+        .insert(withoutField(payload, 'source_bill_id'))
+        .select()
+        .single()
+      if (!fallbackError) setBillData(prev => [...prev, fallbackData].sort((a,b) => new Date(a.jatuh_tempo) - new Date(b.jatuh_tempo)))
+      return fallbackError
+    }
     if (!error) setBillData(prev => [...prev, data].sort((a,b) => new Date(a.jatuh_tempo) - new Date(b.jatuh_tempo)))
     return error
   }
@@ -337,7 +430,8 @@ export function DataProvider({ children }) {
             cat: 'Tagihan & Utilitas', // Sesuaikan dengan kategori di utils.js
             sub_cat: 'Lain-lain',
             date: today, 
-            wallet_id: walletId // Uang akan langsung terpotong dari dompet pilihan
+            wallet_id: walletId, // Uang akan langsung terpotong dari dompet pilihan
+            bill_id: bill.id
           });
           
           // Membuat duplikat untuk bulan depan
@@ -346,7 +440,8 @@ export function DataProvider({ children }) {
           await addBill({ 
             nama_tagihan: bill.nama_tagihan, 
             amount: Number(bill.amount), 
-            jatuh_tempo: dateObj.toISOString().split('T')[0] 
+            jatuh_tempo: dateObj.toISOString().split('T')[0],
+            source_bill_id: bill.id
           });
         }
       }
@@ -419,7 +514,7 @@ export function DataProvider({ children }) {
     <DataContext.Provider value={{ 
       txData, invData, billData, walletData, targetData, loading, loadAll, 
       addWallet, updateWallet, deleteWallet,
-      addTx, deleteTx, addInv, updateInv, deleteInv,
+      addTx, updateTx, deleteTx, addInv, updateInv, deleteInv,
       transferWallet, addBill, toggleBill, deleteBill,
       addTarget, updateTarget, deleteTarget,
       budgetData, saveBudget, deleteBudget,

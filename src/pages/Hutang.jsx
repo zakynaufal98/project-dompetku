@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useData } from '../context/DataContext'
 import { fmt, fmtShort, today } from '../lib/utils'
 import { TxItem, PanelHeader, Empty, Field } from '../components/UI'
-import { Landmark, CheckCircle2, ReceiptText, PlusCircle, Loader2, Wallet, ChevronDown } from 'lucide-react'
+import { Landmark, CheckCircle2, ReceiptText, PlusCircle, Loader2, Wallet, ChevronDown, ListChecks } from 'lucide-react'
 
 export default function Hutang() {
   // 👇 TAMBAHAN: Panggil walletData dan totals dari context
@@ -14,8 +14,9 @@ export default function Hutang() {
   const [date, setDate] = useState(today())
   
   // 👇 TAMBAHAN: State untuk menyimpan Wallet ID
-  const [walletId, setWalletId] = useState('') 
-  
+  const [walletId, setWalletId] = useState('')
+  const [selectedHutangId, setSelectedHutangId] = useState('')
+
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
@@ -45,6 +46,18 @@ export default function Hutang() {
   const sisaHutang = Math.max(0, totalHutang - totalDibayar)
   const progress = totalHutang === 0 ? 0 : Math.min(100, (totalDibayar / totalHutang) * 100)
 
+  // Sisa per hutang — heuristik berdasarkan kecocokan deskripsi
+  const sisaPerHutang = useMemo(() => {
+    return hutangMasuk.map(h => {
+      const terbayar = cicilanKeluar
+        .filter(c => c.desc?.toLowerCase().includes(h.desc?.toLowerCase()))
+        .reduce((s, c) => s + c.amount, 0)
+      return { ...h, sisa: Math.max(0, h.amount - terbayar) }
+    })
+  }, [hutangMasuk, cicilanKeluar])
+
+  const activeHutang = sisaPerHutang.filter(h => h.sisa > 0)
+
   const riwayatHutang = useMemo(() => {
     return [...hutangMasuk, ...cicilanKeluar].sort((a, b) => {
       const timeA = new Date(a.date).getTime()
@@ -56,6 +69,12 @@ export default function Hutang() {
       return createB - createA
     })
   }, [hutangMasuk, cicilanKeluar])
+
+  const handleSelectHutang = (id) => {
+    setSelectedHutangId(id)
+    const found = activeHutang.find(h => h.id === id)
+    if (found) setDesc(`Cicilan: ${found.desc}`)
+  }
 
   const handleSimpan = async () => {
     if (!desc.trim()) { setErr('Keterangan wajib diisi'); return }
@@ -129,13 +148,13 @@ export default function Hutang() {
           <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm">
             <div className="flex gap-2 p-1 bg-border rounded-xl mb-5">
               <button 
-                onClick={() => {setMode('bayar'); setErr('')}}
+                onClick={() => { setMode('bayar'); setErr(''); setSelectedHutangId('') }}
                 className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${mode === 'bayar' ? 'bg-surface text-gold shadow-sm' : 'text-muted hover:text-text-2'}`}
               >
                 Bayar Cicilan
               </button>
-              <button 
-                onClick={() => {setMode('pinjam'); setErr('')}}
+              <button
+                onClick={() => { setMode('pinjam'); setErr(''); setSelectedHutangId('') }}
                 className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${mode === 'pinjam' ? 'bg-surface text-income shadow-sm' : 'text-muted hover:text-text-2'}`}
               >
                 Tambah Hutang
@@ -143,6 +162,30 @@ export default function Hutang() {
             </div>
 
             <div className="space-y-4">
+
+              {/* Pilih hutang mana yang dibayar — hanya muncul saat mode bayar dan ada hutang aktif */}
+              {mode === 'bayar' && activeHutang.length > 0 && (
+                <Field label={<span className="flex items-center gap-1.5"><ListChecks size={13} /> Hutang yang Dibayar</span>}>
+                  <div className="relative">
+                    <select
+                      className="form-input pr-10 py-3 cursor-pointer appearance-none font-semibold text-text-2 w-full"
+                      value={selectedHutangId}
+                      onChange={e => handleSelectHutang(e.target.value)}
+                    >
+                      <option value="">— Pilih hutang... —</option>
+                      {activeHutang.map(h => (
+                        <option key={h.id} value={h.id}>
+                          {h.desc} · sisa {fmtShort(h.sisa)}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                      <ChevronDown size={18} strokeWidth={2.5} />
+                    </div>
+                  </div>
+                </Field>
+              )}
+
               <Field label="Keterangan">
                 <input 
                   type="text" 

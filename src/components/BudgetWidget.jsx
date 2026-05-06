@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useData } from '../context/DataContext'
 import { CATEGORY_TREE, fmtShort, CAT_ICONS, CHART_COLORS } from '../lib/utils'
-import { Plus, Trash2, Edit2, Target, AlertTriangle } from 'lucide-react'
+import { Plus, Trash2, Edit2, Target, AlertTriangle, Check, X } from 'lucide-react'
 import { ProgressBar } from './UI'
 
 export default function BudgetWidget() {
@@ -9,6 +9,8 @@ export default function BudgetWidget() {
   const [isOpen, setIsOpen] = useState(false)
   const [editingCat, setEditingCat] = useState('')
   const [amount, setAmount] = useState('')
+  const [editingBudgetId, setEditingBudgetId] = useState(null)
+  const [confirmDel, setConfirmDel] = useState(null)
 
   const now = new Date()
   const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
@@ -34,12 +36,29 @@ export default function BudgetWidget() {
 
   const availableCategories = Object.keys(CATEGORY_TREE.out).filter(c => c !== 'Lainnya')
 
+  const handleEdit = (b) => {
+    setEditingBudgetId(b.id)
+    setEditingCat(b.category)
+    setAmount(String(b.amount))
+    setIsOpen(true)
+  }
+
+  const handleClose = () => {
+    setIsOpen(false)
+    setEditingCat('')
+    setAmount('')
+    setEditingBudgetId(null)
+  }
+
   const handleSave = async () => {
     if (!editingCat || !amount) return
     await saveBudget(editingCat, Number(amount))
-    setEditingCat('')
-    setAmount('')
-    setIsOpen(false)
+    handleClose()
+  }
+
+  const handleConfirmDelete = async (id) => {
+    await deleteBudget(id)
+    setConfirmDel(null)
   }
 
   return (
@@ -51,33 +70,40 @@ export default function BudgetWidget() {
           </h3>
           <p className="text-xs text-muted font-medium mt-0.5">Kontrol batas pengeluaranmu</p>
         </div>
-        <button 
-          onClick={() => setIsOpen(!isOpen)}
-          className="w-8 h-8 flex items-center justify-center rounded-xl bg-bg text-muted2 hover:text-indigo-500 transition-colors"
+        <button
+          onClick={isOpen ? handleClose : () => { setEditingBudgetId(null); setEditingCat(''); setAmount(''); setIsOpen(true) }}
+          className={`w-8 h-8 flex items-center justify-center rounded-xl transition-colors ${isOpen ? 'bg-expense-light text-expense' : 'bg-bg text-muted2 hover:text-indigo-500'}`}
         >
-          <Plus size={18} />
+          {isOpen ? <X size={18} /> : <Plus size={18} />}
         </button>
       </div>
 
       {isOpen && (
         <div className="bg-bg border border-border2 rounded-2xl p-4 mb-5 animate-fade-in">
+          <p className="text-xs font-bold text-muted uppercase tracking-widest mb-3">{editingBudgetId ? 'Edit Anggaran' : 'Tambah Anggaran'}</p>
           <div className="space-y-3">
             <div>
               <label className="text-xs font-bold text-muted ml-1 block mb-1">Kategori</label>
-              <select 
-                className="w-full bg-surface border border-border rounded-xl px-3 py-2 text-sm text-text outline-none focus:border-indigo-500"
-                value={editingCat}
-                onChange={e => setEditingCat(e.target.value)}
-              >
-                <option value="" disabled>Pilih kategori...</option>
-                {availableCategories.map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
+              {editingBudgetId ? (
+                <div className="w-full bg-surface border border-border rounded-xl px-3 py-2 text-sm text-text font-semibold flex items-center gap-2">
+                  <span className="opacity-70">{CAT_ICONS[editingCat]}</span> {editingCat}
+                </div>
+              ) : (
+                <select
+                  className="w-full bg-surface border border-border rounded-xl px-3 py-2 text-sm text-text outline-none focus:border-indigo-500"
+                  value={editingCat}
+                  onChange={e => setEditingCat(e.target.value)}
+                >
+                  <option value="" disabled>Pilih kategori...</option>
+                  {availableCategories.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              )}
             </div>
             <div>
               <label className="text-xs font-bold text-muted ml-1 block mb-1">Batas Maksimal (Rp)</label>
-              <input 
+              <input
                 type="number"
                 className="w-full bg-surface border border-border rounded-xl px-3 py-2 text-sm text-text outline-none focus:border-indigo-500 font-medium tabular-nums"
                 value={amount}
@@ -86,14 +112,14 @@ export default function BudgetWidget() {
               />
             </div>
             <div className="flex gap-2 pt-1">
-              <button 
+              <button
                 onClick={handleSave}
                 className="flex-1 bg-indigo-600 text-white text-xs font-bold py-2.5 rounded-xl hover:bg-indigo-700 transition-colors"
               >
-                Simpan
+                {editingBudgetId ? 'Update' : 'Simpan'}
               </button>
-              <button 
-                onClick={() => {setIsOpen(false); setEditingCat(''); setAmount('')}}
+              <button
+                onClick={handleClose}
                 className="px-4 bg-surface border border-border text-text text-xs font-bold py-2.5 rounded-xl hover:bg-bg transition-colors"
               >
                 Batal
@@ -138,13 +164,22 @@ export default function BudgetWidget() {
                   </p>
                 )}
 
-                <button 
-                  onClick={() => deleteBudget(b.id)}
-                  className="absolute -right-2 top-0 p-1.5 bg-expense text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity transform scale-75 hover:scale-90"
-                  title="Hapus Budget"
-                >
-                  <Trash2 size={14} />
-                </button>
+                {confirmDel === b.id ? (
+                  <div className="flex items-center gap-1.5 mt-2 animate-fade-in">
+                    <span className="text-[10px] font-bold text-expense">Hapus anggaran ini?</span>
+                    <button onClick={() => handleConfirmDelete(b.id)} className="w-6 h-6 bg-expense text-white rounded-full flex items-center justify-center hover:opacity-80"><Check size={12} /></button>
+                    <button onClick={() => setConfirmDel(null)} className="w-6 h-6 bg-border text-muted rounded-full flex items-center justify-center hover:bg-border2"><X size={12} /></button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => handleEdit(b)} className="p-1 text-muted2 hover:text-indigo-500 transition-colors" title="Edit">
+                      <Edit2 size={13} />
+                    </button>
+                    <button onClick={() => setConfirmDel(b.id)} className="p-1 text-muted2 hover:text-expense transition-colors" title="Hapus">
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                )}
               </div>
             )
           })}

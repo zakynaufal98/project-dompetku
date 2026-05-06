@@ -14,11 +14,11 @@ export default function ExportData({ isYearly = false }) {
       if (menuRef.current && !menuRef.current.contains(event.target)) setIsOpen(false)
     }
     const handleExportDate = (e) => setExportDate(e.detail)
-    document.addEventListener("mousedown", handleClickOutside)
-    window.addEventListener("updateExportDate", handleExportDate)
+    document.addEventListener('mousedown', handleClickOutside)
+    window.addEventListener('updateExportDate', handleExportDate)
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside)
-      window.removeEventListener("updateExportDate", handleExportDate)
+      document.removeEventListener('mousedown', handleClickOutside)
+      window.removeEventListener('updateExportDate', handleExportDate)
     }
   }, [])
 
@@ -26,370 +26,390 @@ export default function ExportData({ isYearly = false }) {
     const now = new Date()
     const fallbackYear = String(now.getFullYear())
     const fallbackYM = `${fallbackYear}-${String(now.getMonth() + 1).padStart(2, '0')}`
-    
     const targetPeriod = exportDate || (isYearly ? fallbackYear : fallbackYM)
     const filterFn = (t) => t.date?.startsWith(targetPeriod)
-    
+
     const expenses = txData.filter(t => t.type === 'out' && (t.cat !== 'Transfer' || t.sub_cat === 'Bayar Pinjaman') && filterFn(t))
     const incomes = txData.filter(t => t.type === 'in' && t.cat !== 'Transfer' && filterFn(t))
     const investments = invData.filter(t => t.action === 'beli' && filterFn(t))
-    
-    const keluar = expenses.reduce((s, t) => s + t.amount, 0)
     const masuk = incomes.reduce((s, t) => s + t.amount, 0)
+    const keluar = expenses.reduce((s, t) => s + t.amount, 0)
     const invest = investments.reduce((s, t) => s + t.amount, 0)
-    
     const netto = masuk - keluar
-    const savingsRate = masuk > 0 ? (((netto > 0 ? netto : 0) + invest) / masuk * 100).toFixed(1) : 0
-    
+    const savingsRate = masuk > 0 ? (((Math.max(netto, 0) + invest) / masuk) * 100).toFixed(1) : '0.0'
     const totalGain = txData.filter(t => t.sub_cat === 'Profit Investasi' && filterFn(t)).reduce((s, t) => s + t.amount, 0)
     const totalLoss = txData.filter(t => t.sub_cat === 'Rugi Investasi' && filterFn(t)).reduce((s, t) => s + t.amount, 0)
-    
+
     const catMap = {}
-    expenses.forEach(t => { 
-      const mainCat = t.cat || 'Lainnya'
-      catMap[mainCat] = (catMap[mainCat] || 0) + t.amount 
-    })
-    const topCategories = Object.entries(catMap).sort((a, b) => b[1] - a[1]).slice(0, 5)
+    expenses.forEach(t => { catMap[t.cat || 'Lainnya'] = (catMap[t.cat || 'Lainnya'] || 0) + t.amount })
     const allCategories = Object.entries(catMap).sort((a, b) => b[1] - a[1])
+    const topCategories = allCategories.slice(0, 5)
 
-    const pText = isYearly ? `Tahun ${targetPeriod}` : `Bulan ${targetPeriod}`
-    
-    let insight = `Luar biasa! Arus kas sangat sehat di ${pText.toLowerCase()}.`
-    let insightCol = "#10B981" 
-    
-    if (keluar > masuk) {
-      insight = `Kritis! Kamu defisit sebesar Rp ${(keluar - masuk).toLocaleString('id-ID')} di ${pText.toLowerCase()}. Evaluasi segera pengeluaranmu!`
-      insightCol = "#E11D48" 
-    } else if (keluar > (masuk * 0.8)) {
-      insight = `Waspada! Pengeluaranmu mencapai ${((keluar/masuk)*100).toFixed(1)}% dari pemasukan. Tingkatkan porsi tabungan.`
-      insightCol = "#F59E0B" 
-    } else if (savingsRate >= 20) {
-      insight = `Level Pro! Tingkat tabunganmu mencapai ${savingsRate}%. Kebebasan finansial makin dekat!`
-      insightCol = "#0EA5E9" 
-    }
-
-    // Income categories
     const inCatMap = {}
     incomes.forEach(t => { inCatMap[t.cat || 'Lainnya'] = (inCatMap[t.cat || 'Lainnya'] || 0) + t.amount })
     const incomeCategories = Object.entries(inCatMap).sort((a, b) => b[1] - a[1])
 
     const combinedTx = [
       ...txData.filter(t => t.cat !== 'Transfer' && filterFn(t)).map(t => ({
-        ...t, 
-        displayType: t.type === 'in' ? 'Pemasukan' : 'Pengeluaran', 
-        displayCat: t.sub_cat ? `${t.cat || 'Lainnya'} - ${t.sub_cat}` : (t.cat || 'Lainnya'), 
-        color: t.type === 'in' ? '#10B981' : '#E11D48'
+        ...t,
+        displayType: t.type === 'in' ? 'Pemasukan' : 'Pengeluaran',
+        displayCat: t.sub_cat ? `${t.cat || 'Lainnya'} - ${t.sub_cat}` : (t.cat || 'Lainnya'),
+        color: t.type === 'in' ? '#059669' : '#DC2626',
+        sign: t.type === 'in' ? '+' : '-',
       })),
       ...invData.filter(t => filterFn(t)).map(t => ({
-        ...t, 
-        displayType: t.action === 'beli' ? 'Beli Aset' : 'Jual Aset', 
-        displayCat: `Investasi (${t.invType || 'Aset'})`, 
-        desc: t.desc || `${t.action === 'beli' ? 'Pembelian' : 'Penjualan'} ${t.subType || t.invType}`, 
-        color: t.action === 'beli' ? '#0EA5E9' : '#10B981'
+        ...t,
+        displayType: t.action === 'beli' ? 'Beli Aset' : 'Jual Aset',
+        displayCat: `Investasi (${t.invType || 'Aset'})`,
+        desc: t.desc || `${t.action === 'beli' ? 'Pembelian' : 'Penjualan'} ${t.subType || t.invType}`,
+        color: t.action === 'beli' ? '#2563EB' : '#059669',
+        sign: t.action === 'beli' ? '-' : '+',
       }))
     ].sort((a, b) => new Date(b.date) - new Date(a.date))
 
-    return { 
+    const periodDate = isYearly ? null : new Date(`${targetPeriod}-01T00:00:00`)
+    const periodeText = isYearly
+      ? `Tahun ${targetPeriod}`
+      : periodDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })
+
+    let insight = `Arus kas sehat pada ${periodeText.toLowerCase()}.`
+    let insightColor = '#059669'
+    if (keluar > masuk) {
+      insight = `Arus kas defisit sebesar Rp ${(keluar - masuk).toLocaleString('id-ID')}. Evaluasi pengeluaran terbesar.`
+      insightColor = '#DC2626'
+    } else if (masuk > 0 && keluar > masuk * 0.8) {
+      insight = `Pengeluaran mencapai ${((keluar / masuk) * 100).toFixed(1)}% dari pemasukan. Ruang menabung masih bisa ditingkatkan.`
+      insightColor = '#D97706'
+    } else if (Number(savingsRate) >= 20) {
+      insight = `Savings rate ${savingsRate}%. Alokasi tabungan dan investasi sudah berada di jalur baik.`
+      insightColor = '#2563EB'
+    }
+
+    return {
       masuk, keluar, invest, netto, savingsRate, topCategories, allCategories, incomeCategories,
-      totalGain, totalLoss,
-      insightText: insight, insightColor: insightCol, 
-      allTransaksi: combinedTx, periodeText: pText,
+      totalGain, totalLoss, insightText: insight, insightColor,
+      allTransaksi: combinedTx, periodeText,
       saldoSaatIni: totals?.saldo || 0, totalTx: combinedTx.length
     }
   }, [txData, invData, isYearly, totals, exportDate])
 
-  const formatRp = (num) => `Rp ${num.toLocaleString('id-ID')}`
+  const formatRp = (num = 0) => `Rp ${Number(num || 0).toLocaleString('id-ID')}`
+  const formatDate = (date) => new Date(`${date}T00:00:00`).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+  const hexToRgb = (hex) => {
+    const clean = String(hex || '#0F172A').replace('#', '')
+    return [
+      parseInt(clean.slice(0, 2), 16),
+      parseInt(clean.slice(2, 4), 16),
+      parseInt(clean.slice(4, 6), 16),
+    ]
+  }
+  const escapeHtml = (value = '') => String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;')
+  const escapeXml = escapeHtml
 
-  // --- 1. EXCEL REPORT ---
   const handleExportExcel = () => {
     setIsOpen(false)
     if (!reportData.allTransaksi.length) return alert('Belum ada data pada periode ini.')
 
-    const htmlContent = `
-      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
-        <head><meta charset="utf-8"></head>
-        <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
-          <table border="0" cellpadding="5" cellspacing="0" style="width:100%; max-width:800px;">
-            <tr><td colspan="5" style="font-size: 28px; font-weight: bold; color: #312E81; padding-bottom: 10px;">📊 LAPORAN KEUANGAN DOMPETKU PRO</td></tr>
-            <tr><td colspan="5" style="color: #64748B; font-size: 14px; padding-bottom: 20px;">Periode: ${reportData.periodeText.toUpperCase()}</td></tr>
-            <tr><td colspan="5" style="background-color: ${reportData.insightColor}15; color: ${reportData.insightColor}; font-weight: bold; padding: 15px; border-left: 4px solid ${reportData.insightColor};">💡 EXECUTIVE INSIGHT: ${reportData.insightText}</td></tr>
-            <tr><td colspan="5"></td></tr>
-            <tr><td colspan="5" style="background-color: #1E1B4B; color: white; font-weight: bold; padding: 10px;">📈 RINGKASAN ARUS KAS & INVESTASI</td></tr>
-            <tr><td colspan="2" style="background-color: #F8FAFC; border-bottom: 1px solid #E2E8F0; padding: 10px; font-weight: bold;">Pemasukan</td><td colspan="3" style="background-color: #F8FAFC; border-bottom: 1px solid #E2E8F0; padding: 10px; font-weight: bold; color: #10B981;">+ ${formatRp(reportData.masuk)}</td></tr>
-            <tr><td colspan="2" style="background-color: #FFFFFF; border-bottom: 1px solid #E2E8F0; padding: 10px; font-weight: bold;">Pengeluaran</td><td colspan="3" style="background-color: #FFFFFF; border-bottom: 1px solid #E2E8F0; padding: 10px; font-weight: bold; color: #E11D48;">- ${formatRp(reportData.keluar)}</td></tr>
-            <tr><td colspan="2" style="background-color: #F8FAFC; border-bottom: 1px solid #E2E8F0; padding: 10px; font-weight: bold;">Profit (Gain)</td><td colspan="3" style="background-color: #F8FAFC; border-bottom: 1px solid #E2E8F0; padding: 10px; font-weight: bold; color: #10B981;">+ ${formatRp(reportData.totalGain)}</td></tr>
-            <tr><td colspan="2" style="background-color: #FFFFFF; border-bottom: 1px solid #E2E8F0; padding: 10px; font-weight: bold;">Rugi (Loss)</td><td colspan="3" style="background-color: #FFFFFF; border-bottom: 1px solid #E2E8F0; padding: 10px; font-weight: bold; color: #E11D48;">- ${formatRp(reportData.totalLoss)}</td></tr>
-            <tr><td colspan="2" style="background-color: #EEF2FF; padding: 10px; font-weight: bold;">Arus Kas Bersih</td><td colspan="3" style="background-color: #EEF2FF; padding: 10px; font-weight: bold; color: ${reportData.netto >= 0 ? '#10B981' : '#E11D48'};">${formatRp(reportData.netto)}</td></tr>
-            <tr><td colspan="5"></td></tr>
-            <tr><td colspan="5" style="background-color: #1E1B4B; color: white; font-weight: bold; padding: 10px;">🔥 TOP SUMBER PENGELUARAN</td></tr>
-            ${reportData.topCategories.map((c, i) => `<tr><td colspan="2" style="border-bottom: 1px solid #E2E8F0; padding: 10px;">${i+1}. ${c[0]}</td><td colspan="3" style="border-bottom: 1px solid #E2E8F0; font-weight: bold; color: #E11D48;">${formatRp(c[1])}</td></tr>`).join('')}
-            <tr><td colspan="5"></td></tr>
-            <tr><td colspan="5" style="background-color: #1E1B4B; color: white; font-weight: bold; padding: 10px;">📋 RINCIAN TRANSAKSI</td></tr>
-            <tr style="background-color: #F1F5F9; color: #334155; font-weight: bold;"><th style="border-bottom: 2px solid #CBD5E1; padding: 10px; text-align: left;">Tanggal</th><th style="border-bottom: 2px solid #CBD5E1; padding: 10px; text-align: left;">Tipe</th><th style="border-bottom: 2px solid #CBD5E1; padding: 10px; text-align: left;">Kategori</th><th style="border-bottom: 2px solid #CBD5E1; padding: 10px; text-align: left;">Deskripsi</th><th style="border-bottom: 2px solid #CBD5E1; padding: 10px; text-align: right;">Nominal</th></tr>
-            ${reportData.allTransaksi.map(t => `<tr><td style="border-bottom: 1px solid #E2E8F0; padding: 8px;">${t.date}</td><td style="border-bottom: 1px solid #E2E8F0; padding: 8px; color: ${t.color}; font-weight: bold;">${t.displayType}</td><td style="border-bottom: 1px solid #E2E8F0; padding: 8px;">${t.displayCat}</td><td style="border-bottom: 1px solid #E2E8F0; padding: 8px; color: #64748B;">${t.desc}</td><td style="border-bottom: 1px solid #E2E8F0; padding: 8px; text-align: right; font-weight: bold; color: ${t.color};">${formatRp(t.amount)}</td></tr>`).join('')}
-          </table>
-        </body>
-      </html>
-    `
-    const blob = new Blob([htmlContent], { type: 'application/vnd.ms-excel' })
-    const link = document.createElement("a")
+    const summaryRows = [
+      ['Saldo Saat Ini', formatRp(reportData.saldoSaatIni), '#4F46E5'],
+      ['Pemasukan', `+ ${formatRp(reportData.masuk)}`, '#059669'],
+      ['Pengeluaran', `- ${formatRp(reportData.keluar)}`, '#DC2626'],
+      ['Arus Kas Bersih', formatRp(reportData.netto), reportData.netto >= 0 ? '#059669' : '#DC2626'],
+      ['Investasi', formatRp(reportData.invest), '#2563EB'],
+      ['Profit Investasi', `+ ${formatRp(reportData.totalGain)}`, '#059669'],
+      ['Rugi Investasi', `- ${formatRp(reportData.totalLoss)}`, '#DC2626'],
+      ['Savings Rate', `${reportData.savingsRate}%`, '#4F46E5'],
+    ]
+
+    const cell = (value, style = 'Text', type = 'String', merge = '') =>
+      `<Cell${style ? ` ss:StyleID="${style}"` : ''}${merge ? ` ss:MergeAcross="${merge}"` : ''}><Data ss:Type="${type}">${escapeXml(value)}</Data></Cell>`
+    const numberCell = (value, style = 'Currency') =>
+      `<Cell ss:StyleID="${style}"><Data ss:Type="Number">${Number(value || 0)}</Data></Cell>`
+    const percentCell = (value) =>
+      `<Cell ss:StyleID="Percent"><Data ss:Type="Number">${Number(value || 0) / 100}</Data></Cell>`
+    const row = (cells, height = '') => `<Row${height ? ` ss:Height="${height}"` : ''}>${cells.join('')}</Row>`
+
+    const workbook = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ <Styles>
+  <Style ss:ID="Default" ss:Name="Normal"><Font ss:FontName="Arial" ss:Size="10"/></Style>
+  <Style ss:ID="Title"><Font ss:FontName="Arial" ss:Size="18" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#111827" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="Meta"><Font ss:Color="#64748B"/><Interior ss:Color="#F8FAFC" ss:Pattern="Solid"/></Style>
+  <Style ss:ID="Insight"><Font ss:Bold="1" ss:Color="${reportData.insightColor}"/><Interior ss:Color="#FFF7ED" ss:Pattern="Solid"/><Alignment ss:WrapText="1" ss:Vertical="Center"/></Style>
+  <Style ss:ID="Section"><Font ss:Bold="1" ss:Color="#0F172A"/><Interior ss:Color="#E0F2FE" ss:Pattern="Solid"/></Style>
+  <Style ss:ID="Header"><Font ss:Bold="1" ss:Color="#334155"/><Interior ss:Color="#F1F5F9" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/></Borders></Style>
+  <Style ss:ID="Text"><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders><Alignment ss:WrapText="1" ss:Vertical="Center"/></Style>
+  <Style ss:ID="TextBold"><Font ss:Bold="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders></Style>
+  <Style ss:ID="Income"><Font ss:Bold="1" ss:Color="#059669"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders></Style>
+  <Style ss:ID="Expense"><Font ss:Bold="1" ss:Color="#DC2626"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders></Style>
+  <Style ss:ID="Blue"><Font ss:Bold="1" ss:Color="#2563EB"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders></Style>
+  <Style ss:ID="Currency"><NumberFormat ss:Format="&quot;Rp&quot; #,##0;[Red]-&quot;Rp&quot; #,##0"/><Alignment ss:Horizontal="Right"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders></Style>
+  <Style ss:ID="Percent"><NumberFormat ss:Format="0.0%"/><Alignment ss:Horizontal="Right"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders></Style>
+ </Styles>
+ <Worksheet ss:Name="Ringkasan">
+  <Table>
+   <Column ss:Width="190"/><Column ss:Width="170"/><Column ss:Width="160"/><Column ss:Width="160"/>
+   ${row([cell('DompetKu Pro - Laporan Keuangan', 'Title', 'String', 3)], 28)}
+   ${row([cell(`Periode: ${reportData.periodeText}`, 'Meta', 'String', 1), cell(`Dibuat: ${new Date().toLocaleDateString('id-ID')}`, 'Meta', 'String', 1)])}
+   ${row([cell(reportData.insightText, 'Insight', 'String', 3)], 36)}
+   ${row([cell('', '', 'String')])}
+   ${row([cell('Ringkasan', 'Section', 'String', 3)])}
+   ${summaryRows.map(([label, value]) => {
+      if (label === 'Savings Rate') return row([cell(label, 'TextBold'), percentCell(reportData.savingsRate)])
+      const raw = {
+        'Saldo Saat Ini': reportData.saldoSaatIni,
+        'Pemasukan': reportData.masuk,
+        'Pengeluaran': -reportData.keluar,
+        'Arus Kas Bersih': reportData.netto,
+        'Investasi': reportData.invest,
+        'Profit Investasi': reportData.totalGain,
+        'Rugi Investasi': -reportData.totalLoss,
+      }[label]
+      return row([cell(label, 'TextBold'), numberCell(raw), cell(value, raw >= 0 ? 'Income' : 'Expense')])
+    }).join('')}
+   ${row([cell('', '', 'String')])}
+   ${row([cell('Top Pengeluaran', 'Section', 'String', 3)])}
+   ${row([cell('Kategori', 'Header'), cell('Nominal', 'Header'), cell('Persentase', 'Header')])}
+   ${reportData.topCategories.map(([cat, val], i) => row([
+      cell(`${i + 1}. ${cat}`),
+      numberCell(-val),
+      percentCell(reportData.keluar > 0 ? (val / reportData.keluar) * 100 : 0),
+    ])).join('')}
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><FreezePanes/><FrozenNoSplit/><SplitHorizontal>1</SplitHorizontal><TopRowBottomPane>1</TopRowBottomPane></WorksheetOptions>
+ </Worksheet>
+ <Worksheet ss:Name="Transaksi">
+  <Table>
+   <Column ss:Width="95"/><Column ss:Width="115"/><Column ss:Width="220"/><Column ss:Width="300"/><Column ss:Width="130"/>
+   ${row([cell('Tanggal', 'Header'), cell('Tipe', 'Header'), cell('Kategori', 'Header'), cell('Deskripsi', 'Header'), cell('Nominal', 'Header')])}
+   ${reportData.allTransaksi.map(t => {
+      const nominal = t.sign === '-' ? -Number(t.amount || 0) : Number(t.amount || 0)
+      const typeStyle = t.sign === '-' ? 'Expense' : (t.color === '#2563EB' ? 'Blue' : 'Income')
+      return row([
+        cell(formatDate(t.date)),
+        cell(t.displayType, typeStyle),
+        cell(t.displayCat),
+        cell(t.desc),
+        numberCell(nominal),
+      ])
+    }).join('')}
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><FreezePanes/><FrozenNoSplit/><SplitHorizontal>1</SplitHorizontal><TopRowBottomPane>1</TopRowBottomPane></WorksheetOptions>
+ </Worksheet>
+ <Worksheet ss:Name="Kategori">
+  <Table>
+   <Column ss:Width="230"/><Column ss:Width="140"/><Column ss:Width="120"/>
+   ${row([cell('Kategori Pengeluaran', 'Header'), cell('Nominal', 'Header'), cell('Persentase', 'Header')])}
+   ${reportData.allCategories.map(([cat, val]) => row([
+      cell(cat),
+      numberCell(-val),
+      percentCell(reportData.keluar > 0 ? (val / reportData.keluar) * 100 : 0),
+    ])).join('')}
+   ${row([cell('', '', 'String')])}
+   ${row([cell('Kategori Pemasukan', 'Header'), cell('Nominal', 'Header')])}
+   ${reportData.incomeCategories.map(([cat, val]) => row([
+      cell(cat),
+      numberCell(val),
+    ])).join('')}
+  </Table>
+ </Worksheet>
+</Workbook>`
+
+    const blob = new Blob([workbook], { type: 'application/vnd.ms-excel;charset=utf-8' })
+    const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
-    link.download = `Analisis_DompetKu_${isYearly ? 'Tahunan' : 'Bulanan'}.xls`
+    link.download = `DompetKu_${isYearly ? 'Tahunan' : 'Bulanan'}_${reportData.periodeText.replace(/\s+/g, '_')}.xls`
     link.click()
+    URL.revokeObjectURL(link.href)
   }
 
-  // --- 2. PDF REPORT (PROPER MULTI-PAGE jsPDF) ---
   const handleExportPDF = async () => {
     setIsOpen(false)
     if (!reportData.allTransaksi.length) return alert('Belum ada data pada periode ini.')
-    
+
     setIsExporting(true)
     try {
       const { jsPDF } = await import('jspdf')
       const pdf = new jsPDF('p', 'mm', 'a4')
       const W = pdf.internal.pageSize.getWidth()
       const H = pdf.internal.pageSize.getHeight()
-      let y = 0
+      const margin = 14
+      let y = 16
 
       const addFooter = () => {
         pdf.setFontSize(7)
-        pdf.setTextColor(150)
-        pdf.text(`Dihasilkan otomatis oleh DompetKu Pro — ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`, W / 2, H - 8, { align: 'center' })
+        pdf.setTextColor(148, 163, 184)
+        pdf.text(`DompetKu Pro - dibuat ${new Date().toLocaleDateString('id-ID')}`, W / 2, H - 8, { align: 'center' })
       }
 
       const checkPage = (need) => {
-        if (y + need > H - 20) { addFooter(); pdf.addPage(); y = 20; }
+        if (y + need <= H - 18) return
+        addFooter()
+        pdf.addPage()
+        y = 16
       }
 
-      // === PAGE 1: HEADER & SUMMARY ===
-      // Header bar
-      pdf.setFillColor(30, 27, 75) // indigo-950
-      pdf.roundedRect(10, 10, W - 20, 40, 4, 4, 'F')
-      pdf.setFontSize(22)
-      pdf.setTextColor(255)
-      pdf.setFont(undefined, 'bold')
-      pdf.text('DompetKu Pro', 20, 30)
-      pdf.setFontSize(9)
-      pdf.setTextColor(180, 180, 220)
-      pdf.text('LAPORAN ANALISIS FINANSIAL', 20, 38)
-      pdf.setFontSize(16)
-      pdf.setTextColor(255)
-      pdf.text(reportData.periodeText, W - 20, 33, { align: 'right' })
-
-      y = 60
-
-      // Executive Insight
-      const insightR = reportData.insightColor === '#E11D48' ? 225 : reportData.insightColor === '#F59E0B' ? 245 : reportData.insightColor === '#0EA5E9' ? 14 : 16
-      const insightG = reportData.insightColor === '#E11D48' ? 29 : reportData.insightColor === '#F59E0B' ? 158 : reportData.insightColor === '#0EA5E9' ? 165 : 185
-      const insightB = reportData.insightColor === '#E11D48' ? 72 : reportData.insightColor === '#F59E0B' ? 11 : reportData.insightColor === '#0EA5E9' ? 233 : 129
-      
-      pdf.setFillColor(248, 250, 252)
-      pdf.roundedRect(10, y, W - 20, 22, 3, 3, 'F')
-      pdf.setDrawColor(insightR, insightG, insightB)
-      pdf.setLineWidth(1.5)
-      pdf.line(10, y, 10, y + 22)
-      pdf.setFontSize(7)
-      pdf.setTextColor(150)
-      pdf.text('KESIMPULAN EKSEKUTIF', 16, y + 7)
-      pdf.setFontSize(9)
-      pdf.setTextColor(insightR, insightG, insightB)
-      const lines = pdf.splitTextToSize(reportData.insightText, W - 40)
-      pdf.text(lines, 16, y + 14)
-      y += 30
-
-      // Summary Cards
-      const cardW = (W - 30) / 3
-      const cards = [
-        { label: 'SALDO SAAT INI', value: formatRp(reportData.saldoSaatIni), color: [79, 70, 229] },
-        { label: 'PEMASUKAN', value: `+${formatRp(reportData.masuk)}`, color: [16, 185, 129] },
-        { label: 'PENGELUARAN', value: `-${formatRp(reportData.keluar)}`, color: [225, 29, 72] },
-        { label: 'ARUS KAS BERSIH', value: formatRp(reportData.netto), color: reportData.netto >= 0 ? [16, 185, 129] : [225, 29, 72] },
-        { label: 'PROFIT (GAIN)', value: `+${formatRp(reportData.totalGain)}`, color: [16, 185, 129] },
-        { label: 'RUGI (LOSS)', value: `-${formatRp(reportData.totalLoss)}`, color: [225, 29, 72] },
-      ]
-      cards.forEach((c, i) => {
-        const row = Math.floor(i / 3)
-        const col = i % 3
-        const x = 10 + col * (cardW + 5)
-        const currentY = y + row * 30
-        pdf.setFillColor(248, 250, 252)
-        pdf.roundedRect(x, currentY, cardW, 26, 3, 3, 'F')
-        pdf.setFontSize(6)
-        pdf.setTextColor(c.color[0], c.color[1], c.color[2])
-        pdf.text(c.label, x + 4, currentY + 8)
-        pdf.setFontSize(11)
-        pdf.setTextColor(30, 41, 59)
-        pdf.setFont(undefined, 'bold')
-        pdf.text(c.value, x + 4, currentY + 19)
-        pdf.setFont(undefined, 'normal')
-      })
-      y += 60
-
-      // Savings Rate
-      pdf.setFillColor(79, 70, 229)
-      pdf.roundedRect(10, y, (W - 20) * 0.35, 22, 3, 3, 'F')
-      pdf.setFontSize(7)
-      pdf.setTextColor(180, 180, 240)
-      pdf.text('SAVINGS RATE', 16, y + 8)
-      pdf.setFontSize(18)
-      pdf.setTextColor(255)
-      pdf.setFont(undefined, 'bold')
-      pdf.text(`${reportData.savingsRate}%`, 16, y + 18)
-      pdf.setFont(undefined, 'normal')
-
-      // Top Categories Box
-      const topX = 10 + (W - 20) * 0.38
-      const topW = (W - 20) * 0.62
-      pdf.setFillColor(248, 250, 252)
-      pdf.roundedRect(topX, y, topW, 22, 3, 3, 'F')
-      pdf.setFontSize(7)
-      pdf.setTextColor(150)
-      pdf.text('TOP PENGELUARAN', topX + 4, y + 8)
-      reportData.topCategories.slice(0, 3).forEach((c, i) => {
-        pdf.setFontSize(8)
-        pdf.setTextColor(71, 85, 105)
-        pdf.text(`${i + 1}. ${c[0]}`, topX + 4, y + 14 + i * 3)
-        pdf.setTextColor(225, 29, 72)
-        pdf.text(formatRp(c[1]), topX + topW - 4, y + 14 + i * 3, { align: 'right' })
-      })
-      y += 30
-
-      // === KATEGORI BREAKDOWN TABLE ===
-      checkPage(40)
-      pdf.setFillColor(30, 27, 75)
-      pdf.roundedRect(10, y, W - 20, 8, 2, 2, 'F')
-      pdf.setFontSize(8)
-      pdf.setTextColor(255)
-      pdf.setFont(undefined, 'bold')
-      pdf.text('DISTRIBUSI PENGELUARAN PER KATEGORI', 16, y + 5.5)
-      pdf.setFont(undefined, 'normal')
-      y += 12
-
-      if (reportData.allCategories.length > 0) {
-        // Table header
-        pdf.setFillColor(241, 245, 249)
-        pdf.rect(10, y, W - 20, 7, 'F')
-        pdf.setFontSize(7)
-        pdf.setTextColor(100, 116, 139)
-        pdf.setFont(undefined, 'bold')
-        pdf.text('Kategori', 16, y + 5)
-        pdf.text('Nominal', W / 2 + 10, y + 5)
-        pdf.text('Persentase', W - 25, y + 5, { align: 'right' })
-        pdf.setFont(undefined, 'normal')
-        y += 9
-
-        reportData.allCategories.forEach(([cat, val]) => {
-          checkPage(8)
-          const pct = reportData.keluar > 0 ? (val / reportData.keluar * 100).toFixed(1) : 0
-          pdf.setFontSize(8)
-          pdf.setTextColor(71, 85, 105)
-          pdf.text(cat, 16, y + 4)
-          pdf.setTextColor(225, 29, 72)
-          pdf.setFont(undefined, 'bold')
-          pdf.text(formatRp(val), W / 2 + 10, y + 4)
-          pdf.setFont(undefined, 'normal')
-          pdf.setTextColor(100)
-          pdf.text(`${pct}%`, W - 25, y + 4, { align: 'right' })
-          // Mini progress bar
-          const barW = 30
-          const barX = W - 22 - barW
-          pdf.setFillColor(241, 245, 249)
-          pdf.roundedRect(barX, y + 1, barW, 2.5, 1, 1, 'F')
-          pdf.setFillColor(225, 29, 72)
-          pdf.roundedRect(barX, y + 1, barW * (Number(pct) / 100), 2.5, 1, 1, 'F')
-          pdf.setDrawColor(226, 232, 240)
-          pdf.line(10, y + 7, W - 10, y + 7)
-          y += 8
-        })
-        y += 5
-      }
-
-      // === INCOME BREAKDOWN ===
-      if (reportData.incomeCategories.length > 0) {
-        checkPage(30)
-        pdf.setFillColor(16, 185, 129)
-        pdf.roundedRect(10, y, W - 20, 8, 2, 2, 'F')
+      const sectionTitle = (title, color = [17, 24, 39]) => {
+        checkPage(14)
+        pdf.setFillColor(...color)
+        pdf.roundedRect(margin, y, W - margin * 2, 9, 2, 2, 'F')
         pdf.setFontSize(8)
         pdf.setTextColor(255)
         pdf.setFont(undefined, 'bold')
-        pdf.text('SUMBER PEMASUKAN', 16, y + 5.5)
+        pdf.text(title.toUpperCase(), margin + 5, y + 6)
         pdf.setFont(undefined, 'normal')
-        y += 12
-
-        reportData.incomeCategories.forEach(([cat, val]) => {
-          checkPage(8)
-          pdf.setFontSize(8)
-          pdf.setTextColor(71, 85, 105)
-          pdf.text(cat, 16, y + 4)
-          pdf.setTextColor(16, 185, 129)
-          pdf.setFont(undefined, 'bold')
-          pdf.text(formatRp(val), W - 20, y + 4, { align: 'right' })
-          pdf.setFont(undefined, 'normal')
-          pdf.setDrawColor(226, 232, 240)
-          pdf.line(10, y + 7, W - 10, y + 7)
-          y += 8
-        })
-        y += 5
+        y += 14
       }
 
-      // === TRANSACTION DETAIL TABLE ===
-      checkPage(20)
-      pdf.setFillColor(30, 27, 75)
-      pdf.roundedRect(10, y, W - 20, 8, 2, 2, 'F')
-      pdf.setFontSize(8)
-      pdf.setTextColor(255)
-      pdf.setFont(undefined, 'bold')
-      pdf.text(`RIWAYAT TRANSAKSI (${reportData.totalTx} transaksi)`, 16, y + 5.5)
-      pdf.setFont(undefined, 'normal')
-      y += 12
+      const drawMetric = (x, yPos, width, label, value, color) => {
+        pdf.setFillColor(248, 250, 252)
+        pdf.roundedRect(x, yPos, width, 24, 3, 3, 'F')
+        pdf.setFontSize(6.5)
+        pdf.setTextColor(...color)
+        pdf.setFont(undefined, 'bold')
+        pdf.text(label.toUpperCase(), x + 4, yPos + 7)
+        pdf.setFontSize(10)
+        pdf.setTextColor(15, 23, 42)
+        pdf.text(value, x + 4, yPos + 17, { maxWidth: width - 8 })
+        pdf.setFont(undefined, 'normal')
+      }
 
-      // Table header
-      pdf.setFillColor(241, 245, 249)
-      pdf.rect(10, y, W - 20, 7, 'F')
-      pdf.setFontSize(6.5)
-      pdf.setTextColor(100, 116, 139)
+      pdf.setFillColor(17, 24, 39)
+      pdf.roundedRect(margin, y, W - margin * 2, 32, 4, 4, 'F')
       pdf.setFont(undefined, 'bold')
-      pdf.text('Tanggal', 14, y + 5)
-      pdf.text('Tipe', 42, y + 5)
-      pdf.text('Kategori', 68, y + 5)
-      pdf.text('Deskripsi', 112, y + 5)
-      pdf.text('Nominal', W - 14, y + 5, { align: 'right' })
+      pdf.setFontSize(20)
+      pdf.setTextColor(255)
+      pdf.text('DompetKu Pro', margin + 7, y + 13)
+      pdf.setFontSize(9)
+      pdf.setTextColor(203, 213, 225)
+      pdf.text('Laporan Keuangan', margin + 7, y + 22)
+      pdf.setFontSize(14)
+      pdf.setTextColor(255)
+      pdf.text(reportData.periodeText, W - margin - 7, y + 17, { align: 'right' })
       pdf.setFont(undefined, 'normal')
-      y += 9
+      y += 42
+
+      pdf.setFillColor(248, 250, 252)
+      pdf.roundedRect(margin, y, W - margin * 2, 22, 3, 3, 'F')
+      pdf.setDrawColor(...hexToRgb(reportData.insightColor))
+      pdf.setLineWidth(1.2)
+      pdf.line(margin, y, margin, y + 22)
+      pdf.setFontSize(7)
+      pdf.setTextColor(100, 116, 139)
+      pdf.text('INSIGHT', margin + 5, y + 7)
+      pdf.setFontSize(9)
+      pdf.setTextColor(15, 23, 42)
+      pdf.text(pdf.splitTextToSize(reportData.insightText, W - margin * 2 - 14), margin + 5, y + 14)
+      y += 31
+
+      const cardW = (W - margin * 2 - 8) / 3
+      const metrics = [
+        ['Saldo Saat Ini', formatRp(reportData.saldoSaatIni), [79, 70, 229]],
+        ['Pemasukan', `+ ${formatRp(reportData.masuk)}`, [5, 150, 105]],
+        ['Pengeluaran', `- ${formatRp(reportData.keluar)}`, [220, 38, 38]],
+        ['Arus Kas Bersih', formatRp(reportData.netto), reportData.netto >= 0 ? [5, 150, 105] : [220, 38, 38]],
+        ['Investasi', formatRp(reportData.invest), [37, 99, 235]],
+        ['Savings Rate', `${reportData.savingsRate}%`, [79, 70, 229]],
+      ]
+      metrics.forEach((m, i) => drawMetric(margin + (i % 3) * (cardW + 4), y + Math.floor(i / 3) * 29, cardW, m[0], m[1], m[2]))
+      y += 63
+
+      sectionTitle('Distribusi Pengeluaran', [30, 41, 59])
+      if (reportData.allCategories.length === 0) {
+        pdf.setFontSize(9)
+        pdf.setTextColor(100, 116, 139)
+        pdf.text('Tidak ada pengeluaran pada periode ini.', margin, y)
+        y += 8
+      } else {
+        reportData.allCategories.forEach(([cat, val], i) => {
+          checkPage(10)
+          const pct = reportData.keluar > 0 ? (val / reportData.keluar) * 100 : 0
+          if (i % 2 === 0) {
+            pdf.setFillColor(248, 250, 252)
+            pdf.rect(margin, y - 3, W - margin * 2, 8, 'F')
+          }
+          pdf.setFontSize(8)
+          pdf.setTextColor(51, 65, 85)
+          pdf.text(String(cat), margin + 2, y + 2, { maxWidth: 72 })
+          pdf.setTextColor(220, 38, 38)
+          pdf.setFont(undefined, 'bold')
+          pdf.text(formatRp(val), W - margin - 40, y + 2, { align: 'right' })
+          pdf.setFont(undefined, 'normal')
+          pdf.setTextColor(100, 116, 139)
+          pdf.text(`${pct.toFixed(1)}%`, W - margin - 2, y + 2, { align: 'right' })
+          y += 8
+        })
+      }
+
+      if (reportData.incomeCategories.length > 0) {
+        sectionTitle('Sumber Pemasukan', [5, 150, 105])
+        reportData.incomeCategories.forEach(([cat, val], i) => {
+          checkPage(8)
+          if (i % 2 === 0) {
+            pdf.setFillColor(248, 250, 252)
+            pdf.rect(margin, y - 3, W - margin * 2, 8, 'F')
+          }
+          pdf.setFontSize(8)
+          pdf.setTextColor(51, 65, 85)
+          pdf.text(String(cat), margin + 2, y + 2)
+          pdf.setTextColor(5, 150, 105)
+          pdf.setFont(undefined, 'bold')
+          pdf.text(formatRp(val), W - margin - 2, y + 2, { align: 'right' })
+          pdf.setFont(undefined, 'normal')
+          y += 8
+        })
+      }
+
+      sectionTitle(`Riwayat Transaksi (${reportData.totalTx})`, [17, 24, 39])
+      pdf.setFillColor(241, 245, 249)
+      pdf.rect(margin, y, W - margin * 2, 8, 'F')
+      pdf.setFontSize(7)
+      pdf.setTextColor(71, 85, 105)
+      pdf.setFont(undefined, 'bold')
+      pdf.text('Tanggal', margin + 2, y + 5)
+      pdf.text('Tipe', margin + 28, y + 5)
+      pdf.text('Kategori', margin + 57, y + 5)
+      pdf.text('Deskripsi', margin + 104, y + 5)
+      pdf.text('Nominal', W - margin - 2, y + 5, { align: 'right' })
+      pdf.setFont(undefined, 'normal')
+      y += 10
 
       reportData.allTransaksi.forEach((t, i) => {
-        checkPage(8)
-        const isAlt = i % 2 === 0
-        if (isAlt) { pdf.setFillColor(252, 252, 253); pdf.rect(10, y - 1, W - 20, 7, 'F') }
-        
+        checkPage(9)
+        if (i % 2 === 0) {
+          pdf.setFillColor(252, 252, 253)
+          pdf.rect(margin, y - 3, W - margin * 2, 8, 'F')
+        }
         pdf.setFontSize(7)
         pdf.setTextColor(100, 116, 139)
-        pdf.text(t.date || '', 14, y + 4)
-        
-        const r = t.color === '#10B981' ? 16 : t.color === '#0EA5E9' ? 14 : 225
-        const g = t.color === '#10B981' ? 185 : t.color === '#0EA5E9' ? 165 : 29
-        const b = t.color === '#10B981' ? 129 : t.color === '#0EA5E9' ? 233 : 72
-        pdf.setTextColor(r, g, b)
+        pdf.text(formatDate(t.date), margin + 2, y + 2)
+        pdf.setTextColor(...hexToRgb(t.color))
         pdf.setFont(undefined, 'bold')
-        pdf.text((t.displayType || '').substring(0, 12), 42, y + 4)
+        pdf.text(String(t.displayType).slice(0, 13), margin + 28, y + 2)
         pdf.setFont(undefined, 'normal')
-        
-        pdf.setTextColor(71, 85, 105)
-        pdf.text((t.displayCat || '').substring(0, 22), 68, y + 4)
+        pdf.setTextColor(51, 65, 85)
+        pdf.text(String(t.displayCat || '').slice(0, 24), margin + 57, y + 2)
         pdf.setTextColor(100, 116, 139)
-        pdf.text((t.desc || '').substring(0, 24), 112, y + 4)
-        
-        pdf.setTextColor(r, g, b)
+        pdf.text(String(t.desc || '').slice(0, 28), margin + 104, y + 2)
+        pdf.setTextColor(...hexToRgb(t.color))
         pdf.setFont(undefined, 'bold')
-        const sign = t.displayType?.includes('Pengeluaran') ? '-' : '+'
-        pdf.text(`${sign}${formatRp(t.amount)}`, W - 14, y + 4, { align: 'right' })
+        pdf.text(`${t.sign} ${formatRp(t.amount)}`, W - margin - 2, y + 2, { align: 'right' })
         pdf.setFont(undefined, 'normal')
-        
-        y += 7
+        y += 8
       })
 
       addFooter()
-      pdf.save(`Executive_Report_${isYearly ? 'Tahunan' : 'Bulanan'}.pdf`)
+      pdf.save(`DompetKu_${isYearly ? 'Tahunan' : 'Bulanan'}_${reportData.periodeText.replace(/\s+/g, '_')}.pdf`)
     } catch (error) {
       console.error(error)
       alert('Gagal mengekspor PDF.')
@@ -400,21 +420,27 @@ export default function ExportData({ isYearly = false }) {
 
   return (
     <div className="relative z-50" ref={menuRef}>
-      <button onClick={() => setIsOpen(!isOpen)} disabled={isExporting} className="btn-primary px-5 py-2.5 text-sm flex items-center gap-2 shadow-lg shadow-primary/20">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        disabled={isExporting}
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+        className="btn-primary px-5 py-2.5 text-sm flex items-center gap-2 shadow-lg shadow-primary/20"
+      >
         {isExporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
         <span>{isExporting ? 'Memproses...' : `Export Laporan ${isYearly ? 'Tahunan' : 'Bulanan'}`}</span>
         <ChevronDown size={14} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-64 bg-surface border border-border rounded-2xl shadow-xl overflow-hidden animate-fade-in">
-          <button onClick={handleExportPDF} className="w-full text-left px-4 py-3.5 text-sm font-semibold text-text hover:bg-bg hover:text-income flex items-center gap-3 transition-colors border-b border-border group">
+        <div className="absolute right-0 mt-2 w-64 bg-surface border border-border rounded-2xl shadow-xl overflow-hidden animate-fade-in" role="menu">
+          <button onClick={handleExportPDF} className="w-full text-left px-4 py-3.5 text-sm font-semibold text-text hover:bg-bg hover:text-income flex items-center gap-3 transition-colors border-b border-border group" role="menuitem">
             <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center group-hover:scale-110 transition-transform"><FileText size={18} /></div>
-            <div><p>PDF Executive</p><p className="text-[10px] text-muted2 font-normal">Multi-halaman, Tabel Profesional</p></div>
+            <div><p>PDF Executive</p><p className="text-[10px] text-muted2 font-normal">Ringkas, bersih, multi-halaman</p></div>
           </button>
-          <button onClick={handleExportExcel} className="w-full text-left px-4 py-3.5 text-sm font-semibold text-text hover:bg-bg hover:text-income flex items-center gap-3 transition-colors group">
+          <button onClick={handleExportExcel} className="w-full text-left px-4 py-3.5 text-sm font-semibold text-text hover:bg-bg hover:text-income flex items-center gap-3 transition-colors group" role="menuitem">
             <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center group-hover:scale-110 transition-transform"><FileSpreadsheet size={18} /></div>
-            <div><p>Excel Analitik</p><p className="text-[10px] text-muted2 font-normal">Tabel Analisis & Riwayat</p></div>
+            <div><p>Excel Analitik</p><p className="text-[10px] text-muted2 font-normal">Tabel bersih siap dibaca</p></div>
           </button>
         </div>
       )}
