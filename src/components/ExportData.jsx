@@ -53,7 +53,7 @@ export default function ExportData({ isYearly = false }) {
       ...txData.filter(t => t.cat !== 'Transfer' && filterFn(t)).map(t => ({
         ...t,
         displayType: t.type === 'in' ? 'Pemasukan' : 'Pengeluaran',
-        displayCat: t.sub_cat ? `${t.cat || 'Lainnya'} - ${t.sub_cat}` : (t.cat || 'Lainnya'),
+        displayCat: t.sub_cat ? `${t.cat || 'Lainnya'} › ${t.sub_cat}` : (t.cat || 'Lainnya'),
         color: t.type === 'in' ? '#059669' : '#DC2626',
         sign: t.type === 'in' ? '+' : '-',
       })),
@@ -74,20 +74,21 @@ export default function ExportData({ isYearly = false }) {
 
     let insight = `Arus kas sehat pada ${periodeText.toLowerCase()}.`
     let insightColor = '#059669'
+    let insightBg = [240, 253, 244]
     if (keluar > masuk) {
       insight = `Arus kas defisit sebesar Rp ${(keluar - masuk).toLocaleString('id-ID')}. Evaluasi pengeluaran terbesar.`
-      insightColor = '#DC2626'
+      insightColor = '#DC2626'; insightBg = [254, 242, 242]
     } else if (masuk > 0 && keluar > masuk * 0.8) {
       insight = `Pengeluaran mencapai ${((keluar / masuk) * 100).toFixed(1)}% dari pemasukan. Ruang menabung masih bisa ditingkatkan.`
-      insightColor = '#D97706'
+      insightColor = '#D97706'; insightBg = [255, 251, 235]
     } else if (Number(savingsRate) >= 20) {
-      insight = `Savings rate ${savingsRate}%. Alokasi tabungan dan investasi sudah berada di jalur baik.`
-      insightColor = '#2563EB'
+      insight = `Savings rate ${savingsRate}%. Alokasi tabungan dan investasi sudah berada di jalur yang sangat baik.`
+      insightColor = '#2563EB'; insightBg = [239, 246, 255]
     }
 
     return {
       masuk, keluar, invest, netto, savingsRate, topCategories, allCategories, incomeCategories,
-      totalGain, totalLoss, insightText: insight, insightColor,
+      totalGain, totalLoss, insightText: insight, insightColor, insightBg,
       allTransaksi: combinedTx, periodeText,
       saldoSaatIni: totals?.saldo || 0, totalTx: combinedTx.length
     }
@@ -95,44 +96,42 @@ export default function ExportData({ isYearly = false }) {
 
   const formatRp = (num = 0) => `Rp ${Number(num || 0).toLocaleString('id-ID')}`
   const formatDate = (date) => new Date(`${date}T00:00:00`).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+
   const hexToRgb = (hex) => {
     const clean = String(hex || '#0F172A').replace('#', '')
-    return [
-      parseInt(clean.slice(0, 2), 16),
-      parseInt(clean.slice(2, 4), 16),
-      parseInt(clean.slice(4, 6), 16),
-    ]
+    return [parseInt(clean.slice(0, 2), 16), parseInt(clean.slice(2, 4), 16), parseInt(clean.slice(4, 6), 16)]
   }
-  const escapeHtml = (value = '') => String(value)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;')
-  const escapeXml = escapeHtml
 
+  const escapeXml = (value = '') => String(value)
+    .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;').replaceAll("'", '&#039;')
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // EXCEL EXPORT — Office XML dengan palette DompetKu Pro
+  // ─────────────────────────────────────────────────────────────────────────
   const handleExportExcel = () => {
     setIsOpen(false)
     if (!reportData.allTransaksi.length) return alert('Belum ada data pada periode ini.')
 
-    const summaryRows = [
-      ['Saldo Saat Ini', formatRp(reportData.saldoSaatIni), '#4F46E5'],
-      ['Pemasukan', `+ ${formatRp(reportData.masuk)}`, '#059669'],
-      ['Pengeluaran', `- ${formatRp(reportData.keluar)}`, '#DC2626'],
-      ['Arus Kas Bersih', formatRp(reportData.netto), reportData.netto >= 0 ? '#059669' : '#DC2626'],
-      ['Investasi', formatRp(reportData.invest), '#2563EB'],
-      ['Profit Investasi', `+ ${formatRp(reportData.totalGain)}`, '#059669'],
-      ['Rugi Investasi', `- ${formatRp(reportData.totalLoss)}`, '#DC2626'],
-      ['Savings Rate', `${reportData.savingsRate}%`, '#4F46E5'],
-    ]
-
     const cell = (value, style = 'Text', type = 'String', merge = '') =>
       `<Cell${style ? ` ss:StyleID="${style}"` : ''}${merge ? ` ss:MergeAcross="${merge}"` : ''}><Data ss:Type="${type}">${escapeXml(value)}</Data></Cell>`
-    const numberCell = (value, style = 'Currency') =>
+    const numCell = (value, style = 'Currency') =>
       `<Cell ss:StyleID="${style}"><Data ss:Type="Number">${Number(value || 0)}</Data></Cell>`
-    const percentCell = (value) =>
+    const pctCell = (value) =>
       `<Cell ss:StyleID="Percent"><Data ss:Type="Number">${Number(value || 0) / 100}</Data></Cell>`
-    const row = (cells, height = '') => `<Row${height ? ` ss:Height="${height}"` : ''}>${cells.join('')}</Row>`
+    const row = (cells, height = '') =>
+      `<Row${height ? ` ss:Height="${height}"` : ''}>${cells.join('')}</Row>`
+
+    const summaryRows = [
+      { label: 'Saldo Saat Ini',   val: reportData.saldoSaatIni,  style: 'StyleIndigo' },
+      { label: 'Total Pemasukan',  val: reportData.masuk,          style: 'StyleGreen'  },
+      { label: 'Total Pengeluaran',val: -reportData.keluar,        style: 'StyleRed'    },
+      { label: 'Arus Kas Bersih',  val: reportData.netto,          style: reportData.netto >= 0 ? 'StyleGreen' : 'StyleRed' },
+      { label: 'Total Investasi',  val: reportData.invest,         style: 'StyleBlue'   },
+      { label: 'Profit Investasi', val: reportData.totalGain,      style: 'StyleGreen'  },
+      { label: 'Rugi Investasi',   val: -reportData.totalLoss,     style: 'StyleRed'    },
+      { label: 'Savings Rate',     val: null,                      style: 'StyleIndigo', pct: true },
+    ]
 
     const workbook = `<?xml version="1.0" encoding="UTF-8"?>
 <?mso-application progid="Excel.Sheet"?>
@@ -142,85 +141,257 @@ export default function ExportData({ isYearly = false }) {
  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
  xmlns:html="http://www.w3.org/TR/REC-html40">
  <Styles>
-  <Style ss:ID="Default" ss:Name="Normal"><Font ss:FontName="Arial" ss:Size="10"/></Style>
-  <Style ss:ID="Title"><Font ss:FontName="Arial" ss:Size="18" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#111827" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/></Style>
-  <Style ss:ID="Meta"><Font ss:Color="#64748B"/><Interior ss:Color="#F8FAFC" ss:Pattern="Solid"/></Style>
-  <Style ss:ID="Insight"><Font ss:Bold="1" ss:Color="${reportData.insightColor}"/><Interior ss:Color="#FFF7ED" ss:Pattern="Solid"/><Alignment ss:WrapText="1" ss:Vertical="Center"/></Style>
-  <Style ss:ID="Section"><Font ss:Bold="1" ss:Color="#0F172A"/><Interior ss:Color="#E0F2FE" ss:Pattern="Solid"/></Style>
-  <Style ss:ID="Header"><Font ss:Bold="1" ss:Color="#334155"/><Interior ss:Color="#F1F5F9" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/></Borders></Style>
-  <Style ss:ID="Text"><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders><Alignment ss:WrapText="1" ss:Vertical="Center"/></Style>
-  <Style ss:ID="TextBold"><Font ss:Bold="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders></Style>
-  <Style ss:ID="Income"><Font ss:Bold="1" ss:Color="#059669"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders></Style>
-  <Style ss:ID="Expense"><Font ss:Bold="1" ss:Color="#DC2626"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders></Style>
-  <Style ss:ID="Blue"><Font ss:Bold="1" ss:Color="#2563EB"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders></Style>
-  <Style ss:ID="Currency"><NumberFormat ss:Format="&quot;Rp&quot; #,##0;[Red]-&quot;Rp&quot; #,##0"/><Alignment ss:Horizontal="Right"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders></Style>
-  <Style ss:ID="Percent"><NumberFormat ss:Format="0.0%"/><Alignment ss:Horizontal="Right"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders></Style>
+  <Style ss:ID="Default"><Font ss:FontName="Calibri" ss:Size="10" ss:Color="#0F172A"/><Alignment ss:Vertical="Center"/></Style>
+
+  <!-- HEADER STYLES -->
+  <Style ss:ID="Title">
+    <Font ss:FontName="Calibri" ss:Size="16" ss:Bold="1" ss:Color="#FFFFFF"/>
+    <Interior ss:Color="#4F46E5" ss:Pattern="Solid"/>
+    <Alignment ss:Horizontal="Left" ss:Vertical="Center"/>
+  </Style>
+  <Style ss:ID="SubTitle">
+    <Font ss:FontName="Calibri" ss:Size="10" ss:Color="#94A3B8"/>
+    <Interior ss:Color="#1E1B4B" ss:Pattern="Solid"/>
+    <Alignment ss:Horizontal="Left" ss:Vertical="Center"/>
+  </Style>
+  <Style ss:ID="InsightCell">
+    <Font ss:FontName="Calibri" ss:Size="9" ss:Bold="1" ss:Color="${reportData.insightColor}"/>
+    <Interior ss:Color="${reportData.insightColor === '#059669' ? '#F0FDF4' : reportData.insightColor === '#DC2626' ? '#FEF2F2' : reportData.insightColor === '#D97706' ? '#FFFBEB' : '#EFF6FF'}" ss:Pattern="Solid"/>
+    <Alignment ss:WrapText="1" ss:Vertical="Center"/>
+    <Borders><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="3" ss:Color="${reportData.insightColor}"/></Borders>
+  </Style>
+
+  <!-- SECTION HEADERS -->
+  <Style ss:ID="SecIndigo">
+    <Font ss:FontName="Calibri" ss:Size="10" ss:Bold="1" ss:Color="#FFFFFF"/>
+    <Interior ss:Color="#4F46E5" ss:Pattern="Solid"/>
+    <Alignment ss:Vertical="Center"/>
+  </Style>
+  <Style ss:ID="SecTeal">
+    <Font ss:FontName="Calibri" ss:Size="10" ss:Bold="1" ss:Color="#FFFFFF"/>
+    <Interior ss:Color="#0D9488" ss:Pattern="Solid"/>
+    <Alignment ss:Vertical="Center"/>
+  </Style>
+  <Style ss:ID="SecRed">
+    <Font ss:FontName="Calibri" ss:Size="10" ss:Bold="1" ss:Color="#FFFFFF"/>
+    <Interior ss:Color="#B91C1C" ss:Pattern="Solid"/>
+    <Alignment ss:Vertical="Center"/>
+  </Style>
+  <Style ss:ID="SecDark">
+    <Font ss:FontName="Calibri" ss:Size="10" ss:Bold="1" ss:Color="#FFFFFF"/>
+    <Interior ss:Color="#111827" ss:Pattern="Solid"/>
+    <Alignment ss:Vertical="Center"/>
+  </Style>
+
+  <!-- COLUMN HEADERS -->
+  <Style ss:ID="ColHeader">
+    <Font ss:FontName="Calibri" ss:Size="9" ss:Bold="1" ss:Color="#334155"/>
+    <Interior ss:Color="#EEF2FF" ss:Pattern="Solid"/>
+    <Borders>
+      <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#4F46E5"/>
+    </Borders>
+    <Alignment ss:Vertical="Center"/>
+  </Style>
+  <Style ss:ID="ColHeaderTeal">
+    <Font ss:FontName="Calibri" ss:Size="9" ss:Bold="1" ss:Color="#134E4A"/>
+    <Interior ss:Color="#CCFBF1" ss:Pattern="Solid"/>
+    <Borders>
+      <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#0D9488"/>
+    </Borders>
+    <Alignment ss:Vertical="Center"/>
+  </Style>
+  <Style ss:ID="ColHeaderRed">
+    <Font ss:FontName="Calibri" ss:Size="9" ss:Bold="1" ss:Color="#7F1D1D"/>
+    <Interior ss:Color="#FEE2E2" ss:Pattern="Solid"/>
+    <Borders>
+      <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#B91C1C"/>
+    </Borders>
+    <Alignment ss:Vertical="Center"/>
+  </Style>
+
+  <!-- DATA STYLES -->
+  <Style ss:ID="Text">
+    <Font ss:FontName="Calibri" ss:Size="9" ss:Color="#334155"/>
+    <Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders>
+    <Alignment ss:WrapText="1" ss:Vertical="Center"/>
+  </Style>
+  <Style ss:ID="TextBold">
+    <Font ss:FontName="Calibri" ss:Size="9" ss:Bold="1" ss:Color="#0F172A"/>
+    <Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders>
+    <Alignment ss:Vertical="Center"/>
+  </Style>
+  <Style ss:ID="TextAlt">
+    <Font ss:FontName="Calibri" ss:Size="9" ss:Color="#334155"/>
+    <Interior ss:Color="#F8FAFC" ss:Pattern="Solid"/>
+    <Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders>
+    <Alignment ss:WrapText="1" ss:Vertical="Center"/>
+  </Style>
+  <Style ss:ID="TextAltBold">
+    <Font ss:FontName="Calibri" ss:Size="9" ss:Bold="1" ss:Color="#0F172A"/>
+    <Interior ss:Color="#F8FAFC" ss:Pattern="Solid"/>
+    <Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders>
+    <Alignment ss:Vertical="Center"/>
+  </Style>
+
+  <!-- VALUE STYLES -->
+  <Style ss:ID="StyleIndigo">
+    <Font ss:FontName="Calibri" ss:Size="9" ss:Bold="1" ss:Color="#4F46E5"/>
+    <Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders>
+    <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
+  </Style>
+  <Style ss:ID="StyleGreen">
+    <Font ss:FontName="Calibri" ss:Size="9" ss:Bold="1" ss:Color="#059669"/>
+    <Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders>
+    <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
+  </Style>
+  <Style ss:ID="StyleRed">
+    <Font ss:FontName="Calibri" ss:Size="9" ss:Bold="1" ss:Color="#DC2626"/>
+    <Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders>
+    <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
+  </Style>
+  <Style ss:ID="StyleBlue">
+    <Font ss:FontName="Calibri" ss:Size="9" ss:Bold="1" ss:Color="#2563EB"/>
+    <Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders>
+    <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
+  </Style>
+
+  <!-- NUMBER FORMATS -->
+  <Style ss:ID="Currency">
+    <Font ss:FontName="Calibri" ss:Size="9" ss:Color="#0F172A"/>
+    <NumberFormat ss:Format="&quot;Rp &quot;#,##0;[Red]-&quot;Rp &quot;#,##0"/>
+    <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
+    <Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders>
+  </Style>
+  <Style ss:ID="CurrencyAlt">
+    <Font ss:FontName="Calibri" ss:Size="9" ss:Color="#0F172A"/>
+    <Interior ss:Color="#F8FAFC" ss:Pattern="Solid"/>
+    <NumberFormat ss:Format="&quot;Rp &quot;#,##0;[Red]-&quot;Rp &quot;#,##0"/>
+    <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
+    <Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders>
+  </Style>
+  <Style ss:ID="Percent">
+    <Font ss:FontName="Calibri" ss:Size="9" ss:Color="#4F46E5" ss:Bold="1"/>
+    <NumberFormat ss:Format="0.0%"/>
+    <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
+    <Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders>
+  </Style>
+  <Style ss:ID="PercentMuted">
+    <Font ss:FontName="Calibri" ss:Size="9" ss:Color="#64748B"/>
+    <NumberFormat ss:Format="0.0%"/>
+    <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
+    <Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/></Borders>
+  </Style>
+
+  <Style ss:ID="Empty"><Interior ss:Color="#F1F5F9" ss:Pattern="Solid"/></Style>
  </Styles>
+
+ <!-- ════════════ SHEET 1: RINGKASAN ════════════ -->
  <Worksheet ss:Name="Ringkasan">
   <Table>
-   <Column ss:Width="190"/><Column ss:Width="170"/><Column ss:Width="160"/><Column ss:Width="160"/>
-   ${row([cell('DompetKu Pro - Laporan Keuangan', 'Title', 'String', 3)], 28)}
-   ${row([cell(`Periode: ${reportData.periodeText}`, 'Meta', 'String', 1), cell(`Dibuat: ${new Date().toLocaleDateString('id-ID')}`, 'Meta', 'String', 1)])}
-   ${row([cell(reportData.insightText, 'Insight', 'String', 3)], 36)}
-   ${row([cell('', '', 'String')])}
-   ${row([cell('Ringkasan', 'Section', 'String', 3)])}
-   ${summaryRows.map(([label, value]) => {
-      if (label === 'Savings Rate') return row([cell(label, 'TextBold'), percentCell(reportData.savingsRate)])
-      const raw = {
-        'Saldo Saat Ini': reportData.saldoSaatIni,
-        'Pemasukan': reportData.masuk,
-        'Pengeluaran': -reportData.keluar,
-        'Arus Kas Bersih': reportData.netto,
-        'Investasi': reportData.invest,
-        'Profit Investasi': reportData.totalGain,
-        'Rugi Investasi': -reportData.totalLoss,
-      }[label]
-      return row([cell(label, 'TextBold'), numberCell(raw), cell(value, raw >= 0 ? 'Income' : 'Expense')])
-    }).join('')}
-   ${row([cell('', '', 'String')])}
-   ${row([cell('Top Pengeluaran', 'Section', 'String', 3)])}
-   ${row([cell('Kategori', 'Header'), cell('Nominal', 'Header'), cell('Persentase', 'Header')])}
-   ${reportData.topCategories.map(([cat, val], i) => row([
-      cell(`${i + 1}. ${cat}`),
-      numberCell(-val),
-      percentCell(reportData.keluar > 0 ? (val / reportData.keluar) * 100 : 0),
-    ])).join('')}
+   <Column ss:Width="200"/><Column ss:Width="160"/><Column ss:Width="130"/><Column ss:Width="130"/>
+
+   ${row([cell('DompetKu Pro — Laporan Keuangan', 'Title', 'String', 3)], 32)}
+   ${row([cell(`Periode: ${reportData.periodeText}`, 'SubTitle', 'String', 1), cell(`Dibuat: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`, 'SubTitle', 'String', 1)], 18)}
+   ${row([cell('', 'Empty', 'String', 3)], 8)}
+   ${row([cell(`💡  ${reportData.insightText}`, 'InsightCell', 'String', 3)], 36)}
+   ${row([cell('', 'Empty', 'String', 3)], 8)}
+
+   ${row([cell('RINGKASAN KEUANGAN', 'SecIndigo', 'String', 3)], 22)}
+   ${row([cell('Metrik', 'ColHeader'), cell('Nilai (Rp)', 'ColHeader'), cell('Keterangan', 'ColHeader'), cell('', 'ColHeader')])}
+   ${summaryRows.map((s, i) => {
+     const isAlt = i % 2 === 1
+     const baseText = isAlt ? 'TextAltBold' : 'TextBold'
+     const baseCurr = isAlt ? 'CurrencyAlt' : 'Currency'
+     if (s.pct) return row([cell(s.label, baseText), pctCell(reportData.savingsRate), cell('Persentase tabungan dari pemasukan', isAlt ? 'TextAlt' : 'Text'), cell('', isAlt ? 'TextAlt' : 'Text')])
+     return row([cell(s.label, baseText), numCell(s.val, baseCurr), cell(formatRp(Math.abs(s.val)), s.style), cell('', isAlt ? 'TextAlt' : 'Text')])
+   }).join('')}
+
+   ${row([cell('', 'Empty', 'String', 3)], 8)}
+   ${row([cell('TOP PENGELUARAN', 'SecRed', 'String', 3)], 22)}
+   ${row([cell('Kategori', 'ColHeaderRed'), cell('Nominal', 'ColHeaderRed'), cell('Persentase', 'ColHeaderRed'), cell('', 'ColHeaderRed')])}
+   ${reportData.topCategories.map(([cat, val], i) => {
+     const isAlt = i % 2 === 1
+     return row([
+       cell(`${i + 1}.  ${cat}`, isAlt ? 'TextAlt' : 'Text'),
+       numCell(-val, isAlt ? 'CurrencyAlt' : 'Currency'),
+       pctCell(reportData.keluar > 0 ? (val / reportData.keluar) * 100 : 0),
+       cell('', isAlt ? 'TextAlt' : 'Text'),
+     ])
+   }).join('')}
+
+   ${reportData.incomeCategories.length > 0 ? `
+   ${row([cell('', 'Empty', 'String', 3)], 8)}
+   ${row([cell('SUMBER PEMASUKAN', 'SecTeal', 'String', 3)], 22)}
+   ${row([cell('Sumber', 'ColHeaderTeal'), cell('Nominal', 'ColHeaderTeal'), cell('Persentase', 'ColHeaderTeal'), cell('', 'ColHeaderTeal')])}
+   ${reportData.incomeCategories.map(([cat, val], i) => {
+     const isAlt = i % 2 === 1
+     return row([
+       cell(cat, isAlt ? 'TextAlt' : 'Text'),
+       numCell(val, isAlt ? 'CurrencyAlt' : 'Currency'),
+       pctCell(reportData.masuk > 0 ? (val / reportData.masuk) * 100 : 0),
+       cell('', isAlt ? 'TextAlt' : 'Text'),
+     ])
+   }).join('')}` : ''}
   </Table>
-  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><FreezePanes/><FrozenNoSplit/><SplitHorizontal>1</SplitHorizontal><TopRowBottomPane>1</TopRowBottomPane></WorksheetOptions>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <FreezePanes/><FrozenNoSplit/><SplitHorizontal>3</SplitHorizontal><TopRowBottomPane>3</TopRowBottomPane>
+  </WorksheetOptions>
  </Worksheet>
+
+ <!-- ════════════ SHEET 2: TRANSAKSI ════════════ -->
  <Worksheet ss:Name="Transaksi">
   <Table>
-   <Column ss:Width="95"/><Column ss:Width="115"/><Column ss:Width="220"/><Column ss:Width="300"/><Column ss:Width="130"/>
-   ${row([cell('Tanggal', 'Header'), cell('Tipe', 'Header'), cell('Kategori', 'Header'), cell('Deskripsi', 'Header'), cell('Nominal', 'Header')])}
-   ${reportData.allTransaksi.map(t => {
-      const nominal = t.sign === '-' ? -Number(t.amount || 0) : Number(t.amount || 0)
-      const typeStyle = t.sign === '-' ? 'Expense' : (t.color === '#2563EB' ? 'Blue' : 'Income')
-      return row([
-        cell(formatDate(t.date)),
-        cell(t.displayType, typeStyle),
-        cell(t.displayCat),
-        cell(t.desc),
-        numberCell(nominal),
-      ])
-    }).join('')}
+   <Column ss:Width="100"/><Column ss:Width="120"/><Column ss:Width="200"/><Column ss:Width="260"/><Column ss:Width="130"/>
+   ${row([cell('RIWAYAT TRANSAKSI', 'SecDark', 'String', 4)], 22)}
+   ${row([cell(`Periode: ${reportData.periodeText}  •  Total: ${reportData.totalTx} transaksi`, 'SubTitle', 'String', 4)], 18)}
+   ${row([cell('', 'Empty', 'String', 4)], 6)}
+   ${row([cell('Tanggal', 'ColHeader'), cell('Tipe', 'ColHeader'), cell('Kategori', 'ColHeader'), cell('Keterangan', 'ColHeader'), cell('Nominal', 'ColHeader')])}
+   ${reportData.allTransaksi.map((t, i) => {
+     const isAlt = i % 2 === 1
+     const nominal = t.sign === '-' ? -Number(t.amount || 0) : Number(t.amount || 0)
+     const typeStyle = t.sign === '+' ? (t.color === '#2563EB' ? 'StyleBlue' : 'StyleGreen') : 'StyleRed'
+     return row([
+       cell(formatDate(t.date), isAlt ? 'TextAlt' : 'Text'),
+       cell(t.displayType, typeStyle),
+       cell(t.displayCat, isAlt ? 'TextAlt' : 'Text'),
+       cell(t.desc, isAlt ? 'TextAlt' : 'Text'),
+       numCell(nominal, isAlt ? 'CurrencyAlt' : 'Currency'),
+     ])
+   }).join('')}
   </Table>
-  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><FreezePanes/><FrozenNoSplit/><SplitHorizontal>1</SplitHorizontal><TopRowBottomPane>1</TopRowBottomPane></WorksheetOptions>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <FreezePanes/><FrozenNoSplit/><SplitHorizontal>4</SplitHorizontal><TopRowBottomPane>4</TopRowBottomPane>
+  </WorksheetOptions>
  </Worksheet>
+
+ <!-- ════════════ SHEET 3: KATEGORI ════════════ -->
  <Worksheet ss:Name="Kategori">
   <Table>
    <Column ss:Width="230"/><Column ss:Width="140"/><Column ss:Width="120"/>
-   ${row([cell('Kategori Pengeluaran', 'Header'), cell('Nominal', 'Header'), cell('Persentase', 'Header')])}
-   ${reportData.allCategories.map(([cat, val]) => row([
-      cell(cat),
-      numberCell(-val),
-      percentCell(reportData.keluar > 0 ? (val / reportData.keluar) * 100 : 0),
-    ])).join('')}
-   ${row([cell('', '', 'String')])}
-   ${row([cell('Kategori Pemasukan', 'Header'), cell('Nominal', 'Header')])}
-   ${reportData.incomeCategories.map(([cat, val]) => row([
-      cell(cat),
-      numberCell(val),
-    ])).join('')}
+
+   ${row([cell('DISTRIBUSI PENGELUARAN', 'SecRed', 'String', 2)], 22)}
+   ${row([cell('Kategori', 'ColHeaderRed'), cell('Nominal', 'ColHeaderRed'), cell('Porsi', 'ColHeaderRed')])}
+   ${reportData.allCategories.map(([cat, val], i) => {
+     const isAlt = i % 2 === 1
+     return row([
+       cell(cat, isAlt ? 'TextAlt' : 'Text'),
+       numCell(-val, isAlt ? 'CurrencyAlt' : 'Currency'),
+       pctCell(reportData.keluar > 0 ? (val / reportData.keluar) * 100 : 0),
+     ])
+   }).join('')}
+
+   ${row([cell('', 'Empty', 'String', 2)], 10)}
+
+   ${row([cell('DISTRIBUSI PEMASUKAN', 'SecTeal', 'String', 2)], 22)}
+   ${row([cell('Sumber', 'ColHeaderTeal'), cell('Nominal', 'ColHeaderTeal'), cell('Porsi', 'ColHeaderTeal')])}
+   ${reportData.incomeCategories.map(([cat, val], i) => {
+     const isAlt = i % 2 === 1
+     return row([
+       cell(cat, isAlt ? 'TextAlt' : 'Text'),
+       numCell(val, isAlt ? 'CurrencyAlt' : 'Currency'),
+       pctCell(reportData.masuk > 0 ? (val / reportData.masuk) * 100 : 0),
+     ])
+   }).join('')}
   </Table>
  </Worksheet>
 </Workbook>`
@@ -233,6 +404,9 @@ export default function ExportData({ isYearly = false }) {
     URL.revokeObjectURL(link.href)
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // PDF EXPORT — Desain premium bertema DompetKu Pro
+  // ─────────────────────────────────────────────────────────────────────────
   const handleExportPDF = async () => {
     setIsOpen(false)
     if (!reportData.allTransaksi.length) return alert('Belum ada data pada periode ini.')
@@ -243,181 +417,348 @@ export default function ExportData({ isYearly = false }) {
       const pdf = new jsPDF('p', 'mm', 'a4')
       const W = pdf.internal.pageSize.getWidth()
       const H = pdf.internal.pageSize.getHeight()
-      const margin = 14
-      let y = 16
+      const M = 14              // margin
+      const CW = W - M * 2     // content width
+      let y = M
+      let pageNum = 1
+
+      // ── Palet warna
+      const C = {
+        dark:    [15, 23, 42],
+        navy:    [17, 24, 39],
+        indigo:  [79, 70, 229],
+        indigoL: [99, 102, 241],
+        teal:    [13, 148, 136],
+        red:     [185, 28, 28],
+        redL:    [220, 38, 38],
+        green:   [5, 150, 105],
+        blue:    [37, 99, 235],
+        amber:   [217, 119, 6],
+        slate:   [71, 85, 105],
+        muted:   [100, 116, 139],
+        light:   [248, 250, 252],
+        lighter: [241, 245, 249],
+        white:   [255, 255, 255],
+        border:  [226, 232, 240],
+        iPale:   [238, 242, 255],
+        gPale:   [240, 253, 244],
+        rPale:   [254, 242, 242],
+        bPale:   [239, 246, 255],
+      }
+
+      // ── Helpers
+      const setFont = (size, weight = 'normal', color = C.dark) => {
+        pdf.setFont(undefined, weight)
+        pdf.setFontSize(size)
+        pdf.setTextColor(...color)
+      }
 
       const addFooter = () => {
-        pdf.setFontSize(7)
-        pdf.setTextColor(148, 163, 184)
-        pdf.text(`DompetKu Pro - dibuat ${new Date().toLocaleDateString('id-ID')}`, W / 2, H - 8, { align: 'center' })
+        pdf.setDrawColor(...C.border)
+        pdf.setLineWidth(0.25)
+        pdf.line(M, H - 11, W - M, H - 11)
+        setFont(6.5, 'normal', C.muted)
+        pdf.text('DompetKu Pro  —  Laporan Keuangan Pribadi', M, H - 6)
+        pdf.text(
+          `Halaman ${pageNum}  •  Dibuat ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`,
+          W - M, H - 6, { align: 'right' }
+        )
       }
 
       const checkPage = (need) => {
-        if (y + need <= H - 18) return
+        if (y + need <= H - 16) return
         addFooter()
         pdf.addPage()
-        y = 16
+        pageNum++
+        y = M
       }
 
-      const sectionTitle = (title, color = [17, 24, 39]) => {
+      // ── Section header dengan left accent bar
+      const sectionHeader = (title, accentRgb = C.indigo, badgeText = '') => {
         checkPage(14)
-        pdf.setFillColor(...color)
-        pdf.roundedRect(margin, y, W - margin * 2, 9, 2, 2, 'F')
-        pdf.setFontSize(8)
-        pdf.setTextColor(255)
-        pdf.setFont(undefined, 'bold')
-        pdf.text(title.toUpperCase(), margin + 5, y + 6)
-        pdf.setFont(undefined, 'normal')
-        y += 14
+        pdf.setFillColor(...C.navy)
+        pdf.roundedRect(M, y, CW, 11, 2, 2, 'F')
+        pdf.setDrawColor(...accentRgb)
+        pdf.setLineWidth(3)
+        pdf.line(M + 1.5, y + 1.5, M + 1.5, y + 9.5)
+        pdf.setLineWidth(0.25)
+        setFont(8, 'bold', C.white)
+        pdf.text(title, M + 8, y + 7.5)
+        if (badgeText) {
+          const bw = pdf.getTextWidth(badgeText) + 8
+          pdf.setFillColor(...accentRgb)
+          pdf.roundedRect(W - M - bw - 2, y + 2, bw, 7, 2, 2, 'F')
+          setFont(6.5, 'bold', C.white)
+          pdf.text(badgeText, W - M - 4, y + 7, { align: 'right' })
+        }
+        y += 15
       }
 
-      const drawMetric = (x, yPos, width, label, value, color) => {
-        pdf.setFillColor(248, 250, 252)
-        pdf.roundedRect(x, yPos, width, 24, 3, 3, 'F')
-        pdf.setFontSize(6.5)
-        pdf.setTextColor(...color)
-        pdf.setFont(undefined, 'bold')
-        pdf.text(label.toUpperCase(), x + 4, yPos + 7)
-        pdf.setFontSize(10)
-        pdf.setTextColor(15, 23, 42)
-        pdf.text(value, x + 4, yPos + 17, { maxWidth: width - 8 })
-        pdf.setFont(undefined, 'normal')
+      // ── Column header bar
+      const colHeaders = (cols) => {
+        pdf.setFillColor(...C.lighter)
+        pdf.roundedRect(M, y, CW, 8, 1, 1, 'F')
+        pdf.setDrawColor(...C.border)
+        pdf.setLineWidth(0.2)
+        pdf.line(M, y + 8, M + CW, y + 8)
+        setFont(6.5, 'bold', C.slate)
+        cols.forEach(({ label, x, align }) => {
+          pdf.text(label, x, y + 5.5, { align: align || 'left' })
+        })
+        y += 10
       }
 
-      pdf.setFillColor(17, 24, 39)
-      pdf.roundedRect(margin, y, W - margin * 2, 32, 4, 4, 'F')
-      pdf.setFont(undefined, 'bold')
-      pdf.setFontSize(20)
-      pdf.setTextColor(255)
-      pdf.text('DompetKu Pro', margin + 7, y + 13)
-      pdf.setFontSize(9)
-      pdf.setTextColor(203, 213, 225)
-      pdf.text('Laporan Keuangan', margin + 7, y + 22)
-      pdf.setFontSize(14)
-      pdf.setTextColor(255)
-      pdf.text(reportData.periodeText, W - margin - 7, y + 17, { align: 'right' })
-      pdf.setFont(undefined, 'normal')
-      y += 42
+      // ── Data row
+      const dataRow = (cells, rowIdx) => {
+        checkPage(9.5)
+        if (rowIdx % 2 === 0) {
+          pdf.setFillColor(252, 252, 253)
+          pdf.rect(M, y - 1.5, CW, 9.5, 'F')
+        }
+        cells.forEach(({ text, x, color, bold, align, maxW }) => {
+          setFont(7, bold ? 'bold' : 'normal', color || C.slate)
+          pdf.text(String(text || ''), x, y + 4.5, { align: align || 'left', maxWidth: maxW })
+        })
+        y += 9.5
+      }
 
-      pdf.setFillColor(248, 250, 252)
-      pdf.roundedRect(margin, y, W - margin * 2, 22, 3, 3, 'F')
-      pdf.setDrawColor(...hexToRgb(reportData.insightColor))
-      pdf.setLineWidth(1.2)
-      pdf.line(margin, y, margin, y + 22)
-      pdf.setFontSize(7)
-      pdf.setTextColor(100, 116, 139)
-      pdf.text('INSIGHT', margin + 5, y + 7)
-      pdf.setFontSize(9)
-      pdf.setTextColor(15, 23, 42)
-      pdf.text(pdf.splitTextToSize(reportData.insightText, W - margin * 2 - 14), margin + 5, y + 14)
-      y += 31
+      // ────────────────────────────────────────────────
+      // 1. HEADER UTAMA
+      // ────────────────────────────────────────────────
+      // Background block
+      pdf.setFillColor(...C.navy)
+      pdf.roundedRect(M, y, CW, 48, 4, 4, 'F')
 
-      const cardW = (W - margin * 2 - 8) / 3
+      // Left accent strip (indigo)
+      pdf.setFillColor(...C.indigo)
+      pdf.rect(M, y + 4, 5, 40, 'F')
+      pdf.setFillColor(...C.indigo)
+      pdf.roundedRect(M, y + 4, 7, 7, 3.5, 3.5, 'F')
+      pdf.roundedRect(M, y + 37, 7, 7, 3.5, 3.5, 'F')
+
+      // Logo circle (D)
+      pdf.setFillColor(...C.indigo)
+      pdf.circle(M + 16, y + 14, 6.5, 'F')
+      setFont(10, 'bold', C.white)
+      pdf.text('D', M + 16, y + 17, { align: 'center' })
+
+      // App name & subtitle
+      setFont(18, 'bold', C.white)
+      pdf.text('DompetKu Pro', M + 26, y + 17)
+      setFont(8, 'normal', [148, 163, 184])
+      pdf.text('Laporan Keuangan Pribadi', M + 26, y + 26)
+
+      // Period badge (right)
+      const pw = pdf.getTextWidth(reportData.periodeText) + 14
+      pdf.setFillColor(...C.indigoL)
+      pdf.roundedRect(W - M - pw - 2, y + 12, pw + 2, 12, 3, 3, 'F')
+      setFont(8.5, 'bold', C.white)
+      pdf.text(reportData.periodeText, W - M - 5, y + 20, { align: 'right' })
+
+      // Bottom meta
+      setFont(7, 'normal', [100, 116, 139])
+      const now2 = new Date()
+      pdf.text(
+        `Dibuat: ${now2.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`,
+        M + 26, y + 39
+      )
+
+      y += 58
+
+      // ────────────────────────────────────────────────
+      // 2. INSIGHT BOX
+      // ────────────────────────────────────────────────
+      const insRgb = hexToRgb(reportData.insightColor)
+      const insBg = reportData.insightBg
+      pdf.setFillColor(...insBg)
+      pdf.roundedRect(M, y, CW, 26, 3, 3, 'F')
+      pdf.setDrawColor(...insRgb)
+      pdf.setLineWidth(3)
+      pdf.line(M + 1.5, y + 2, M + 1.5, y + 24)
+      pdf.setLineWidth(0.25)
+      setFont(6, 'bold', insRgb)
+      pdf.text('INSIGHT KEUANGAN', M + 8, y + 8)
+      setFont(8.5, 'normal', C.dark)
+      const insLines = pdf.splitTextToSize(reportData.insightText, CW - 14)
+      pdf.text(insLines, M + 8, y + 16)
+      y += 34
+
+      // ────────────────────────────────────────────────
+      // 3. METRIC CARDS (2 baris x 3 kolom)
+      // ────────────────────────────────────────────────
+      const cardW = (CW - 8) / 3
+      const cardH = 28
+
       const metrics = [
-        ['Saldo Saat Ini', formatRp(reportData.saldoSaatIni), [79, 70, 229]],
-        ['Pemasukan', `+ ${formatRp(reportData.masuk)}`, [5, 150, 105]],
-        ['Pengeluaran', `- ${formatRp(reportData.keluar)}`, [220, 38, 38]],
-        ['Arus Kas Bersih', formatRp(reportData.netto), reportData.netto >= 0 ? [5, 150, 105] : [220, 38, 38]],
-        ['Investasi', formatRp(reportData.invest), [37, 99, 235]],
-        ['Savings Rate', `${reportData.savingsRate}%`, [79, 70, 229]],
+        { label: 'SALDO TOTAL',    value: formatRp(reportData.saldoSaatIni), color: C.indigo, bg: C.iPale },
+        { label: 'PEMASUKAN',      value: `+ ${formatRp(reportData.masuk)}`, color: C.green,  bg: C.gPale },
+        { label: 'PENGELUARAN',    value: `- ${formatRp(reportData.keluar)}`, color: C.red,   bg: C.rPale },
+        { label: 'ARUS KAS BERSIH',value: formatRp(reportData.netto),        color: reportData.netto >= 0 ? C.green : C.red, bg: reportData.netto >= 0 ? C.gPale : C.rPale },
+        { label: 'INVESTASI',      value: formatRp(reportData.invest),       color: C.blue,   bg: C.bPale },
+        { label: 'SAVINGS RATE',   value: `${reportData.savingsRate}%`,      color: C.indigo, bg: C.iPale },
       ]
-      metrics.forEach((m, i) => drawMetric(margin + (i % 3) * (cardW + 4), y + Math.floor(i / 3) * 29, cardW, m[0], m[1], m[2]))
-      y += 63
 
-      sectionTitle('Distribusi Pengeluaran', [30, 41, 59])
-      if (reportData.allCategories.length === 0) {
-        pdf.setFontSize(9)
-        pdf.setTextColor(100, 116, 139)
-        pdf.text('Tidak ada pengeluaran pada periode ini.', margin, y)
-        y += 8
-      } else {
+      metrics.forEach((m, i) => {
+        const col = i % 3
+        const rw = Math.floor(i / 3)
+        const cx = M + col * (cardW + 4)
+        const cy = y + rw * (cardH + 4)
+        pdf.setFillColor(...m.bg)
+        pdf.roundedRect(cx, cy, cardW, cardH, 3, 3, 'F')
+        pdf.setFillColor(...m.color)
+        pdf.roundedRect(cx, cy, cardW, 2.5, 1.5, 1.5, 'F')
+        setFont(5.5, 'bold', m.color)
+        pdf.text(m.label, cx + 5, cy + 10)
+        setFont(9.5, 'bold', C.dark)
+        pdf.text(m.value, cx + 5, cy + 22, { maxWidth: cardW - 8 })
+      })
+      y += cardH * 2 + 4 + 12
+
+      // ────────────────────────────────────────────────
+      // 4. DISTRIBUSI PENGELUARAN
+      // ────────────────────────────────────────────────
+      if (reportData.allCategories.length > 0) {
+        checkPage(18)
+        sectionHeader('DISTRIBUSI PENGELUARAN', C.red, `${reportData.allCategories.length} kategori`)
+        colHeaders([
+          { label: 'Kategori',   x: M + 3 },
+          { label: 'Grafik',     x: M + 88 },
+          { label: 'Porsi',      x: M + 128 },
+          { label: 'Nominal',    x: W - M - 3, align: 'right' },
+        ])
+
         reportData.allCategories.forEach(([cat, val], i) => {
           checkPage(10)
-          const pct = reportData.keluar > 0 ? (val / reportData.keluar) * 100 : 0
+          const pct = reportData.keluar > 0 ? (val / reportData.keluar) : 0
+          const barMaxW = 36
+          const barFill = pct * barMaxW
+
           if (i % 2 === 0) {
-            pdf.setFillColor(248, 250, 252)
-            pdf.rect(margin, y - 3, W - margin * 2, 8, 'F')
+            pdf.setFillColor(252, 252, 253)
+            pdf.rect(M, y - 1.5, CW, 9.5, 'F')
           }
-          pdf.setFontSize(8)
-          pdf.setTextColor(51, 65, 85)
-          pdf.text(String(cat), margin + 2, y + 2, { maxWidth: 72 })
-          pdf.setTextColor(220, 38, 38)
-          pdf.setFont(undefined, 'bold')
-          pdf.text(formatRp(val), W - margin - 40, y + 2, { align: 'right' })
-          pdf.setFont(undefined, 'normal')
-          pdf.setTextColor(100, 116, 139)
-          pdf.text(`${pct.toFixed(1)}%`, W - margin - 2, y + 2, { align: 'right' })
-          y += 8
+
+          setFont(7.5, 'normal', C.slate)
+          pdf.text(String(cat).slice(0, 24), M + 3, y + 4.5)
+
+          // Bar track
+          pdf.setFillColor(226, 232, 240)
+          pdf.roundedRect(M + 86, y + 1.5, barMaxW, 5, 1, 1, 'F')
+          // Bar fill
+          if (barFill > 0.5) {
+            pdf.setFillColor(...C.red)
+            pdf.roundedRect(M + 86, y + 1.5, barFill, 5, 1, 1, 'F')
+          }
+
+          setFont(7, 'bold', C.muted)
+          pdf.text(`${(pct * 100).toFixed(1)}%`, M + 126, y + 4.5)
+          setFont(7, 'bold', C.redL)
+          pdf.text(formatRp(val), W - M - 3, y + 4.5, { align: 'right' })
+          y += 9.5
         })
+        y += 4
       }
 
+      // ────────────────────────────────────────────────
+      // 5. SUMBER PEMASUKAN
+      // ────────────────────────────────────────────────
       if (reportData.incomeCategories.length > 0) {
-        sectionTitle('Sumber Pemasukan', [5, 150, 105])
+        checkPage(18)
+        sectionHeader('SUMBER PEMASUKAN', C.teal, `${reportData.incomeCategories.length} sumber`)
+        colHeaders([
+          { label: 'Sumber',   x: M + 3 },
+          { label: 'Grafik',   x: M + 88 },
+          { label: 'Porsi',    x: M + 128 },
+          { label: 'Nominal',  x: W - M - 3, align: 'right' },
+        ])
+
         reportData.incomeCategories.forEach(([cat, val], i) => {
-          checkPage(8)
+          checkPage(10)
+          const pct = reportData.masuk > 0 ? (val / reportData.masuk) : 0
+          const barMaxW = 36
+          const barFill = pct * barMaxW
+
           if (i % 2 === 0) {
-            pdf.setFillColor(248, 250, 252)
-            pdf.rect(margin, y - 3, W - margin * 2, 8, 'F')
+            pdf.setFillColor(252, 252, 253)
+            pdf.rect(M, y - 1.5, CW, 9.5, 'F')
           }
-          pdf.setFontSize(8)
-          pdf.setTextColor(51, 65, 85)
-          pdf.text(String(cat), margin + 2, y + 2)
-          pdf.setTextColor(5, 150, 105)
-          pdf.setFont(undefined, 'bold')
-          pdf.text(formatRp(val), W - margin - 2, y + 2, { align: 'right' })
-          pdf.setFont(undefined, 'normal')
-          y += 8
+
+          setFont(7.5, 'normal', C.slate)
+          pdf.text(String(cat).slice(0, 24), M + 3, y + 4.5)
+
+          pdf.setFillColor(226, 232, 240)
+          pdf.roundedRect(M + 86, y + 1.5, barMaxW, 5, 1, 1, 'F')
+          if (barFill > 0.5) {
+            pdf.setFillColor(...C.teal)
+            pdf.roundedRect(M + 86, y + 1.5, barFill, 5, 1, 1, 'F')
+          }
+
+          setFont(7, 'bold', C.muted)
+          pdf.text(`${(pct * 100).toFixed(1)}%`, M + 126, y + 4.5)
+          setFont(7, 'bold', C.green)
+          pdf.text(formatRp(val), W - M - 3, y + 4.5, { align: 'right' })
+          y += 9.5
         })
+        y += 4
       }
 
-      sectionTitle(`Riwayat Transaksi (${reportData.totalTx})`, [17, 24, 39])
-      pdf.setFillColor(241, 245, 249)
-      pdf.rect(margin, y, W - margin * 2, 8, 'F')
-      pdf.setFontSize(7)
-      pdf.setTextColor(71, 85, 105)
-      pdf.setFont(undefined, 'bold')
-      pdf.text('Tanggal', margin + 2, y + 5)
-      pdf.text('Tipe', margin + 28, y + 5)
-      pdf.text('Kategori', margin + 57, y + 5)
-      pdf.text('Deskripsi', margin + 104, y + 5)
-      pdf.text('Nominal', W - margin - 2, y + 5, { align: 'right' })
-      pdf.setFont(undefined, 'normal')
-      y += 10
+      // ────────────────────────────────────────────────
+      // 6. RIWAYAT TRANSAKSI
+      // ────────────────────────────────────────────────
+      checkPage(20)
+      sectionHeader(`RIWAYAT TRANSAKSI`, C.indigoL, `${reportData.totalTx} data`)
+      colHeaders([
+        { label: 'Tanggal',    x: M + 3 },
+        { label: 'Tipe',       x: M + 30 },
+        { label: 'Kategori',   x: M + 62 },
+        { label: 'Keterangan', x: M + 108 },
+        { label: 'Nominal',    x: W - M - 3, align: 'right' },
+      ])
 
       reportData.allTransaksi.forEach((t, i) => {
-        checkPage(9)
+        checkPage(10)
+        const tColor = hexToRgb(t.color)
+
+        // Type badge bg
+        const bgR = Math.round(tColor[0] + (255 - tColor[0]) * 0.88)
+        const bgG = Math.round(tColor[1] + (255 - tColor[1]) * 0.88)
+        const bgB = Math.round(tColor[2] + (255 - tColor[2]) * 0.88)
+
         if (i % 2 === 0) {
           pdf.setFillColor(252, 252, 253)
-          pdf.rect(margin, y - 3, W - margin * 2, 8, 'F')
+          pdf.rect(M, y - 1.5, CW, 9.5, 'F')
         }
-        pdf.setFontSize(7)
-        pdf.setTextColor(100, 116, 139)
-        pdf.text(formatDate(t.date), margin + 2, y + 2)
-        pdf.setTextColor(...hexToRgb(t.color))
-        pdf.setFont(undefined, 'bold')
-        pdf.text(String(t.displayType).slice(0, 13), margin + 28, y + 2)
-        pdf.setFont(undefined, 'normal')
-        pdf.setTextColor(51, 65, 85)
-        pdf.text(String(t.displayCat || '').slice(0, 24), margin + 57, y + 2)
-        pdf.setTextColor(100, 116, 139)
-        pdf.text(String(t.desc || '').slice(0, 28), margin + 104, y + 2)
-        pdf.setTextColor(...hexToRgb(t.color))
-        pdf.setFont(undefined, 'bold')
-        pdf.text(`${t.sign} ${formatRp(t.amount)}`, W - margin - 2, y + 2, { align: 'right' })
-        pdf.setFont(undefined, 'normal')
-        y += 8
+
+        setFont(7, 'normal', C.muted)
+        pdf.text(formatDate(t.date), M + 3, y + 4.5)
+
+        // Colored type pill
+        pdf.setFillColor(bgR, bgG, bgB)
+        pdf.roundedRect(M + 28, y + 0.5, 30, 7, 1.5, 1.5, 'F')
+        setFont(6.5, 'bold', tColor)
+        pdf.text(String(t.displayType).slice(0, 12), M + 30, y + 5)
+
+        setFont(7, 'normal', C.slate)
+        pdf.text(String(t.displayCat || '').slice(0, 22), M + 62, y + 4.5)
+        setFont(7, 'normal', C.muted)
+        pdf.text(String(t.desc || '').slice(0, 26), M + 108, y + 4.5)
+        setFont(7, 'bold', tColor)
+        pdf.text(`${t.sign}${formatRp(t.amount)}`, W - M - 3, y + 4.5, { align: 'right' })
+
+        y += 9.5
       })
 
       addFooter()
       pdf.save(`DompetKu_${isYearly ? 'Tahunan' : 'Bulanan'}_${reportData.periodeText.replace(/\s+/g, '_')}.pdf`)
     } catch (error) {
       console.error(error)
-      alert('Gagal mengekspor PDF.')
+      alert('Gagal mengekspor PDF. Coba lagi.')
     } finally {
       setIsExporting(false)
     }
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="relative z-50" ref={menuRef}>
       <button
@@ -428,19 +769,47 @@ export default function ExportData({ isYearly = false }) {
         className="btn-primary px-5 py-2.5 text-sm flex items-center gap-2 shadow-lg shadow-primary/20"
       >
         {isExporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-        <span>{isExporting ? 'Memproses...' : `Export Laporan ${isYearly ? 'Tahunan' : 'Bulanan'}`}</span>
+        <span>{isExporting ? 'Memproses...' : `Export ${isYearly ? 'Tahunan' : 'Bulanan'}`}</span>
         <ChevronDown size={14} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-64 bg-surface border border-border rounded-2xl shadow-xl overflow-hidden animate-fade-in" role="menu">
-          <button onClick={handleExportPDF} className="w-full text-left px-4 py-3.5 text-sm font-semibold text-text hover:bg-bg hover:text-income flex items-center gap-3 transition-colors border-b border-border group" role="menuitem">
-            <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center group-hover:scale-110 transition-transform"><FileText size={18} /></div>
-            <div><p>PDF Executive</p><p className="text-[10px] text-muted2 font-normal">Ringkas, bersih, multi-halaman</p></div>
+        <div
+          className="absolute right-0 mt-2 w-68 bg-surface border border-border rounded-2xl shadow-xl overflow-hidden animate-fade-in"
+          role="menu"
+          style={{ width: 272 }}
+        >
+          <div className="px-4 py-3 border-b border-border">
+            <p className="text-[10px] font-black text-muted uppercase tracking-widest">Pilih Format</p>
+            <p className="text-xs text-muted mt-0.5">{reportData.periodeText}</p>
+          </div>
+          <button
+            onClick={handleExportPDF}
+            className="w-full text-left px-4 py-3.5 hover:bg-bg flex items-center gap-3 transition-colors border-b border-border group"
+            role="menuitem"
+          >
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-105"
+              style={{ background: 'linear-gradient(135deg, #f43f5e, #be123c)' }}>
+              <FileText size={18} className="text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-text">PDF Executive</p>
+              <p className="text-[10px] text-muted mt-0.5">Laporan formal siap cetak & arsip</p>
+            </div>
           </button>
-          <button onClick={handleExportExcel} className="w-full text-left px-4 py-3.5 text-sm font-semibold text-text hover:bg-bg hover:text-income flex items-center gap-3 transition-colors group" role="menuitem">
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center group-hover:scale-110 transition-transform"><FileSpreadsheet size={18} /></div>
-            <div><p>Excel Analitik</p><p className="text-[10px] text-muted2 font-normal">Tabel bersih siap dibaca</p></div>
+          <button
+            onClick={handleExportExcel}
+            className="w-full text-left px-4 py-3.5 hover:bg-bg flex items-center gap-3 transition-colors group"
+            role="menuitem"
+          >
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-105"
+              style={{ background: 'linear-gradient(135deg, #059669, #065f46)' }}>
+              <FileSpreadsheet size={18} className="text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-text">Excel Analitik</p>
+              <p className="text-[10px] text-muted mt-0.5">3 sheet: Ringkasan, Transaksi, Kategori</p>
+            </div>
           </button>
         </div>
       )}

@@ -221,17 +221,27 @@ export default function Transaksi() {
   return (
     <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
 
-      <div>
-        <h1 className="tabular-nums font-bold text-2xl text-text tracking-tight">Transaksi</h1>
-        <p className="text-muted text-sm font-medium mt-1">Catat dan pantau arus kas harianmu.</p>
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1">Keuangan</p>
+          <h1 className="font-black text-2xl text-text tracking-tight">Transaksi</h1>
+          <p className="text-muted text-sm font-medium mt-1">Catat dan pantau arus kas harianmu.</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
         {/* ── ADD FORM PANEL ───────────────────────────────── */}
-        <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm lg:col-span-3 space-y-5">
-          <div className="border-b-2 border-border pb-3 mb-4">
-            <h3 className="font-bold text-text text-base">Tambah Transaksi</h3>
+        <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 lg:col-span-3 space-y-5">
+          <div className="flex items-center gap-3 border-b border-border pb-4 mb-2">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, #14B8A6, #0d9488)' }}>
+              <ReceiptText size={16} className="text-white" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-0.5">Form</p>
+              <h3 className="font-black text-text text-base tracking-tight">Tambah Transaksi</h3>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3 mb-2">
@@ -361,7 +371,7 @@ export default function Transaksi() {
 
         {/* ── QUICK STATS ──────────────────────────────── */}
         <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm lg:col-span-2 flex flex-col">
-          <PanelHeader title={selectedMonth ? "Ringkasan Bulan Ini" : "Ringkasan Semua Waktu"} />
+          <PanelHeader title={selectedMonth ? "Ringkasan Bulan Ini" : "Ringkasan Semua Waktu"} sub="Statistik" />
 
           <div className="mt-2 space-y-3.5">
             <div className="bg-income/5 border border-income/10 rounded-[20px] p-4 flex justify-between items-center transition-all hover:bg-income/10 hover:border-income/20">
@@ -412,7 +422,7 @@ export default function Transaksi() {
 
       {/* ── LIST RIWAYAT ────── */}
       <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm transition-colors">
-        <PanelHeader title="Riwayat Transaksi" badge={`${filtered.length} total`} />
+        <PanelHeader title="Riwayat Transaksi" sub="Histori" badge={`${filtered.length} transaksi`} />
 
         <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <Tabs value={filter} onChange={setFilter} options={[
@@ -453,7 +463,7 @@ export default function Transaksi() {
             className="w-full bg-field border border-border2 text-text placeholder:text-muted2 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:border-indigo-500 focus:bg-surface outline-none transition-all" />
         </div>
 
-        <div className="max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+        <div className="lg:max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
           {Object.keys(groupedTx).length > 0 ? (
             Object.keys(groupedTx).map(dateKey => {
               const group = groupedTx[dateKey]

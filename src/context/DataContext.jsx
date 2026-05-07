@@ -13,7 +13,7 @@ export function DataProvider({ children }) {
   const [targetData, setTargetData] = useState([])
   const [budgetData, setBudgetData] = useState([])
   const [recurringData, setRecurringData] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   
   // Shared Account: siapa yang sedang dilihat datanya
   const [activeOwnerId, setActiveOwnerId] = useState(null) // null = data sendiri
@@ -50,32 +50,33 @@ export function DataProvider({ children }) {
   const loadAll = useCallback(async () => {
     if (!user) return
     setLoading(true)
-    
-    const uid = effectiveUserId
-    
-    const [txRes, invRes, billRes, walletRes, targetRes, budgetRes, recurringRes] = await Promise.all([
-      supabase.from('transaksi').select('*').eq('user_id', uid).order('tgl', { ascending: false }).order('created_at', { ascending: false }),
-      supabase.from('investasi').select('*').eq('user_id', uid).order('tgl', { ascending: false }).order('created_at', { ascending: false }),
-      supabase.from('tagihan').select('*').eq('user_id', uid).order('jatuh_tempo', { ascending: true }),
-      supabase.from('wallets').select('*').eq('user_id', uid).order('created_at', { ascending: true }),
-      supabase.from('target_finansial').select('*').eq('user_id', uid).order('updated_at', { ascending: false }),
-      supabase.from('budgets').select('*').eq('user_id', uid),
-      supabase.from('recurring_tx').select('*').eq('user_id', uid).order('next_date', { ascending: true })
-    ])
-    
-    if (!txRes.error)  setTxData((txRes.data  || []).map(mapTx))
-    if (!invRes.error) setInvData((invRes.data  || []).map(mapInv))
-    if (!billRes.error) setBillData(billRes.data || [])
-    if (!walletRes.error) setWalletData(walletRes.data || []) 
-    if (!targetRes.error) setTargetData((targetRes.data || []).map(mapTarget))
-    if (!budgetRes.error) setBudgetData(budgetRes.data || [])
-    if (!recurringRes.error) setRecurringData(recurringRes.data || [])
-    
-    // Load shared owners (akun yang share ke saya)
-    const { data: sharedData } = await supabase.from('shared_accounts').select('*').eq('member_id', user.id).eq('status', 'accepted')
-    setSharedOwners(sharedData || [])
-    
-    setLoading(false)
+
+    try {
+      const uid = effectiveUserId
+
+      const [txRes, invRes, billRes, walletRes, targetRes, budgetRes, recurringRes] = await Promise.all([
+        supabase.from('transaksi').select('*').eq('user_id', uid).order('tgl', { ascending: false }).order('created_at', { ascending: false }),
+        supabase.from('investasi').select('*').eq('user_id', uid).order('tgl', { ascending: false }).order('created_at', { ascending: false }),
+        supabase.from('tagihan').select('*').eq('user_id', uid).order('jatuh_tempo', { ascending: true }),
+        supabase.from('wallets').select('*').eq('user_id', uid).order('created_at', { ascending: true }),
+        supabase.from('target_finansial').select('*').eq('user_id', uid).order('updated_at', { ascending: false }),
+        supabase.from('budgets').select('*').eq('user_id', uid),
+        supabase.from('recurring_tx').select('*').eq('user_id', uid).order('next_date', { ascending: true })
+      ])
+
+      if (!txRes.error)       setTxData((txRes.data  || []).map(mapTx))
+      if (!invRes.error)      setInvData((invRes.data  || []).map(mapInv))
+      if (!billRes.error)     setBillData(billRes.data || [])
+      if (!walletRes.error)   setWalletData(walletRes.data || [])
+      if (!targetRes.error)   setTargetData((targetRes.data || []).map(mapTarget))
+      if (!budgetRes.error)   setBudgetData(budgetRes.data || [])
+      if (!recurringRes.error) setRecurringData(recurringRes.data || [])
+
+      const { data: sharedData } = await supabase.from('shared_accounts').select('*').eq('member_id', user.id).eq('status', 'accepted')
+      setSharedOwners(sharedData || [])
+    } finally {
+      setLoading(false)
+    }
   }, [user, effectiveUserId])
 
   useEffect(() => { loadAll() }, [loadAll])

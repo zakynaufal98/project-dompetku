@@ -256,7 +256,8 @@ export default function TargetCerdas() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
-          <h1 className="font-bold text-2xl text-text tracking-tight">Target Cerdas</h1>
+          <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1">Perencanaan</p>
+          <h1 className="font-black text-2xl text-text tracking-tight">Target Cerdas</h1>
           <p className="text-muted text-sm font-medium mt-1">Kelola target finansial dengan prediksi arus kas.</p>
         </div>
         <button onClick={handleAddTarget} disabled={busy} className="btn-primary w-fit">

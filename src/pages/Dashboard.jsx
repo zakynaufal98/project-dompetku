@@ -5,7 +5,7 @@ import { useData } from '../context/DataContext'
 import { useAuth } from '../context/AuthContext'
 import { fmt, fmtShort, MONTHS } from '../lib/utils'
 import { Spinner, InteractiveDonut } from '../components/UI'
-import { Target, TrendingUp, TrendingDown, Users, ArrowLeft } from 'lucide-react'
+import { Target, TrendingUp, TrendingDown, Users, ArrowLeft, Wallet, ArrowDownCircle, ArrowUpCircle, CalendarDays } from 'lucide-react'
 import BillTracker from '../components/BillTracker'
 import WalletWidget from '../components/WalletWidget'
 import SharedAccount from '../components/SharedAccount'
@@ -114,6 +114,21 @@ export default function Dashboard() {
     )
   }
 
+  const greeting = (() => {
+    const h = new Date().getHours()
+    if (h < 12) return 'Selamat pagi'
+    if (h < 15) return 'Selamat siang'
+    if (h < 19) return 'Selamat sore'
+    return 'Selamat malam'
+  })()
+
+  const displayName = user?.user_metadata?.full_name
+    || user?.user_metadata?.name
+    || user?.email?.split('@')[0]
+    || 'Pengguna'
+
+  const todayLabel = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+
   if (loading) return <div className="flex items-center justify-center h-64"><Spinner size="lg" /></div>
 
   return (
@@ -149,67 +164,102 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
-      <div>
-        <h1 className="tabular-nums font-bold text-2xl text-text tracking-tight">Overview</h1>
-        <p className="text-muted text-sm font-medium mt-1">Selamat datang kembali, mari pantau keuanganmu.</p>
-      </div>
+      {/* PAGE HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-bold text-muted uppercase tracking-widest mb-1">{greeting}</p>
+          <h1 className="font-black text-2xl text-text tracking-tight leading-tight">
+            {displayName} <span className="text-2xl">👋</span>
+          </h1>
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <CalendarDays size={12} className="text-muted" />
+            <p className="text-muted text-xs font-medium">{todayLabel}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-muted font-medium hidden sm:block">Net bulan ini:</span>
+          <span className={`font-black text-sm tabular-nums px-3 py-1.5 rounded-xl ${(currIn - currOut) >= 0 ? 'bg-income/10 text-income' : 'bg-expense-light text-expense'}`}>
+            {(currIn - currOut) >= 0 ? '+' : ''}{fmtShort(currIn - currOut)}
+          </span>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm flex flex-col justify-between transition-colors">
-          <div className="flex justify-between items-start mb-4">
-            <span className="text-text font-semibold text-base">Saldo Saat Ini</span>
-            <span className="text-[11px] font-bold text-muted2 bg-bg px-2 py-1 rounded-md uppercase tracking-wider">Total</span>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Saldo */}
+        <div className="bg-surface border border-border rounded-[22px] p-5 flex flex-col gap-4 transition-colors hover:shadow-card-md hover:-translate-y-0.5 duration-200">
+          <div className="flex items-center justify-between">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(99,102,241,0.1)' }}>
+              <Wallet size={18} style={{ color: '#6366f1' }} />
+            </div>
+            <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Total</span>
           </div>
           <div>
-            <p className="tabular-nums font-bold text-2xl lg:text-3xl text-text tracking-tight whitespace-nowrap">{fmt(totals.saldo)}</p>
-            <div className="flex items-center gap-2 mt-3 text-sm">
+            <p className="text-xs font-semibold text-muted mb-1">Saldo Saat Ini</p>
+            <p className="tabular-nums font-black text-[22px] text-text tracking-tight leading-none">{fmt(totals.saldo)}</p>
+            <div className="flex items-center gap-2 mt-2.5">
               {renderTrendBadge(trends.saldo, false)}
-              <span className="text-muted2 text-xs font-medium">vs bln lalu</span>
+              <span className="text-muted text-xs font-medium">vs bln lalu</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 border border-indigo-600 rounded-[24px] p-6 shadow-sm flex flex-col justify-between text-white transform transition-transform hover:-translate-y-1">
-          <div className="flex justify-between items-start mb-4">
-            <span className="font-semibold text-base text-indigo-50">Keluar Hari Ini</span>
-            <span className="text-[11px] font-bold bg-white/20 px-2 py-1 rounded-md uppercase tracking-wider text-white">HARI INI</span>
+        {/* Keluar Hari Ini */}
+        <div className="rounded-[22px] p-5 flex flex-col gap-4 text-white hover:-translate-y-0.5 duration-200 transition-transform relative overflow-hidden"
+          style={{ background: 'linear-gradient(135deg, #6366f1, #4338ca)' }}>
+          <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl opacity-20" style={{ background: '#fff' }} />
+          <div className="flex items-center justify-between relative">
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+              <CalendarDays size={18} className="text-white" />
+            </div>
+            <span className="text-[10px] font-bold bg-white/20 px-2 py-1 rounded-lg uppercase tracking-widest">Hari Ini</span>
           </div>
-          <div>
-            <p className="tabular-nums font-bold text-2xl lg:text-3xl tracking-tight whitespace-nowrap">
+          <div className="relative">
+            <p className="text-xs font-semibold text-indigo-200 mb-1">Keluar Hari Ini</p>
+            <p className="tabular-nums font-black text-[22px] tracking-tight leading-none">
               {todayOut > 0 ? `-${fmt(todayOut)}` : 'Rp 0'}
             </p>
-            <div className="mt-3 text-[13px] font-medium text-indigo-100 flex items-center gap-1.5">
-              {todayOut === 0 ? '✨ Hebat! Belum jajan hari ini' : '👀 Tetap pantau dompetmu!'}
-            </div>
+            <p className="mt-2.5 text-[11px] font-semibold text-indigo-100">
+              {todayOut === 0 ? '✨ Belum ada pengeluaran' : '👀 Pantau terus dompetmu!'}
+            </p>
           </div>
         </div>
 
-        <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm flex flex-col justify-between transition-colors">
-          <div className="flex justify-between items-start mb-4">
-            <span className="text-text font-semibold text-base">Pengeluaran</span>
-            <span className="text-[11px] font-bold text-muted2 bg-bg px-2 py-1 rounded-md uppercase tracking-wider">Bulan Ini</span>
+        {/* Pengeluaran */}
+        <div className="bg-surface border border-border rounded-[22px] p-5 flex flex-col gap-4 transition-colors hover:shadow-card-md hover:-translate-y-0.5 duration-200">
+          <div className="flex items-center justify-between">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(255,138,0,0.1)' }}>
+              <ArrowDownCircle size={18} style={{ color: '#FF8A00' }} />
+            </div>
+            <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Bulan Ini</span>
           </div>
           <div>
-            <p className="tabular-nums font-bold text-2xl lg:text-3xl text-[#FF8A00] tracking-tight whitespace-nowrap">{currOut > 0 ? `-${fmt(currOut)}` : fmt(currOut)}</p>
-            <div className="flex items-center gap-2 mt-3 text-sm">
+            <p className="text-xs font-semibold text-muted mb-1">Pengeluaran</p>
+            <p className="tabular-nums font-black text-[22px] tracking-tight leading-none" style={{ color: '#FF8A00' }}>
+              {currOut > 0 ? `-${fmt(currOut)}` : fmt(currOut)}
+            </p>
+            <div className="flex items-center gap-2 mt-2.5">
               {renderTrendBadge(trends.keluar, true)}
-              <span className="text-muted2 text-xs font-medium">vs bln lalu</span>
+              <span className="text-muted text-xs font-medium">vs bln lalu</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm flex flex-col justify-between transition-colors">
-          <div className="flex justify-between items-start mb-4">
-            <span className="text-text font-semibold text-base">Pemasukan</span>
-            <span className="text-[11px] font-bold text-muted2 bg-bg px-2 py-1 rounded-md uppercase tracking-wider">Bulan Ini</span>
+        {/* Pemasukan */}
+        <div className="bg-surface border border-border rounded-[22px] p-5 flex flex-col gap-4 transition-colors hover:shadow-card-md hover:-translate-y-0.5 duration-200">
+          <div className="flex items-center justify-between">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(20,184,166,0.1)' }}>
+              <ArrowUpCircle size={18} style={{ color: '#10B981' }} />
+            </div>
+            <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Bulan Ini</span>
           </div>
           <div>
-            <p className="tabular-nums font-bold text-2xl lg:text-3xl text-[#10B981] tracking-tight whitespace-nowrap">{currIn > 0 ? `+${fmt(currIn)}` : fmt(currIn)}</p>
-            <div className="flex items-center gap-2 mt-3 text-sm">
+            <p className="text-xs font-semibold text-muted mb-1">Pemasukan</p>
+            <p className="tabular-nums font-black text-[22px] tracking-tight leading-none" style={{ color: '#10B981' }}>
+              {currIn > 0 ? `+${fmt(currIn)}` : fmt(currIn)}
+            </p>
+            <div className="flex items-center gap-2 mt-2.5">
               {renderTrendBadge(trends.masuk, false)}
-              <span className="text-muted2 text-xs font-medium">vs bln lalu</span>
+              <span className="text-muted text-xs font-medium">vs bln lalu</span>
             </div>
           </div>
         </div>
@@ -219,9 +269,15 @@ export default function Dashboard() {
 
       {/* Grafik + Tagihan + Donut */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm lg:col-span-2 flex flex-col transition-colors">
+        <div className="bg-surface border border-border rounded-2xl p-5 lg:col-span-2 flex flex-col transition-colors">
           <div className="flex justify-between items-center mb-5">
-            <h2 className="font-bold text-base text-text">Tren Keuangan (6 Bulan)</h2>
+            <div>
+              <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-0.5">Grafik</p>
+              <h2 className="font-black text-base text-text tracking-tight">Tren Keuangan</h2>
+            </div>
+            <span className="text-[10px] font-bold text-muted bg-bg border border-border px-2.5 py-1.5 rounded-lg uppercase tracking-widest">
+              6 Bulan
+            </span>
           </div>
           <div className="flex-1 min-h-[220px] w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -247,10 +303,13 @@ export default function Dashboard() {
 
         <div className="flex flex-col gap-5">
           <BillTracker />
-          <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm flex flex-col flex-1 transition-colors">
+          <div className="bg-surface border border-border rounded-2xl p-5 flex flex-col flex-1 transition-colors">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="font-bold text-base text-text">Distribusi Pengeluaran</h2>
-              <span className="text-[10px] font-bold text-muted2 bg-bg px-2 py-1 rounded-md uppercase tracking-wider">Bulan Ini</span>
+              <div>
+                <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-0.5">Kategori</p>
+                <h2 className="font-black text-base text-text tracking-tight">Distribusi</h2>
+              </div>
+              <span className="text-[10px] font-bold text-muted bg-bg border border-border px-2.5 py-1.5 rounded-lg uppercase tracking-widest">Bln Ini</span>
             </div>
             <InteractiveDonut data={txBlnOut} />
           </div>
@@ -258,16 +317,18 @@ export default function Dashboard() {
       </div>
 
       {/* Target Finansial */}
-      <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm transition-colors">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+      <div className="bg-surface border border-border rounded-2xl p-5 transition-colors">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-income-light text-income flex items-center justify-center flex-shrink-0">
-              <Target size={18} strokeWidth={2.5} />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
+              style={{ background: 'linear-gradient(135deg, #10B981, #059669)' }}>
+              <Target size={18} className="text-white" strokeWidth={2.5} />
             </div>
             <div>
-              <h2 className="font-bold text-base text-text">Target Finansial</h2>
-              <p className="text-xs font-medium text-muted">
-                {targetData.length} target aktif · sisa {fmtShort(targetSummary.totalRemaining)}
+              <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-0.5">Progres</p>
+              <h2 className="font-black text-base text-text tracking-tight">Target Finansial</h2>
+              <p className="text-xs font-medium text-muted mt-0.5">
+                {targetData.length} aktif · sisa {fmtShort(targetSummary.totalRemaining)}
               </p>
             </div>
           </div>

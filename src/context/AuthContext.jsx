@@ -4,31 +4,34 @@ import { supabase } from '../lib/supabase'
 const AuthContext = createContext(null)
 
 // WAKTU AUTO LOGOUT: 15 Menit = 900000 ms
-const AUTO_LOGOUT_TIME = 900000; 
+const AUTO_LOGOUT_TIME = 900000;
+
+const REMEMBER_KEY = 'dompetku_remember'
 
 export function AuthProvider({ children }) {
   const [user, setUser]       = useState(null)
   const [loading, setLoading] = useState(true)
-  
-  // State untuk fitur Lupa Password
-  const [recoveryMode, setRecoveryMode] = useState(false) 
 
-  // 1. Mengelola Sesi Supabase (Bawaan)
+  // State untuk fitur Lupa Password
+  const [recoveryMode, setRecoveryMode] = useState(false)
+
+  // 1. Mengelola Sesi Supabase
+  // authStorage di supabase.js sudah menangani pemilihan localStorage/sessionStorage
+  // secara otomatis, sehingga init() cukup membaca sesi yang sudah dipulihkan.
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
       setUser(session?.user ?? null)
       setLoading(false)
-    })
-    
+    }
+
+    init()
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null)
-      
-      // Deteksi jika user mengklik link Lupa Password dari email
-      if (event === 'PASSWORD_RECOVERY') {
-        setRecoveryMode(true)
-      }
+      if (event === 'PASSWORD_RECOVERY') setRecoveryMode(true)
     })
-    
+
     return () => subscription.unsubscribe()
   }, [])
 
@@ -41,10 +44,9 @@ export function AuthProvider({ children }) {
       timeoutId = setTimeout(async () => {
         if (user) {
           console.log("Sesi berakhir karena tidak ada aktivitas.");
-          await supabase.auth.signOut(); // Paksa logout di background
-          
-          // PERBAIKAN 404: Jangan pakai reload(), tapi paksa arahkan ke halaman utama (Login)
-          window.location.href = '/'; 
+          localStorage.removeItem(REMEMBER_KEY)
+          await supabase.auth.signOut();
+          window.location.href = '/';
         }
       }, AUTO_LOGOUT_TIME);
     };
@@ -64,9 +66,9 @@ export function AuthProvider({ children }) {
 
   // --- FUNGSI AUTENTIKASI ---
 
-  const login = async (email, password) => {
+  const login = async (email, password, remember = true) => {
+    localStorage.setItem(REMEMBER_KEY, remember ? 'true' : 'false')
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (!error) window.location.href = '/' 
     return error
   }
 
@@ -82,8 +84,9 @@ export function AuthProvider({ children }) {
   }
 
   const logout = async () => {
+    localStorage.removeItem(REMEMBER_KEY)
     await supabase.auth.signOut()
-    window.location.href = '/' 
+    window.location.href = '/'
   }
 
   const loginWithGoogle = async () => {

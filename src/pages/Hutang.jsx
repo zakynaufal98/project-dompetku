@@ -108,8 +108,9 @@ export default function Hutang() {
   return (
     <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
       <div>
-        <h1 className="tabular-nums font-bold text-2xl text-text tracking-tight">Kewajiban & Cicilan</h1>
-        <p className="text-muted text-sm font-medium mt-1">Pantau progres pelunasan hutang dan tagihanmu tanpa merusak laporan arus kas.</p>
+        <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1">Keuangan</p>
+        <h1 className="font-black text-2xl text-text tracking-tight">Kewajiban & Cicilan</h1>
+        <p className="text-muted text-sm font-medium mt-1">Pantau progres pelunasan hutang dan tagihanmu.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -269,9 +270,9 @@ export default function Hutang() {
 
         {/* ── KOLOM KANAN: RIWAYAT ──────────────────────────────── */}
         <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm lg:col-span-2">
-          <PanelHeader title="Riwayat Cicilan & Pinjaman" badge={`${riwayatHutang.length} aktivitas`} />
+          <PanelHeader title="Riwayat Cicilan & Pinjaman" sub="Histori" badge={`${riwayatHutang.length} aktivitas`} />
           
-          <div className="mt-6 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+          <div className="mt-6 lg:max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
             {riwayatHutang.length > 0 ? (
               <div className="space-y-2">
                 {riwayatHutang.map(t => (

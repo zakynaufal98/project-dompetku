@@ -83,14 +83,13 @@ export default function BillTracker() {
     <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm flex flex-col h-full transition-colors">
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-income-light text-income flex items-center justify-center transition-colors">
-            <BellRing size={20} strokeWidth={2.5} />
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
+            style={{ background: 'linear-gradient(135deg, #f43f5e, #be123c)' }}>
+            <BellRing size={17} className="text-white" strokeWidth={2.5} />
           </div>
           <div>
-            <h2 className="font-bold text-text tracking-tight">Tagihan Bulanan</h2>
-            <p className="text-xs font-medium text-muted mt-0.5">
-              {pendingBills.length} tagihan ({fmtShort(totalPending)})
-            </p>
+            <p className="text-[9px] font-bold text-muted uppercase tracking-[0.15em] mb-0.5">Kewajiban</p>
+            <h2 className="font-black text-base text-text tracking-tight">Tagihan Bulanan</h2>
           </div>
         </div>
         
@@ -98,7 +97,7 @@ export default function BillTracker() {
           onClick={() => setShowForm(!showForm)}
           aria-label={showForm ? 'Tutup form tambah tagihan' : 'Tambah tagihan'}
           aria-expanded={showForm}
-          className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all active:scale-90 ${
+          className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all active:scale-90 ${
             showForm ? 'bg-expense-light text-expense border border-expense/20' : 'bg-bg text-text-2 border border-border2 hover:border-border'
           }`}
         >
@@ -198,7 +197,7 @@ export default function BillTracker() {
                   <button 
                     onClick={() => setShowPayModal(bill)} 
                     aria-label={`Bayar tagihan ${bill.nama_tagihan}`}
-                    className={`flex-shrink-0 transition-all active:scale-90 w-9 h-9 rounded-xl flex items-center justify-center ${
+                    className={`flex-shrink-0 transition-all active:scale-90 w-10 h-10 rounded-xl flex items-center justify-center ${
                       status === 'overdue' ? 'bg-expense-light text-expense hover:bg-expense hover:text-white' :
                       'bg-income-light text-income hover:bg-income hover:text-white'
                     }`}

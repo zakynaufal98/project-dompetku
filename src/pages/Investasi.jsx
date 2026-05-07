@@ -160,7 +160,8 @@ export default function Investasi() {
     <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
       
       <div>
-        <h1 className="tabular-nums font-bold text-2xl text-text tracking-tight">Portofolio Investasi</h1>
+        <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1">Aset</p>
+        <h1 className="font-black text-2xl text-text tracking-tight">Portofolio Investasi</h1>
         <p className="text-muted text-sm font-medium mt-1">Kelola dan pantau aset kekayaanmu.</p>
       </div>
 
@@ -334,7 +335,7 @@ export default function Investasi() {
         </div>
 
         <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm lg:col-span-2 flex flex-col transition-colors">
-          <PanelHeader title="Alokasi Aset" />
+          <PanelHeader title="Alokasi Aset" sub="Portofolio" />
           <div className="flex-1 flex flex-col justify-center mt-2">
             {donutData.length > 0 ? (
               <>
@@ -391,12 +392,12 @@ export default function Investasi() {
         )}
 
         <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm transition-colors">
-          <PanelHeader title="Riwayat Investasi" badge={`${filteredInv.length} transaksi`} />
+          <PanelHeader title="Riwayat Investasi" sub="Histori" badge={`${filteredInv.length} transaksi`} />
           <div className="relative mt-4 mb-3">
             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><Search size={18} /></div>
             <input type="text" placeholder="Cari nama, tipe, atau keterangan aset..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-field border border-border2 text-text rounded-xl pl-10 pr-4 py-2.5 text-sm focus:border-invest outline-none transition-all" />
           </div>
-          <div className="space-y-1.5 mt-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+          <div className="space-y-1.5 mt-2 lg:max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
             {Object.keys(groupedInv).length > 0 ? (
               Object.keys(groupedInv).sort((a,b) => new Date(b) - new Date(a)).map(dateKey => {
                 const group = groupedInv[dateKey];

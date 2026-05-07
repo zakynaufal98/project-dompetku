@@ -98,44 +98,101 @@ export default function WalletWidget({ totals, addWallet, updateWallet, deleteWa
   return (
     <div className="animate-fade-up">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold text-text tracking-tight">Dompet & Rekening</h2>
-        
+        <div>
+          <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-0.5">Aset</p>
+          <h2 className="font-black text-base text-text tracking-tight">Dompet & Rekening</h2>
+        </div>
         {totals?.walletBalances?.length > 1 && (
-          <button onClick={handleOpenTransfer} className="text-sm font-bold text-income bg-income-light hover:bg-income-light px-4 py-2 rounded-xl flex items-center gap-2 transition-colors">
-            <ArrowRightLeft size={16} strokeWidth={2.5} /> Transfer Saldo
+          <button onClick={handleOpenTransfer} className="text-sm font-bold text-muted bg-bg border border-border hover:text-text hover:border-border2 px-4 py-2 rounded-xl flex items-center gap-2 transition-colors">
+            <ArrowRightLeft size={15} strokeWidth={2.5} /> Transfer
           </button>
         )}
       </div>
 
-      <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar items-stretch">
-        {totals?.walletBalances?.map(w => (
-          <div 
-            key={w.id} 
-            onClick={() => handleOpenEdit(w)}
-            className="min-w-[180px] p-5 rounded-[20px] bg-surface border border-border shadow-sm flex-shrink-0 flex flex-col justify-between relative overflow-hidden hover:shadow-md hover:border-income/30 transition-all cursor-pointer group"
-          >
-            <div className="absolute top-0 left-0 right-0 h-1.5" style={{ backgroundColor: w.color || '#ccc' }} />
-            <div>
-              <div className="flex items-center gap-2 mb-2 mt-1">
-                <BankLogo name={w.name} size="sm" />
-                <p className="text-xs font-bold text-muted uppercase tracking-wider">{w.name}</p>
+      <div className="flex gap-4 overflow-x-auto pb-3 custom-scrollbar">
+        {totals?.walletBalances?.map(w => {
+          const c = w.color || '#4F46E5'
+          return (
+            <div
+              key={w.id}
+              onClick={() => handleOpenEdit(w)}
+              className="relative flex-shrink-0 w-56 h-[136px] rounded-2xl cursor-pointer overflow-hidden select-none group transition-all duration-200 hover:-translate-y-1"
+              style={{
+                background: `linear-gradient(140deg, ${c} 0%, ${c}99 100%)`,
+                boxShadow: `0 8px 28px ${c}50`,
+              }}
+            >
+              {/* Dekorasi: lingkaran besar kanan atas */}
+              <div
+                className="absolute -top-10 -right-10 w-40 h-40 rounded-full pointer-events-none"
+                style={{ background: 'rgba(255,255,255,0.12)' }}
+              />
+              {/* Dekorasi: lingkaran kecil kiri bawah */}
+              <div
+                className="absolute -bottom-6 -left-6 w-24 h-24 rounded-full pointer-events-none"
+                style={{ background: 'rgba(0,0,0,0.12)' }}
+              />
+              {/* Grain overlay */}
+              <div className="absolute inset-0 pointer-events-none opacity-[0.06]">
+                <svg width="100%" height="100%">
+                  <filter id={`grain-${w.id}`}>
+                    <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="3" stitchTiles="stitch" />
+                    <feColorMatrix type="saturate" values="0" />
+                  </filter>
+                  <rect width="100%" height="100%" filter={`url(#grain-${w.id})`} />
+                </svg>
               </div>
-              <h3 className="text-xl font-black text-text tabular-nums">{fmt(w.calculatedBalance)}</h3>
-            </div>
-            <div className="absolute top-4 right-4 text-muted2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-            </div>
-          </div>
-        ))}
 
-        <button 
+              <div className="absolute inset-0 p-4 flex flex-col justify-between">
+                {/* Baris atas: nama + chip */}
+                <div className="flex items-start justify-between">
+                  <p className="text-white/75 text-[10px] font-bold uppercase tracking-[0.18em] leading-none">
+                    {w.name}
+                  </p>
+                  {/* Chip kartu */}
+                  <div className="w-7 h-5 rounded-[4px] flex-shrink-0"
+                    style={{ background: 'rgba(255,255,255,0.25)', border: '1px solid rgba(255,255,255,0.3)' }}>
+                    <div className="w-full h-full rounded-[3px] grid grid-cols-2 gap-px p-0.5 opacity-60">
+                      <div className="bg-white/40 rounded-[1px]" />
+                      <div className="bg-white/40 rounded-[1px]" />
+                      <div className="bg-white/40 rounded-[1px]" />
+                      <div className="bg-white/40 rounded-[1px]" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Baris bawah: saldo + edit */}
+                <div className="flex items-end justify-between">
+                  <div>
+                    <p className="text-white/50 text-[9px] font-semibold uppercase tracking-widest mb-1">Saldo</p>
+                    <p className="text-white font-black text-[19px] tabular-nums tracking-tight leading-none drop-shadow-sm">
+                      {fmt(w.calculatedBalance)}
+                    </p>
+                  </div>
+                  <div className="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                      style={{ background: 'rgba(255,255,255,0.2)' }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+
+        {/* Tombol tambah */}
+        <button
           onClick={handleOpenNew}
-          className="min-w-[140px] p-5 rounded-[20px] border-2 border-dashed border-border bg-bg flex flex-col items-center justify-center text-muted2 hover:text-income hover:border-income/30 hover:bg-income-light transition-all flex-shrink-0"
+          className="flex-shrink-0 w-36 h-[136px] rounded-2xl flex flex-col items-center justify-center gap-3 transition-all duration-200 hover:-translate-y-1 group"
+          style={{ border: '2px dashed var(--color-border)', background: 'var(--color-bg)' }}
         >
-          <span className="w-8 h-8 rounded-full bg-surface shadow-sm flex items-center justify-center mb-2 text-inherit">
-            <Plus size={16} strokeWidth={3} />
-          </span>
-          <span className="text-xs font-bold">Tambah Baru</span>
+          <div className="w-10 h-10 rounded-xl bg-surface border border-border flex items-center justify-center text-muted group-hover:border-primary/30 group-hover:text-primary transition-colors shadow-sm">
+            <Plus size={18} strokeWidth={2.5} />
+          </div>
+          <span className="text-xs font-bold text-muted group-hover:text-text transition-colors">Tambah Dompet</span>
         </button>
       </div>
 

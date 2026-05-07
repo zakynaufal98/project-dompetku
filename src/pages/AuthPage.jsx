@@ -82,8 +82,8 @@ export default function AuthPage({ defaultMode = 'login' }) {
     setBusy(true); 
     setMsg(null)
     
-    const err = mode === 'login' 
-      ? await login(email, pass) 
+    const err = mode === 'login'
+      ? await login(email, pass, remember)
       : await register(email, pass, name)
       
     setBusy(false)

@@ -27,6 +27,16 @@ const AVATAR_OPTIONS = [
   { id: 'cowboy',  emoji: '🤠', bg: '#92400E' },
 ]
 
+const GREET_MAP = { morning: 'Selamat pagi', afternoon: 'Selamat siang', evening: 'Selamat sore', night: 'Selamat malam' }
+
+function getTimeSlot() {
+  const h = new Date().getHours()
+  if (h < 12) return 'morning'
+  if (h < 15) return 'afternoon'
+  if (h < 19) return 'evening'
+  return 'night'
+}
+
 export default function Navbar() {
   const { user, logout } = useAuth()
   const [isDark, setIsDark]           = useState(false)
@@ -55,11 +65,11 @@ export default function Navbar() {
     document.documentElement.classList.remove('disable-transitions')
   }
 
-  // Prioritas: full_name (user edit) → name (Google OAuth) → email prefix
   const displayName  = user?.user_metadata?.full_name
                     || user?.user_metadata?.name
                     || user?.email?.split('@')[0]
                     || 'Pengguna'
+  const firstName    = displayName.split(' ')[0]
   const avatarId     = user?.user_metadata?.avatar || null
   const avatarObj    = AVATAR_OPTIONS.find(a => a.id === avatarId)
   const initials     = displayName.slice(0, 2).toUpperCase()
@@ -72,85 +82,106 @@ export default function Navbar() {
     <span className="text-white font-black text-sm">{initials}</span>
   )
 
+  const greeting = GREET_MAP[getTimeSlot()]
+
   return (
     <>
-      <header className="bg-surface border-b border-border sticky top-0 z-40">
-        <nav className="flex items-center justify-between px-4 lg:px-8 py-3" aria-label="Navigasi Utama">
+      <header className="bg-surface/95 backdrop-blur-sm border-b border-border sticky top-0 z-40">
+        <nav className="flex items-center justify-between px-4 lg:px-8 h-14" aria-label="Navigasi Utama">
 
           {/* Kiri: Sapaan mobile */}
-          <div className="lg:hidden">
-            <p className="text-xs font-bold text-muted2 uppercase tracking-widest mb-0.5">Hai,</p>
-            <p className="text-sm font-bold text-text truncate max-w-[140px]">{displayName}</p>
+          <div className="lg:hidden flex flex-col justify-center">
+            <p className="text-[10px] font-semibold text-muted leading-none mb-0.5">{greeting},</p>
+            <p className="text-sm font-black text-text truncate max-w-[160px] leading-none">{firstName} 👋</p>
           </div>
 
           {/* Kanan: Actions */}
-          <div className="flex items-center gap-1.5 lg:gap-3 ml-auto">
+          <div className="flex items-center gap-1 lg:gap-2 ml-auto">
 
             {/* Dark Mode Toggle */}
             <button
               onClick={toggleTheme}
-              className="w-9 h-9 flex items-center justify-center rounded-full text-muted2 hover:text-income hover:bg-income-light transition-all"
+              className="w-9 h-9 flex items-center justify-center rounded-xl text-muted hover:text-text hover:bg-bg border border-transparent hover:border-border transition-all"
               aria-label={isDark ? 'Aktifkan Mode Terang' : 'Aktifkan Mode Gelap'}
             >
-              {isDark ? <Sun size={19} strokeWidth={2.5} /> : <Moon size={19} strokeWidth={2.5} />}
+              {isDark
+                ? <Sun size={17} strokeWidth={2} />
+                : <Moon size={17} strokeWidth={2} />}
             </button>
 
             {/* Notifikasi */}
             <NotificationMenu />
 
-            {/* ─── PROFIL DROPDOWN ─── */}
+            {/* ── PROFIL ── */}
             <div className="relative" ref={dropRef}>
               <button
                 onClick={() => setDropOpen(p => !p)}
                 aria-expanded={dropOpen}
                 aria-haspopup="true"
                 aria-label="Menu Akun"
-                className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full hover:bg-bg border border-transparent hover:border-border transition-all"
+                className="flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-xl hover:bg-bg border border-transparent hover:border-border transition-all"
               >
                 <div
-                  className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
-                  style={{ backgroundColor: avatarBg }}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm ring-2 ring-offset-1 ring-offset-surface"
+                  style={{ backgroundColor: avatarBg, ringColor: avatarBg + '40' }}
                   aria-hidden="true"
                 >
                   {avatarContent}
                 </div>
                 <div className="hidden lg:block text-left">
                   <p className="text-sm font-bold text-text leading-tight max-w-[120px] truncate">{displayName}</p>
-                  <p className="text-[10px] font-semibold text-muted2">Pro Member</p>
+                  <p className="text-[10px] font-semibold text-muted">Pro Member</p>
                 </div>
-                <ChevronDown size={14} className={`hidden lg:block text-muted2 transition-transform ${dropOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown
+                  size={13}
+                  className={`hidden lg:block text-muted transition-transform duration-200 ${dropOpen ? 'rotate-180' : ''}`}
+                />
               </button>
 
-              {/* Dropdown Menu */}
+              {/* Dropdown */}
               {dropOpen && (
-                <div className="absolute right-0 mt-2 w-52 bg-surface border border-border rounded-2xl shadow-xl z-50 overflow-hidden animate-fade-up origin-top-right">
-                  
-                  {/* User Info Header */}
-                  <div className="px-4 py-3 border-b border-border">
-                    <p className="text-xs font-bold text-text truncate">{displayName}</p>
-                    <p className="text-[10px] text-muted font-medium truncate">{user?.email}</p>
+                <div className="absolute right-0 mt-2 w-56 bg-surface border border-border rounded-2xl shadow-2xl shadow-black/10 z-50 overflow-hidden animate-fade-up origin-top-right">
+
+                  {/* User Header */}
+                  <div className="px-4 py-3 border-b border-border flex items-center gap-3">
+                    <div
+                      className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
+                      style={{ backgroundColor: avatarBg }}
+                    >
+                      {avatarContent}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-text truncate">{displayName}</p>
+                      <p className="text-[10px] text-muted font-medium truncate">{user?.email}</p>
+                    </div>
                   </div>
 
-                  {/* Menu Items */}
+                  {/* Menu */}
                   <div className="p-1.5 space-y-0.5">
                     <button
                       onClick={() => { setShowProfile(true); setDropOpen(false) }}
                       className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold text-text-2 hover:bg-bg hover:text-text rounded-xl transition-colors"
                     >
-                      <Settings size={15} className="text-muted" />
+                      <div className="w-7 h-7 rounded-lg bg-bg flex items-center justify-center">
+                        <Settings size={13} className="text-muted" />
+                      </div>
                       Pengaturan Akun
                     </button>
 
-                    <div className="my-1 border-t border-border" />
+                    <div className="h-px bg-border mx-1 my-1" />
 
                     <button
                       onClick={() => { setDropOpen(false); logout() }}
                       className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold text-expense hover:bg-expense-light rounded-xl transition-colors"
                     >
-                      <LogOut size={15} />
+                      <div className="w-7 h-7 rounded-lg bg-expense-light flex items-center justify-center">
+                        <LogOut size={13} className="text-expense" />
+                      </div>
                       Keluar
                     </button>
                   </div>
+
+                  <div className="h-1.5" />
                 </div>
               )}
             </div>
@@ -159,7 +190,6 @@ export default function Navbar() {
         </nav>
       </header>
 
-      {/* Profile Modal */}
       {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
     </>
   )

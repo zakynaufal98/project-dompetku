@@ -106,36 +106,47 @@ export const TxItem = ({ t, onDelete, onEdit, isInv, walletName, inputterName })
           </div>
 
           {/* Amount + actions — mobile only */}
-          <div className="flex items-center gap-2 mt-2 sm:hidden">
-            <span className={`font-black text-sm tabular-nums tracking-tight ${isOut ? 'text-text-2' : 'text-income'}`}>
+          <div className="flex items-center gap-2 mt-2.5 sm:hidden">
+            <span className={`font-black text-sm tabular-nums tracking-tight flex-1 ${isOut ? 'text-text-2' : 'text-income'}`}>
               {isOut ? '-' : '+'}{fmtShort(t.amount)}
             </span>
             {!confirmDel && (
-              <>
+              <div className="flex items-center gap-1.5">
                 {onEdit && (
-                  <button onClick={(e) => { e.stopPropagation(); onEdit(t) }}
-                    className="w-7 h-7 flex items-center justify-center text-muted2 hover:text-primary hover:bg-primary/10 rounded-full transition-colors">
-                    <Pencil size={13} />
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onEdit(t) }}
+                    className="flex items-center gap-1 px-2.5 h-8 bg-primary/10 text-primary rounded-xl active:scale-95 transition-transform"
+                    aria-label="Edit transaksi"
+                  >
+                    <Pencil size={12} />
+                    <span className="text-[11px] font-bold">Edit</span>
                   </button>
                 )}
                 {onDelete && (
-                  <button onClick={(e) => { e.stopPropagation(); setConfirmDel(true) }}
-                    className="w-7 h-7 flex items-center justify-center text-muted2 hover:text-expense hover:bg-expense-light rounded-full transition-colors">
-                    <Trash2 size={13} />
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setConfirmDel(true) }}
+                    className="w-8 h-8 flex items-center justify-center bg-expense-light text-expense rounded-xl active:scale-95 transition-transform"
+                    aria-label="Hapus transaksi"
+                  >
+                    <Trash2 size={14} />
                   </button>
                 )}
-              </>
+              </div>
             )}
             {confirmDel && (
               <div className="flex items-center gap-1.5 animate-fade-in">
                 <span className="text-[10px] font-bold text-expense">Hapus?</span>
-                <button onClick={(e) => { e.stopPropagation(); onDelete(t.id); setConfirmDel(false) }}
-                  className="w-6 h-6 flex items-center justify-center bg-expense text-white rounded-full hover:bg-expense/80 transition-colors">
-                  <Check size={11} />
+                <button
+                  onClick={(e) => { e.stopPropagation(); onDelete(t.id); setConfirmDel(false) }}
+                  className="h-8 px-2.5 flex items-center gap-1 bg-expense text-white text-[11px] font-bold rounded-xl active:scale-95"
+                >
+                  <Check size={11} /> Ya
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); setConfirmDel(false) }}
-                  className="w-6 h-6 flex items-center justify-center bg-border text-muted rounded-full hover:bg-border2 transition-colors">
-                  <X size={11} />
+                <button
+                  onClick={(e) => { e.stopPropagation(); setConfirmDel(false) }}
+                  className="w-8 h-8 flex items-center justify-center bg-border text-muted rounded-xl"
+                >
+                  <X size={12} />
                 </button>
               </div>
             )}
@@ -214,14 +225,25 @@ export function Field({ label, children }) {
   )
 }
 
-export function PanelHeader({ title, badge, icon }) {
+export function PanelHeader({ title, badge, icon, sub }) {
   return (
-    <div className="flex items-center justify-between border-b-2 border-border pb-3 mb-4">
-      <h3 className="font-bold text-text text-base flex items-center gap-2">
-        {icon && <span className="text-muted2">{icon}</span>}
-        {title}
-      </h3>
-      {badge && <span className="text-[10px] font-bold text-expense bg-expense-light px-2.5 py-1 rounded-md uppercase tracking-wider">{badge}</span>}
+    <div className="flex items-center justify-between border-b border-border pb-3.5 mb-4">
+      <div className="flex items-center gap-3">
+        {icon && (
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-muted2 bg-bg border border-border">
+            {icon}
+          </div>
+        )}
+        <div>
+          {sub && <p className="text-[9px] font-bold text-muted uppercase tracking-[0.15em] mb-0.5">{sub}</p>}
+          <h3 className="font-black text-text text-base tracking-tight">{title}</h3>
+        </div>
+      </div>
+      {badge && (
+        <span className="text-[10px] font-bold text-muted bg-bg border border-border px-2.5 py-1 rounded-lg uppercase tracking-wider">
+          {badge}
+        </span>
+      )}
     </div>
   )
 }
