@@ -5,8 +5,8 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJ
 
 const REMEMBER_KEY = 'dompetku_remember'
 
-// Routing storage: sessionStorage saat "Ingat Saya" = false, localStorage selainnya.
-// Dibaca dinamis tiap akses agar perubahan prefer sesudah login tetap berlaku.
+// Routing storage: sessionStorage HANYA jika user EKSPLISIT memilih "Jangan Ingat Saya".
+// Default (belum pernah set / pertama kali login) selalu pakai localStorage agar sesi tidak hilang saat browser ditutup.
 const authStorage = {
   getItem:    (key) => localStorage.getItem(REMEMBER_KEY) === 'false'
                          ? sessionStorage.getItem(key)
@@ -17,6 +17,7 @@ const authStorage = {
       localStorage.removeItem(key)
     } else {
       localStorage.setItem(key, value)
+      sessionStorage.removeItem(key) // Bersihkan sisi lain agar tidak konflik
     }
   },
   removeItem: (key) => { localStorage.removeItem(key); sessionStorage.removeItem(key) },

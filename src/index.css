@@ -84,8 +84,18 @@
     @apply bg-bg text-text;
     font-family: 'Plus Jakarta Sans', sans-serif;
     min-height: 100vh;
+    min-height: 100dvh; /* Fix: pakai dvh agar pas di mobile browser */
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden; /* Cegah horizontal scroll di mobile */
   }
+
+  /* Fix: Cegah zoom otomatis saat fokus input di iOS (font < 16px = zoom) */
+  @media screen and (max-width: 768px) {
+    input, select, textarea { font-size: 16px !important; }
+  }
+
+  /* Fix: Cegah overflow karena 100vw memperhitungkan scrollbar */
+  #root { max-width: 100vw; overflow-x: hidden; }
 
   ::-webkit-scrollbar { width: 4px; height: 4px; }
   ::-webkit-scrollbar-track { @apply bg-transparent; }

@@ -25,7 +25,7 @@ export default function AuthPage({ defaultMode = 'login' }) {
   }, [defaultMode])
   const [name, setName] = useState('')
   const [showPass, setShowPass] = useState(false)
-  const [remember, setRemember] = useState(false)
+  const [remember, setRemember] = useState(true)
   const [msg, setMsg] = useState(null)
   const [busy, setBusy] = useState(false)
 

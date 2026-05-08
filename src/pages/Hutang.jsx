@@ -4,6 +4,9 @@ import { fmt, fmtShort, today } from '../lib/utils'
 import { TxItem, PanelHeader, Empty, Field } from '../components/UI'
 import { Landmark, CheckCircle2, ReceiptText, PlusCircle, Loader2, Wallet, ChevronDown, ListChecks } from 'lucide-react'
 
+// Helper: Buat tag unik dari database ID hutang (6 karakter terakhir)
+const makeHutangTag = (id) => `#HID-${String(id).slice(-6)}`
+
 export default function Hutang() {
   // 👇 TAMBAHAN: Panggil walletData dan totals dari context
   const { txData, addTx, deleteTx, walletData, totals } = useData()
@@ -46,12 +49,32 @@ export default function Hutang() {
   const sisaHutang = Math.max(0, totalHutang - totalDibayar)
   const progress = totalHutang === 0 ? 0 : Math.min(100, (totalDibayar / totalHutang) * 100)
 
-  // Sisa per hutang — heuristik berdasarkan kecocokan deskripsi
+  // 🔧 PERBAIKAN UTAMA: Matching berdasarkan ID tag, bukan substring deskripsi
+  // Setiap cicilan yang dibuat melalui form ini akan memiliki tag #HID-xxxxxx di deskripsinya
+  // Ini mencegah salah matching ketika nama hutang mirip (mis: "Pinjaman Bank" vs "Pinjaman Bank BCA")
   const sisaPerHutang = useMemo(() => {
     return hutangMasuk.map(h => {
-      const terbayar = cicilanKeluar
-        .filter(c => c.desc?.toLowerCase().includes(h.desc?.toLowerCase()))
+      const hutangTag = makeHutangTag(h.id)
+      
+      // Prioritas 1: Matching berdasarkan tag ID (data baru — paling akurat)
+      let terbayar = cicilanKeluar
+        .filter(c => c.desc?.includes(hutangTag))
         .reduce((s, c) => s + c.amount, 0)
+      
+      // Prioritas 2 (fallback): Matching exact desc untuk data lama yang belum punya tag
+      // Hanya digunakan jika belum ada pembayaran dengan tag
+      if (terbayar === 0) {
+        terbayar = cicilanKeluar
+          .filter(c => {
+            // Skip cicilan yang sudah punya tag (sudah di-link ke hutang lain)
+            if (c.desc && c.desc.match(/#HID-[a-z0-9]{6}/i)) return false
+            // Exact match pada deskripsi (bukan substring/includes)
+            const cDesc = c.desc?.replace(/^Cicilan:\s*/i, '').trim().toLowerCase()
+            return cDesc === h.desc?.trim().toLowerCase()
+          })
+          .reduce((s, c) => s + c.amount, 0)
+      }
+      
       return { ...h, sisa: Math.max(0, h.amount - terbayar) }
     })
   }, [hutangMasuk, cicilanKeluar])
@@ -73,7 +96,10 @@ export default function Hutang() {
   const handleSelectHutang = (id) => {
     setSelectedHutangId(id)
     const found = activeHutang.find(h => h.id === id)
-    if (found) setDesc(`Cicilan: ${found.desc}`)
+    if (found) {
+      // 🔧 PERBAIKAN: Sertakan tag ID unik di deskripsi agar matching tidak ambigu
+      setDesc(`Cicilan: ${found.desc} ${makeHutangTag(found.id)}`)
+    }
   }
 
   const handleSimpan = async () => {
@@ -99,6 +125,7 @@ export default function Hutang() {
     else {
       setDesc(''); 
       setAmount('');
+      setSelectedHutangId('');
     }
   }
 

@@ -7,25 +7,34 @@ export const BankLogo = ({ name = '', size = 'md' }) => {
   if (!name) return null;
   const n = name.toLowerCase();
   
-  let brand = { text: name.substring(0, 2).toUpperCase(), bg: 'bg-slate-700' };
+  let brand = { text: name.substring(0, 2).toUpperCase(), bg: '#475569' };
   
-  if (n.includes('bca')) brand = { text: 'BCA', bg: 'bg-blue-600' };
-  else if (n.includes('jago')) brand = { text: 'Jago', bg: 'bg-orange-500' };
-  else if (n.includes('mandiri') || n.includes('livin')) brand = { text: 'Livin', bg: 'bg-yellow-400', textCol: 'text-blue-900' };
-  else if (n.includes('bni')) brand = { text: 'BNI', bg: 'bg-teal-500' };
-  else if (n.includes('bri')) brand = { text: 'BRI', bg: 'bg-blue-800' };
-  else if (n.includes('bsi')) brand = { text: 'BSI', bg: 'bg-emerald-600' };
-  else if (n.includes('gopay')) brand = { text: 'GoPay', bg: 'bg-sky-500' };
-  else if (n.includes('ovo')) brand = { text: 'OVO', bg: 'bg-purple-600' };
-  else if (n.includes('dana')) brand = { text: 'DANA', bg: 'bg-blue-500' };
-  else if (n.includes('seabank')) brand = { text: 'Sea', bg: 'bg-orange-500' };
-  else if (n.includes('jenius')) brand = { text: 'Jenius', bg: 'bg-cyan-500' };
-  else if (n.includes('tunai') || n.includes('cash')) brand = { text: 'Cash', bg: 'bg-emerald-500' };
+  if (n.includes('bca') || n.includes('klikbca') || n.includes('blu'))     brand = { text: 'BCA', bg: '#003D79' };
+  else if (n.includes('jago'))                                              brand = { text: 'Jago', bg: '#FF6B35' };
+  else if (n.includes('mandiri') || n.includes('livin'))                    brand = { text: 'Livin', bg: '#003580', textCol: '#FFD700' };
+  else if (n.includes('bni'))                                               brand = { text: 'BNI', bg: '#F26522' };
+  else if (n.includes('bri') || n.includes('brimo'))                        brand = { text: 'BRI', bg: '#00529C' };
+  else if (n.includes('bsi') || n.includes('syariah'))                      brand = { text: 'BSI', bg: '#00A34E' };
+  else if (n.includes('cimb') || n.includes('niaga') || n.includes('octo')) brand = { text: 'CIMB', bg: '#7B1B2D' };
+  else if (n.includes('permata'))                                           brand = { text: 'PMT', bg: '#005BAC' };
+  else if (n.includes('danamon'))                                           brand = { text: 'DAN', bg: '#003E7E' };
+  else if (n.includes('ocbc') || n.includes('nyala'))                       brand = { text: 'OCBC', bg: '#D8232A' };
+  else if (n.includes('jenius') || n.includes('btpn'))                      brand = { text: 'JNS', bg: '#00B5E2' };
+  else if (n.includes('gopay') || n.includes('gojek'))                      brand = { text: 'GPay', bg: '#00AED6' };
+  else if (n.includes('ovo'))                                               brand = { text: 'OVO', bg: '#4C2A86' };
+  else if (n.includes('dana'))                                              brand = { text: 'DANA', bg: '#108EE9' };
+  else if (n.includes('shopee') || n.includes('spay'))                      brand = { text: 'SPay', bg: '#EE4D2D' };
+  else if (n.includes('linkaja') || n.includes('link aja'))                 brand = { text: 'Link', bg: '#E2231B' };
+  else if (n.includes('seabank') || n.includes('sea bank'))                 brand = { text: 'Sea', bg: '#FF6600' };
+  else if (n.includes('tunai') || n.includes('cash') || n.includes('kas')) brand = { text: 'Cash', bg: '#16A34A' };
 
   const sizeClasses = size === 'sm' ? 'w-6 h-6 text-[8px]' : 'w-9 h-9 text-[10px]';
   
   return (
-    <div className={`${sizeClasses} ${brand.bg} ${brand.textCol || 'text-white'} rounded-full flex items-center justify-center font-black tracking-tighter shadow-sm flex-shrink-0`}>
+    <div 
+      className={`${sizeClasses} rounded-full flex items-center justify-center font-black tracking-tighter shadow-sm flex-shrink-0`}
+      style={{ backgroundColor: brand.bg, color: brand.textCol || '#fff' }}
+    >
       {brand.text}
     </div>
   )

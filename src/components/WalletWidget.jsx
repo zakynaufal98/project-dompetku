@@ -93,7 +93,49 @@ export default function WalletWidget({ totals, addWallet, updateWallet, deleteWa
     else setShowTransfer(false);
   }
 
-  const COLORS = ['#4F46E5', '#10B981', '#FF8A00', '#E11D48', '#06B6D4', '#8B5CF6', '#1E293B', '#F43F5E'];
+  // 🏦 WARNA BANK REAL INDONESIA — Disesuaikan dengan identitas brand masing-masing bank/e-wallet
+  const BANK_COLORS = [
+    { key: 'bca',       keywords: ['bca', 'klikbca', 'blu'],             color: '#003D79', label: 'BCA' },
+    { key: 'bri',       keywords: ['bri', 'brimo'],                       color: '#00529C', label: 'BRI' },
+    { key: 'bni',       keywords: ['bni'],                                color: '#F26522', label: 'BNI' },
+    { key: 'mandiri',   keywords: ['mandiri', 'livin'],                   color: '#003580', label: 'Mandiri' },
+    { key: 'bsi',       keywords: ['bsi', 'syariah'],                     color: '#00A34E', label: 'BSI' },
+    { key: 'cimb',      keywords: ['cimb', 'niaga', 'octo'],              color: '#7B1B2D', label: 'CIMB' },
+    { key: 'permata',   keywords: ['permata', 'permatabank'],             color: '#005BAC', label: 'Permata' },
+    { key: 'danamon',   keywords: ['danamon'],                            color: '#003E7E', label: 'Danamon' },
+    { key: 'ocbc',      keywords: ['ocbc', 'nyala'],                      color: '#D8232A', label: 'OCBC' },
+    { key: 'jenius',    keywords: ['jenius', 'btpn'],                     color: '#00B5E2', label: 'Jenius' },
+    { key: 'jago',      keywords: ['jago'],                               color: '#FF6B35', label: 'Jago' },
+    { key: 'gopay',     keywords: ['gopay', 'gojek'],                     color: '#00AED6', label: 'GoPay' },
+    { key: 'ovo',       keywords: ['ovo'],                                color: '#4C2A86', label: 'OVO' },
+    { key: 'dana',      keywords: ['dana'],                               color: '#108EE9', label: 'DANA' },
+    { key: 'shopeepay', keywords: ['shopee', 'shopeepay', 'spay'],        color: '#EE4D2D', label: 'ShopeePay' },
+    { key: 'linkaja',   keywords: ['linkaja', 'link aja'],                color: '#E2231B', label: 'LinkAja' },
+    { key: 'seabank',   keywords: ['seabank', 'sea bank'],                color: '#FF6600', label: 'SeaBank' },
+    { key: 'cash',      keywords: ['tunai', 'cash', 'kas', 'dompet'],     color: '#16A34A', label: 'Tunai' },
+  ]
+
+  // Fallback warna jika nama dompet tidak cocok dengan bank manapun
+  const GENERIC_COLORS = ['#4F46E5', '#6366f1', '#8B5CF6', '#1E293B']
+
+  // Semua warna yang tampil di color picker
+  const ALL_PICKER_COLORS = [...BANK_COLORS.map(b => b.color), ...GENERIC_COLORS]
+
+  // Auto-detect warna berdasarkan nama dompet
+  const detectBankColor = (walletName) => {
+    const lower = walletName.toLowerCase()
+    for (const bank of BANK_COLORS) {
+      if (bank.keywords.some(kw => lower.includes(kw))) return bank.color
+    }
+    return null
+  }
+
+  // Helper: update nama + auto-suggest warna
+  const handleNameChange = (newName) => {
+    setName(newName)
+    const detected = detectBankColor(newName)
+    if (detected) setColor(detected)
+  }
 
   return (
     <div className="animate-fade-up">
@@ -360,7 +402,14 @@ export default function WalletWidget({ totals, addWallet, updateWallet, deleteWa
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-bold text-muted mb-1.5">Nama Dompet (Mis: BCA, Kas, OVO)</label>
-                    <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full bg-field border border-border rounded-xl px-4 py-3 text-sm text-text placeholder:text-muted2 focus:border-income outline-none" placeholder="Masukkan nama..." />
+                    <input type="text" value={name} onChange={e => handleNameChange(e.target.value)} className="w-full bg-field border border-border rounded-xl px-4 py-3 text-sm text-text placeholder:text-muted2 focus:border-income outline-none" placeholder="Masukkan nama..." />
+                    {/* Auto-detect feedback */}
+                    {name && detectBankColor(name) && (
+                      <p className="text-[11px] font-bold text-income mt-1.5 flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: detectBankColor(name) }} />
+                        Warna otomatis: {BANK_COLORS.find(b => b.keywords.some(kw => name.toLowerCase().includes(kw)))?.label}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-muted mb-1.5">Saldo Awal (Rp)</label>
@@ -368,8 +417,19 @@ export default function WalletWidget({ totals, addWallet, updateWallet, deleteWa
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-muted mb-1.5">Warna Kartu</label>
-                    <div className="flex flex-wrap gap-3">
-                      {COLORS.map(c => <button key={c} onClick={() => setColor(c)} className={`w-8 h-8 rounded-full border-2 transition-all ${color === c ? 'border-text scale-110 shadow-sm' : 'border-transparent'}`} style={{ backgroundColor: c }} />)}
+                    <div className="flex flex-wrap gap-2.5">
+                      {ALL_PICKER_COLORS.map(c => {
+                        const bankInfo = BANK_COLORS.find(b => b.color === c)
+                        return (
+                          <button
+                            key={c}
+                            onClick={() => setColor(c)}
+                            className={`relative w-8 h-8 rounded-full border-2 transition-all ${color === c ? 'border-text scale-110 shadow-sm ring-2 ring-offset-1 ring-offset-surface' : 'border-transparent hover:scale-105'}`}
+                            style={{ backgroundColor: c, ringColor: c + '60' }}
+                            title={bankInfo?.label || ''}
+                          />
+                        )
+                      })}
                     </div>
                   </div>
                   {err && <div className="text-xs text-expense bg-expense-light rounded-xl px-4 py-3 font-medium">{err}</div>}
