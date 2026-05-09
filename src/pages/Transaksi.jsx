@@ -1,18 +1,19 @@
 import { useState, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useData } from '../context/DataContext'
-import { fmt, fmtShort, today, CATEGORY_TREE } from '../lib/utils'
+import { fmt, fmtShort, today } from '../lib/utils'
 import { TxItem, Empty, Tabs, Field, PanelHeader } from '../components/UI'
 import DescInput from '../components/DescInput'
 import RecurringWidget from '../components/RecurringWidget'
+import CategoryManager from '../components/CategoryManager'
 import {
   ArrowDownLeft, ArrowUpRight, Banknote,
   Calendar, PlusCircle, ReceiptText, Loader2, Search,
-  Wallet, ChevronDown, Sparkles, BriefcaseBusiness, ArrowUpDown, X, Check
+  Wallet, ChevronDown, Sparkles, BriefcaseBusiness, ArrowUpDown, X, Check, SlidersHorizontal
 } from 'lucide-react'
 
 export default function Transaksi() {
-  const { txData, addTx, updateTx, deleteTx, totals, walletData } = useData()
+  const { txData, addTx, updateTx, deleteTx, totals, walletData, effectiveCategoryTree, addCustomCat } = useData()
 
   // ── Add form state ──────────────────────────────────────
   const [type, setType] = useState('out')
@@ -37,6 +38,20 @@ export default function Transaksi() {
   const [editBusy, setEditBusy] = useState(false)
   const [editErr, setEditErr] = useState('')
 
+  // ── Category Manager modal ───────────────────────────────
+  const [showCatManager, setShowCatManager] = useState(false)
+  const [catManagerType, setCatManagerType] = useState('out')
+
+  // ── Inline add-category form (add form) ─────────────────
+  const [showAddCatForm, setShowAddCatForm] = useState(false)
+  const [newCatInput, setNewCatInput] = useState('')
+  const [newCatBusy, setNewCatBusy] = useState(false)
+
+  // ── Inline add-category form (edit modal) ────────────────
+  const [showEditAddCatForm, setShowEditAddCatForm] = useState(false)
+  const [editNewCatInput, setEditNewCatInput] = useState('')
+  const [editNewCatBusy, setEditNewCatBusy] = useState(false)
+
   // ── Filter / sort state ─────────────────────────────────
   const [filter, setFilter] = useState('semua')
   const [searchQuery, setSearchQuery] = useState('')
@@ -60,7 +75,23 @@ export default function Transaksi() {
     }
   }
 
-  const handleTypeChange = (newType) => { setType(newType); setMainCat(''); setSubCat('') }
+  const handleTypeChange = (newType) => { setType(newType); setMainCat(''); setSubCat(''); setShowAddCatForm(false); setNewCatInput('') }
+
+  const handleSaveNewCat = async () => {
+    if (!newCatInput.trim()) return
+    setNewCatBusy(true)
+    const error = await addCustomCat(type, newCatInput.trim(), [])
+    setNewCatBusy(false)
+    if (!error) { setMainCat(newCatInput.trim()); setSubCat(''); setNewCatInput(''); setShowAddCatForm(false) }
+  }
+
+  const handleSaveEditNewCat = async () => {
+    if (!editNewCatInput.trim()) return
+    setEditNewCatBusy(true)
+    const error = await addCustomCat(editType, editNewCatInput.trim(), [])
+    setEditNewCatBusy(false)
+    if (!error) { setEditMainCat(editNewCatInput.trim()); setEditSubCat(''); setEditNewCatInput(''); setShowEditAddCatForm(false) }
+  }
 
   // ── Edit modal handlers ────────────────────────────────
   const handleEdit = (t) => {
@@ -86,11 +117,11 @@ export default function Transaksi() {
     return [...new Set(matches.map(t => t.amount))].slice(0, 3)
   }, [desc, txData, type])
 
-  const availableMainCats = Object.keys(CATEGORY_TREE[type] || {})
-  const availableSubCats = mainCat && CATEGORY_TREE[type]?.[mainCat] ? CATEGORY_TREE[type][mainCat] : []
+  const availableMainCats = Object.keys(effectiveCategoryTree?.[type] || {})
+  const availableSubCats = mainCat && effectiveCategoryTree?.[type]?.[mainCat] ? effectiveCategoryTree[type][mainCat] : []
 
-  const editAvailableMainCats = Object.keys(CATEGORY_TREE[editType] || {})
-  const editAvailableSubCats = editMainCat && CATEGORY_TREE[editType]?.[editMainCat] ? CATEGORY_TREE[editType][editMainCat] : []
+  const editAvailableMainCats = Object.keys(effectiveCategoryTree?.[editType] || {})
+  const editAvailableSubCats = editMainCat && effectiveCategoryTree?.[editType]?.[editMainCat] ? effectiveCategoryTree[editType][editMainCat] : []
 
   // ── Handlers ──────────────────────────────────────────
   const handleAdd = async () => {
@@ -154,7 +185,7 @@ export default function Transaksi() {
     filtered.forEach(t => {
       if (!groups[t.date]) groups[t.date] = { items: [], totalIn: 0, totalOut: 0 }
       groups[t.date].items.push(t)
-      if (t.cat !== 'Transfer' && !t.cat?.startsWith('Transfer')) {
+      if (t.cat !== 'Transfer' && !t.cat?.startsWith('Transfer') && t.cat !== 'Piutang') {
         if (t.type === 'in') groups[t.date].totalIn += t.amount
         if (t.type === 'out') groups[t.date].totalOut += t.amount
       }
@@ -166,7 +197,7 @@ export default function Transaksi() {
     let inMonth = 0, outMonth = 0
     txData.forEach(t => {
       if (selectedMonth && !t.date.startsWith(selectedMonth)) return
-      if (t.cat !== 'Transfer' && !t.cat?.startsWith('Transfer')) {
+      if (t.cat !== 'Transfer' && !t.cat?.startsWith('Transfer') && t.cat !== 'Piutang') {
         if (t.type === 'in') inMonth += t.amount
         if (t.type === 'out') outMonth += t.amount
       }
@@ -294,16 +325,52 @@ export default function Transaksi() {
               )}
             </Field>
 
-            <Field label="Kategori Induk">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between ml-1">
+                <label className="text-xs font-bold text-muted">Kategori Induk</label>
+                <button
+                  type="button"
+                  onClick={() => { setCatManagerType(type); setShowCatManager(true) }}
+                  className="flex items-center gap-1 text-[10px] font-bold text-teal-500 hover:text-teal-400 transition-colors"
+                >
+                  <SlidersHorizontal size={11} /> Kelola
+                </button>
+              </div>
               <div className="relative">
                 <select className="form-input py-3 pl-4 pr-10 cursor-pointer appearance-none font-semibold text-text-2 text-sm w-full"
-                  value={mainCat} onChange={e => { setMainCat(e.target.value); setSubCat('') }}>
+                  value={mainCat}
+                  onChange={e => {
+                    if (e.target.value === '__add__') { setShowAddCatForm(true); return }
+                    setMainCat(e.target.value); setSubCat(''); setShowAddCatForm(false)
+                  }}>
                   <option value="" disabled>Pilih Kategori...</option>
                   {availableMainCats.map(c => <option key={c} value={c}>{c}</option>)}
+                  <option disabled>──────────────</option>
+                  <option value="__add__">+ Tambah Kategori Baru</option>
                 </select>
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><ChevronDown size={18} strokeWidth={2.5} /></div>
               </div>
-            </Field>
+              {showAddCatForm && (
+                <div className="flex gap-2 animate-fade-in">
+                  <input
+                    className="form-input py-2 flex-1 text-sm"
+                    placeholder="Nama kategori baru..."
+                    value={newCatInput}
+                    onChange={e => setNewCatInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleSaveNewCat(); if (e.key === 'Escape') { setShowAddCatForm(false); setNewCatInput('') } }}
+                    autoFocus
+                  />
+                  <button onClick={handleSaveNewCat} disabled={newCatBusy}
+                    className="px-3 rounded-xl bg-teal-500 text-white hover:bg-teal-600 disabled:opacity-50 transition-colors">
+                    {newCatBusy ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                  </button>
+                  <button onClick={() => { setShowAddCatForm(false); setNewCatInput('') }}
+                    className="px-3 rounded-xl bg-bg text-muted hover:text-text transition-colors">
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
 
             <Field label="Sub Kategori">
               <div className="relative">
@@ -498,6 +565,12 @@ export default function Transaksi() {
 
       <RecurringWidget />
 
+      <CategoryManager
+        open={showCatManager}
+        onClose={() => setShowCatManager(false)}
+        type={catManagerType}
+      />
+
       {/* ── EDIT MODAL (portal) ───────────────────────────── */}
       {editId && createPortal(
         <div
@@ -566,12 +639,38 @@ export default function Transaksi() {
                   <label className="text-xs font-bold text-muted ml-1 block mb-1">Kategori Induk</label>
                   <div className="relative">
                     <select className="form-input py-2.5 pl-3 pr-8 cursor-pointer appearance-none font-semibold text-text-2 text-sm w-full"
-                      value={editMainCat} onChange={e => { setEditMainCat(e.target.value); setEditSubCat('') }}>
+                      value={editMainCat}
+                      onChange={e => {
+                        if (e.target.value === '__add__') { setShowEditAddCatForm(true); return }
+                        setEditMainCat(e.target.value); setEditSubCat(''); setShowEditAddCatForm(false)
+                      }}>
                       <option value="" disabled>Pilih...</option>
                       {editAvailableMainCats.map(c => <option key={c} value={c}>{c}</option>)}
+                      <option disabled>──────────</option>
+                      <option value="__add__">+ Tambah Baru</option>
                     </select>
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><ChevronDown size={15} /></div>
                   </div>
+                  {showEditAddCatForm && (
+                    <div className="flex gap-1.5 mt-2 animate-fade-in col-span-2">
+                      <input
+                        className="form-input py-1.5 flex-1 text-xs"
+                        placeholder="Nama kategori..."
+                        value={editNewCatInput}
+                        onChange={e => setEditNewCatInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') handleSaveEditNewCat(); if (e.key === 'Escape') { setShowEditAddCatForm(false); setEditNewCatInput('') } }}
+                        autoFocus
+                      />
+                      <button onClick={handleSaveEditNewCat} disabled={editNewCatBusy}
+                        className="px-2.5 rounded-xl bg-teal-500 text-white hover:bg-teal-600 disabled:opacity-50 transition-colors">
+                        {editNewCatBusy ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                      </button>
+                      <button onClick={() => { setShowEditAddCatForm(false); setEditNewCatInput('') }}
+                        className="px-2.5 rounded-xl bg-bg text-muted hover:text-text transition-colors">
+                        <X size={13} />
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="text-xs font-bold text-muted ml-1 block mb-1">Sub Kategori</label>

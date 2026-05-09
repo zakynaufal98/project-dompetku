@@ -1,22 +1,35 @@
 import { useState, useEffect, useRef } from 'react'
-import { Plus, X, ArrowDownLeft, ArrowUpRight, Loader2, CheckCircle2 } from 'lucide-react'
+import { Plus, X, ArrowDownLeft, ArrowUpRight, Loader2, CheckCircle2, SlidersHorizontal } from 'lucide-react'
 import { useData } from '../context/DataContext'
-import { today, CATEGORY_TREE } from '../lib/utils'
+import { today } from '../lib/utils'
+import CategoryManager from './CategoryManager'
 
 export default function QuickAdd() {
-  const { addTx, walletData } = useData()
+  const { addTx, walletData, effectiveCategoryTree, addCustomCat } = useData()
 
-  const [open, setOpen]     = useState(false)
-  const [type, setType]     = useState('out')
-  const [amount, setAmount] = useState('')
-  const [desc, setDesc]     = useState('')
-  const [cat, setCat]       = useState('')
-  const [busy, setBusy]     = useState(false)
-  const [done, setDone]     = useState(false)
-  const [err, setErr]       = useState('')
+  const [open, setOpen]                     = useState(false)
+  const [type, setType]                     = useState('out')
+  const [amount, setAmount]                 = useState('')
+  const [desc, setDesc]                     = useState('')
+  const [cat, setCat]                       = useState('')
+  const [busy, setBusy]                     = useState(false)
+  const [done, setDone]                     = useState(false)
+  const [err, setErr]                       = useState('')
+  const [showCatManager, setShowCatManager] = useState(false)
+  const [showAddCat, setShowAddCat]         = useState(false)
+  const [newCatInput, setNewCatInput]       = useState('')
+  const [newCatBusy, setNewCatBusy]         = useState(false)
   const amountRef = useRef(null)
 
-  const mainCats  = Object.keys(CATEGORY_TREE[type] || {})
+  const handleSaveNewCat = async () => {
+    if (!newCatInput.trim()) return
+    setNewCatBusy(true)
+    const error = await addCustomCat(type, newCatInput.trim(), [])
+    setNewCatBusy(false)
+    if (!error) { setCat(newCatInput.trim()); setNewCatInput(''); setShowAddCat(false) }
+  }
+
+  const mainCats = Object.keys(effectiveCategoryTree?.[type] || {})
   const walletId  = walletData?.[0]?.id || null
 
   // Focus amount saat form buka
@@ -126,12 +139,21 @@ export default function QuickAdd() {
 
           {/* Category */}
           <div>
-            <label className="text-[10px] font-bold text-muted uppercase tracking-wider">Kategori</label>
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-bold text-muted uppercase tracking-wider">Kategori</label>
+              <button
+                type="button"
+                onClick={() => setShowCatManager(true)}
+                className="flex items-center gap-1 text-[10px] font-bold text-teal-500 hover:text-teal-400 transition-colors"
+              >
+                <SlidersHorizontal size={11} /> Kelola
+              </button>
+            </div>
             <div className="mt-1 flex flex-wrap gap-1.5">
               {mainCats.slice(0, 8).map(c => (
                 <button
                   key={c}
-                  onClick={() => { setCat(c); setErr('') }}
+                  onClick={() => { setCat(c); setErr(''); setShowAddCat(false) }}
                   className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
                     cat === c
                       ? type === 'out' ? 'bg-expense text-white' : 'bg-income text-white'
@@ -141,7 +163,33 @@ export default function QuickAdd() {
                   {c}
                 </button>
               ))}
+              <button
+                onClick={() => { setShowAddCat(p => !p); setNewCatInput('') }}
+                className="px-3 py-1.5 rounded-full text-xs font-bold transition-all bg-bg border border-dashed border-teal-400 text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20"
+              >
+                + Tambah
+              </button>
             </div>
+            {showAddCat && (
+              <div className="flex gap-1.5 mt-2 animate-fade-in">
+                <input
+                  className="form-input py-1.5 flex-1 text-xs"
+                  placeholder="Nama kategori baru..."
+                  value={newCatInput}
+                  onChange={e => setNewCatInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleSaveNewCat(); if (e.key === 'Escape') { setShowAddCat(false); setNewCatInput('') } }}
+                  autoFocus
+                />
+                <button onClick={handleSaveNewCat} disabled={newCatBusy}
+                  className="px-2.5 rounded-xl bg-teal-500 text-white hover:bg-teal-600 disabled:opacity-50 transition-colors">
+                  {newCatBusy ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                </button>
+                <button onClick={() => { setShowAddCat(false); setNewCatInput('') }}
+                  className="px-2.5 rounded-xl bg-bg text-muted hover:text-text transition-colors">
+                  <X size={13} />
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Error */}
@@ -165,6 +213,12 @@ export default function QuickAdd() {
           </button>
         </div>
       )}
+
+      <CategoryManager
+        open={showCatManager}
+        onClose={() => setShowCatManager(false)}
+        type={type}
+      />
 
       {/* FAB Button */}
       <button

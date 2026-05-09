@@ -4,7 +4,11 @@
       "Bash(Get-ChildItem -Path \"d:\\\\Pindah X550JX\\\\Projek Portofolio\\\\dompetku-react\\\\src\" -Recurse -Directory)",
       "Bash(npx tsc *)",
       "Bash(npm run *)",
-      "Bash(npx vite *)"
+      "Bash(npx vite *)",
+      "Bash(Find \"d:\\\\Pindah X550JX\\\\Projek Portofolio\\\\dompetku-react\\\\sql\" -type f -name \"*.sql\")",
+      "Bash(Get-ChildItem -Path \"d:\\\\Pindah X550JX\\\\Projek Portofolio\\\\dompetku-react\" -Recurse -Force)",
+      "Bash(Select-Object -First 50)",
+      "Bash(Format-Table Name, FullName)"
     ]
   }
 }

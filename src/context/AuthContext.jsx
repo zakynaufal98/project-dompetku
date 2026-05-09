@@ -46,7 +46,7 @@ export function AuthProvider({ children }) {
           console.log("Sesi berakhir karena tidak ada aktivitas.");
           localStorage.removeItem(REMEMBER_KEY)
           await supabase.auth.signOut();
-          window.location.href = '/';
+          window.location.href = '/login';
         }
       }, AUTO_LOGOUT_TIME);
     };
@@ -86,7 +86,7 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     localStorage.removeItem(REMEMBER_KEY)
     await supabase.auth.signOut()
-    window.location.href = '/'
+    window.location.href = '/login'
   }
 
   const loginWithGoogle = async () => {

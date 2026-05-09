@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './AuthContext'
+import { CATEGORY_TREE } from '../lib/utils'
 
 const DataContext = createContext(null)
 
@@ -13,6 +14,8 @@ export function DataProvider({ children }) {
   const [targetData, setTargetData] = useState([])
   const [budgetData, setBudgetData] = useState([])
   const [recurringData, setRecurringData] = useState([])
+  const [userCustomCats, setUserCustomCats] = useState([])
+  const [userHiddenCats, setUserHiddenCats] = useState([])
   const [loading, setLoading] = useState(true)
   
   // Shared Account: siapa yang sedang dilihat datanya
@@ -54,23 +57,27 @@ export function DataProvider({ children }) {
     try {
       const uid = effectiveUserId
 
-      const [txRes, invRes, billRes, walletRes, targetRes, budgetRes, recurringRes] = await Promise.all([
+      const [txRes, invRes, billRes, walletRes, targetRes, budgetRes, recurringRes, customCatsRes, hiddenCatsRes] = await Promise.all([
         supabase.from('transaksi').select('*').eq('user_id', uid).order('tgl', { ascending: false }).order('created_at', { ascending: false }),
         supabase.from('investasi').select('*').eq('user_id', uid).order('tgl', { ascending: false }).order('created_at', { ascending: false }),
         supabase.from('tagihan').select('*').eq('user_id', uid).order('jatuh_tempo', { ascending: true }),
         supabase.from('wallets').select('*').eq('user_id', uid).order('created_at', { ascending: true }),
         supabase.from('target_finansial').select('*').eq('user_id', uid).order('updated_at', { ascending: false }),
         supabase.from('budgets').select('*').eq('user_id', uid),
-        supabase.from('recurring_tx').select('*').eq('user_id', uid).order('next_date', { ascending: true })
+        supabase.from('recurring_tx').select('*').eq('user_id', uid).order('next_date', { ascending: true }),
+        supabase.from('user_categories').select('*').eq('user_id', user.id),
+        supabase.from('user_hidden_categories').select('*').eq('user_id', user.id)
       ])
 
-      if (!txRes.error)       setTxData((txRes.data  || []).map(mapTx))
-      if (!invRes.error)      setInvData((invRes.data  || []).map(mapInv))
-      if (!billRes.error)     setBillData(billRes.data || [])
-      if (!walletRes.error)   setWalletData(walletRes.data || [])
-      if (!targetRes.error)   setTargetData((targetRes.data || []).map(mapTarget))
-      if (!budgetRes.error)   setBudgetData(budgetRes.data || [])
-      if (!recurringRes.error) setRecurringData(recurringRes.data || [])
+      if (!txRes.error)         setTxData((txRes.data  || []).map(mapTx))
+      if (!invRes.error)        setInvData((invRes.data  || []).map(mapInv))
+      if (!billRes.error)       setBillData(billRes.data || [])
+      if (!walletRes.error)     setWalletData(walletRes.data || [])
+      if (!targetRes.error)     setTargetData((targetRes.data || []).map(mapTarget))
+      if (!budgetRes.error)     setBudgetData(budgetRes.data || [])
+      if (!recurringRes.error)  setRecurringData(recurringRes.data || [])
+      if (!customCatsRes.error) setUserCustomCats(customCatsRes.data || [])
+      if (!hiddenCatsRes.error) setUserHiddenCats(hiddenCatsRes.data || [])
 
       const { data: sharedData } = await supabase.from('shared_accounts').select('*').eq('member_id', user.id).eq('status', 'accepted')
       setSharedOwners(sharedData || [])
@@ -120,6 +127,52 @@ export function DataProvider({ children }) {
     };
     processRecurring();
   }, [recurringData, activeOwnerId]);
+
+  // --- EFFECTIVE CATEGORY TREE (default + custom - hidden) ---
+  const effectiveCategoryTree = useMemo(() => {
+    const buildTree = (type) => {
+      const defaultTree = CATEGORY_TREE[type] || {}
+      const hiddenSet = new Set(userHiddenCats.filter(h => h.type === type).map(h => h.main_cat))
+      const result = {}
+      Object.entries(defaultTree).forEach(([mainCat, subCats]) => {
+        if (!hiddenSet.has(mainCat)) result[mainCat] = subCats
+      })
+      userCustomCats.filter(c => c.type === type).forEach(c => {
+        result[c.main_cat] = c.sub_cats || []
+      })
+      return result
+    }
+    return { in: buildTree('in'), out: buildTree('out') }
+  }, [userCustomCats, userHiddenCats])
+
+  const addCustomCat = async (type, main_cat, sub_cats = []) => {
+    const { data, error } = await supabase.from('user_categories')
+      .insert({ user_id: user.id, type, main_cat, sub_cats })
+      .select().single()
+    if (!error) setUserCustomCats(prev => [...prev, data])
+    return error
+  }
+
+  const deleteCustomCat = async (id) => {
+    const { error } = await supabase.from('user_categories').delete().eq('id', id).eq('user_id', user.id)
+    if (!error) setUserCustomCats(prev => prev.filter(c => c.id !== id))
+    return error
+  }
+
+  const toggleHideDefaultCat = async (type, main_cat) => {
+    const existing = userHiddenCats.find(h => h.type === type && h.main_cat === main_cat)
+    if (existing) {
+      const { error } = await supabase.from('user_hidden_categories').delete().eq('id', existing.id)
+      if (!error) setUserHiddenCats(prev => prev.filter(h => h.id !== existing.id))
+      return error
+    } else {
+      const { data, error } = await supabase.from('user_hidden_categories')
+        .insert({ user_id: user.id, type, main_cat })
+        .select().single()
+      if (!error) setUserHiddenCats(prev => [...prev, data])
+      return error
+    }
+  }
 
   const addWallet = async ({ name, balance, color }) => {
     if (!canWriteActiveAccount) return readonlyError
@@ -478,8 +531,9 @@ export function DataProvider({ children }) {
 
   // 👇 LOGIKA TOTALS MENJADI SUPER BERSIH KARENA SEMUA ARUS KAS DITANGANI TABEL TRANSAKSI 👇
   const totals = useMemo(() => {
-    const totalIn = txData.filter(t => t.type === 'in' && t.cat !== 'Transfer').reduce((s, t) => s + t.amount, 0)
-    const totalOut = txData.filter(t => t.type === 'out' && t.cat !== 'Transfer').reduce((s, t) => s + t.amount, 0)
+    const isNonCash = (t) => t.cat === 'Transfer' || t.cat === 'Piutang'
+    const totalIn  = txData.filter(t => t.type === 'in'  && !isNonCash(t)).reduce((s, t) => s + t.amount, 0)
+    const totalOut = txData.filter(t => t.type === 'out' && !isNonCash(t)).reduce((s, t) => s + t.amount, 0)
     
     const invBuy = invData.filter(t => t.action === 'beli').reduce((s, t) => s + t.amount, 0)
     const invSell = invData.filter(t => t.action === 'jual').reduce((s, t) => s + t.amount, 0)
@@ -520,6 +574,8 @@ export function DataProvider({ children }) {
       addTarget, updateTarget, deleteTarget,
       budgetData, saveBudget, deleteBudget,
       recurringData, addRecurring, updateRecurring, deleteRecurring,
+      userCustomCats, userHiddenCats, effectiveCategoryTree,
+      addCustomCat, deleteCustomCat, toggleHideDefaultCat,
       totals,
       // Shared Account
       sharedOwners, activeOwnerId, switchAccount, isViewingShared, activeSharedRole

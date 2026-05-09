@@ -337,7 +337,7 @@ export default function WalletWidget({ totals, addWallet, updateWallet, deleteWa
 
               <div>
                 <label className="block text-xs font-bold text-muted mb-1.5">Tanggal</label>
-                <input type="date" value={tfDate} onChange={e => setTfDate(e.target.value)} className="w-full bg-field border border-border rounded-xl px-4 py-3 text-sm text-text focus:border-income outline-none" />
+                <input type="date" value={tfDate} onChange={e => setTfDate(e.target.value)} className="w-full min-w-0 bg-field border border-border rounded-xl px-3 py-3 text-sm text-text focus:border-income outline-none" />
               </div>
 
               <div>
