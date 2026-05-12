@@ -30,6 +30,7 @@ export default function Hutang() {
   const [date, setDate]                     = useState(today())
   const [walletId, setWalletId]             = useState('')
   const [selectedId, setSelectedId]         = useState('')
+  const [autoTag, setAutoTag]               = useState('') // tag #HID/PID hidden dari user
   const [expandedGroups, setExpandedGroups] = useState({})
   const [busy, setBusy]                     = useState(false)
   const [err, setErr]                       = useState('')
@@ -50,7 +51,7 @@ export default function Hutang() {
   // Reset form saat ganti tab
   useEffect(() => {
     setMode(pageTab === 'hutang' ? 'bayar' : 'terima')
-    setNama(''); setDesc(''); setAmount(''); setSelectedId(''); setErr('')
+    setNama(''); setDesc(''); setAmount(''); setSelectedId(''); setAutoTag(''); setErr('')
   }, [pageTab])
 
   // ─── HUTANG DATA ────────────────────────────────────────
@@ -162,10 +163,16 @@ export default function Hutang() {
     setSelectedId(id)
     if (isHutang) {
       const found = activeHutang.find(h => h.id === id)
-      if (found) setDesc(`Cicilan: ${found.desc} ${makeHutangTag(found.id)}`)
+      if (found) {
+        setDesc(`Cicilan: ${found.desc}`)
+        setAutoTag(makeHutangTag(found.id))
+      }
     } else {
       const found = activePiutang.find(p => p.id === id)
-      if (found) setDesc(`Pelunasan: ${found.desc} ${makePiutangTag(found.id)}`)
+      if (found) {
+        setDesc(`Pelunasan: ${found.desc}`)
+        setAutoTag(makePiutangTag(found.id))
+      }
     }
   }
 
@@ -177,6 +184,8 @@ export default function Hutang() {
     setBusy(true); setErr('')
 
     let finalDesc = desc.trim()
+    // Sisipkan tag matching secara otomatis (tidak ditampilkan ke user)
+    if (autoTag && !finalDesc.includes(autoTag)) finalDesc = `${finalDesc} ${autoTag}`
     if (nama.trim() && !finalDesc.startsWith('Cicilan:') && !finalDesc.startsWith('Pelunasan:')) {
       finalDesc = finalDesc ? `${nama.trim()}: ${finalDesc}` : nama.trim()
     }
@@ -195,7 +204,7 @@ export default function Hutang() {
     const e = await addTx({ desc: finalDesc || nama.trim(), amount: +amount, type, cat, sub_cat, date, wallet_id: walletId })
     setBusy(false)
     if (e) setErr(e.message)
-    else { setDesc(''); setAmount(''); setNama(''); setSelectedId('') }
+    else { setDesc(''); setAmount(''); setNama(''); setSelectedId(''); setAutoTag('') }
   }
 
   const toggleGroup = (key) => setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }))
