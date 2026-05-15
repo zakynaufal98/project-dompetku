@@ -241,14 +241,17 @@ export default function WalletWidget({ totals, addWallet, updateWallet, deleteWa
       {/* MODAL TRANSFER */}
       {showTransfer && createPortal(
         <div 
-          className="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
+          className="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 sm:p-4 cursor-pointer"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget && !busy) {
               setShowTransfer(false);
             }
           }}
         >
-          <div className="bg-surface rounded-[24px] p-6 w-full max-w-sm shadow-2xl animate-fade-up cursor-default relative">
+          <div
+            className="bg-surface rounded-t-[24px] sm:rounded-[24px] p-5 sm:p-6 w-full max-w-sm shadow-2xl animate-fade-up cursor-default relative max-h-[calc(100dvh-1rem)] overflow-y-auto"
+            style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+          >
             
             <div className="flex items-center justify-between mb-5">
               <h3 className="font-bold text-lg text-text flex items-center gap-2">
@@ -367,14 +370,17 @@ export default function WalletWidget({ totals, addWallet, updateWallet, deleteWa
       {/* MODAL TAMBAH/EDIT DOMPET TETAP SAMA */}
       {showModal && createPortal(
         <div 
-          className="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
+          className="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 sm:p-4 cursor-pointer"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget && !busy) {
               setShowModal(false);
             }
           }}
         >
-          <div className="bg-surface rounded-[24px] p-6 w-full max-w-sm shadow-2xl animate-fade-up cursor-default relative">
+          <div
+            className="bg-surface rounded-t-[24px] sm:rounded-[24px] p-5 sm:p-6 w-full max-w-sm shadow-2xl animate-fade-up cursor-default relative max-h-[calc(100dvh-1rem)] overflow-y-auto"
+            style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+          >
             {showConfirmDelete ? (
               <div className="animate-fade-in text-center py-2">
                 <div className="w-16 h-16 bg-rose-100 text-expense rounded-full flex items-center justify-center mx-auto mb-4"><Trash2 size={32} strokeWidth={2.5} /></div>

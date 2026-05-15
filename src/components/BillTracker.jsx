@@ -14,6 +14,7 @@ export default function BillTracker() {
   const [amount, setAmount] = useState('')
   const [date, setDate] = useState('')
   const [busy, setBusy] = useState(false)
+  const [actionError, setActionError] = useState('')
 
   const [payWalletId, setPayWalletId] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState(null)
@@ -38,20 +39,30 @@ export default function BillTracker() {
   const handleAdd = async () => {
     if (!name || !amount || !date) return
     setBusy(true)
-    await addBill({ 
+    setActionError('')
+    const error = await addBill({ 
       nama_tagihan: name, 
       amount: parseInt(amount.replace(/\D/g, '')), 
       jatuh_tempo: date 
     })
-    setName(''); setAmount(''); setDate(''); setShowForm(false)
+    if (!error) {
+      setName(''); setAmount(''); setDate(''); setShowForm(false)
+    } else {
+      setActionError(error.message || 'Gagal menyimpan tagihan.')
+    }
     setBusy(false)
   }
 
   const handlePay = async () => {
     if (!showPayModal || !payWalletId) return
     setBusy(true)
-    await toggleBill(showPayModal.id, false, payWalletId)
+    setActionError('')
+    const error = await toggleBill(showPayModal.id, false, payWalletId)
     setBusy(false)
+    if (error) {
+      setActionError(error.message || 'Gagal membayar tagihan.')
+      return
+    }
     setShowPayModal(null)
   }
 
@@ -162,6 +173,11 @@ export default function BillTracker() {
               />
             </div>
           </div>
+          {actionError && (
+            <div className="mb-3 text-xs text-expense bg-expense-light border border-expense/20 rounded-xl px-4 py-3 font-medium">
+              {actionError}
+            </div>
+          )}
           <button 
             onClick={handleAdd}
             disabled={busy || !name || !amount || !date}
@@ -243,13 +259,14 @@ export default function BillTracker() {
       {/* MODAL KONFIRMASI HAPUS */}
       {deleteConfirm && createPortal(
         <div
-          className="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer animate-fade-in"
+          className="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 sm:p-4 cursor-pointer animate-fade-in"
           onMouseDown={(e) => { if (e.target === e.currentTarget) setDeleteConfirm(null) }}
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-bill-title"
         >
-          <div className="bg-surface rounded-[24px] p-6 w-full max-w-sm shadow-2xl animate-fade-up cursor-default">
+          <div className="bg-surface rounded-t-[24px] sm:rounded-[24px] p-5 sm:p-6 w-full max-w-sm shadow-2xl animate-fade-up cursor-default max-h-[calc(100dvh-1rem)] overflow-y-auto"
+            style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}>
             <div className="flex items-center justify-between mb-5">
               <h3 id="delete-bill-title" className="font-bold text-lg text-text flex items-center gap-2">
                 <Trash2 size={20} className="text-expense" /> Hapus Tagihan
@@ -269,10 +286,21 @@ export default function BillTracker() {
             <div className="flex gap-3">
               <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-3 bg-border text-text-2 text-sm font-bold rounded-xl hover:bg-border2 transition-colors">Batal</button>
               <button
-                onClick={async () => { await deleteBill(deleteConfirm.id); setDeleteConfirm(null) }}
+                onClick={async () => {
+                  setBusy(true)
+                  setActionError('')
+                  const error = await deleteBill(deleteConfirm.id)
+                  setBusy(false)
+                  if (error) {
+                    setActionError(error.message || 'Gagal menghapus tagihan.')
+                    return
+                  }
+                  setDeleteConfirm(null)
+                }}
+                disabled={busy}
                 className="flex-1 py-3 bg-expense text-white text-sm font-bold rounded-xl hover:opacity-90 transition-colors flex items-center justify-center gap-2"
               >
-                <Trash2 size={16} /> Hapus
+                <Trash2 size={16} /> {busy ? 'Menghapus...' : 'Hapus'}
               </button>
             </div>
           </div>
@@ -283,13 +311,14 @@ export default function BillTracker() {
       {/* MODAL BAYAR TAGIHAN */}
       {showPayModal && createPortal(
         <div 
-          className="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer animate-fade-in"
+          className="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 sm:p-4 cursor-pointer animate-fade-in"
           onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) setShowPayModal(null) }}
           role="dialog"
           aria-modal="true"
           aria-labelledby="pay-bill-title"
         >
-          <div className="bg-surface rounded-[24px] p-6 w-full max-w-sm shadow-2xl animate-fade-up cursor-default">
+          <div className="bg-surface rounded-t-[24px] sm:rounded-[24px] p-5 sm:p-6 w-full max-w-sm shadow-2xl animate-fade-up cursor-default max-h-[calc(100dvh-1rem)] overflow-y-auto"
+            style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}>
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
               <h3 id="pay-bill-title" className="font-bold text-lg text-text flex items-center gap-2">
@@ -340,6 +369,12 @@ export default function BillTracker() {
                 })}
               </div>
             </div>
+
+            {actionError && (
+              <div className="mb-4 text-xs text-expense bg-expense-light border border-expense/20 rounded-xl px-4 py-3 font-medium">
+                {actionError}
+              </div>
+            )}
 
             {/* Actions */}
             <div className="flex gap-3 pt-4 border-t border-border">

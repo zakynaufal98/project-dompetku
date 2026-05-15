@@ -9,62 +9,57 @@ import {
   CreditCard,
   Target,
   MoreHorizontal,
-  X
+  X,
 } from 'lucide-react'
 
 const MAIN_MENU = [
-  { path: '/',          icon: LayoutDashboard, label: 'Home',      color: '#6366f1' },
-  { path: '/transaksi', icon: ArrowRightLeft,  label: 'Transaksi', color: '#14B8A6' },
-  { path: '/laporan',   icon: BarChart3,       label: 'Laporan',   color: '#A855F7' },
-  { path: '/insights',  icon: Sparkles,        label: 'Insights',  color: '#EC4899' },
+  { path: '/', icon: LayoutDashboard, label: 'Home' },
+  { path: '/transaksi', icon: ArrowRightLeft, label: 'Transaksi' },
+  { path: '/laporan', icon: BarChart3, label: 'Laporan' },
+  { path: '/insights', icon: Sparkles, label: 'Insights' },
 ]
 
 const MORE_MENU = [
-  { path: '/investasi', icon: TrendingUp, label: 'Investasi',     desc: 'Portofolio & aset',  color: '#F59E0B' },
-  { path: '/hutang',    icon: CreditCard, label: 'Hutang',        desc: 'Tagihan & cicilan',  color: '#f43f5e' },
-  { path: '/target',    icon: Target,     label: 'Target Cerdas', desc: 'Tujuan finansial',   color: '#10B981' },
+  { path: '/investasi', icon: TrendingUp, label: 'Investasi', desc: 'Portofolio aset' },
+  { path: '/hutang', icon: CreditCard, label: 'Hutang', desc: 'Tagihan dan cicilan' },
+  { path: '/target', icon: Target, label: 'Target', desc: 'Tujuan finansial' },
 ]
 
 export default function BottomNav() {
   const loc = useLocation()
   const [showMore, setShowMore] = useState(false)
 
-  const moreActive = MORE_MENU.some(m => loc.pathname.startsWith(m.path))
+  const moreActive = MORE_MENU.some((m) => loc.pathname.startsWith(m.path))
 
   return (
     <>
-      {/* Backdrop */}
       {showMore && (
-        <div
-          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
-          onClick={() => setShowMore(false)}
-          aria-hidden="true"
-        />
+        <div className="fixed inset-0 z-40 bg-black/25 backdrop-blur-sm lg:hidden" onClick={() => setShowMore(false)} aria-hidden="true" />
       )}
 
-      {/* Drawer "Lainnya" */}
       {showMore && (
         <div
-          className="fixed bottom-[68px] left-3 right-3 z-50 lg:hidden bg-surface border border-border rounded-3xl shadow-2xl overflow-hidden animate-fade-up"
+          className="fixed left-3 right-3 z-50 overflow-hidden rounded-[28px] border border-border bg-bg shadow-2xl lg:hidden"
           role="dialog"
           aria-modal="true"
           aria-labelledby="more-menu-title"
+          style={{ bottom: 'calc(78px + env(safe-area-inset-bottom))' }}
         >
-          <div className="flex items-center justify-between px-5 pt-4 pb-3">
-            <p id="more-menu-title" className="text-[10px] font-black text-muted uppercase tracking-widest">
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <p id="more-menu-title" className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
               Menu Lainnya
             </p>
             <button
               onClick={() => setShowMore(false)}
               aria-label="Tutup menu lainnya"
-              className="w-7 h-7 flex items-center justify-center rounded-lg bg-bg text-muted hover:text-text transition-colors"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-bg text-text"
             >
-              <X size={14} />
+              <X size={16} />
             </button>
           </div>
 
-          <div className="grid grid-cols-3 gap-0 divide-x divide-border border-t border-border">
-            {MORE_MENU.map(m => {
+          <div className="grid grid-cols-1 divide-y divide-border">
+            {MORE_MENU.map((m) => {
               const Icon = m.icon
               const isActive = loc.pathname.startsWith(m.path)
               return (
@@ -72,96 +67,59 @@ export default function BottomNav() {
                   key={m.path}
                   to={m.path}
                   onClick={() => setShowMore(false)}
-                  aria-current={isActive ? 'page' : undefined}
-                  className={`flex flex-col items-center justify-center gap-2 py-5 transition-colors ${
-                    isActive ? '' : 'hover:bg-bg'
-                  }`}
-                  style={isActive ? { backgroundColor: m.color + '10' } : undefined}
+                  className={`flex items-center gap-4 px-5 py-4 transition-colors ${isActive ? 'bg-primary-pale' : 'hover:bg-surface'}`}
                 >
-                  <div
-                    className="w-10 h-10 rounded-2xl flex items-center justify-center"
-                    style={{
-                      backgroundColor: isActive ? m.color : undefined,
-                      background: isActive ? undefined : 'var(--color-bg)',
-                    }}
-                  >
-                    <Icon size={19} style={{ color: isActive ? '#fff' : m.color }} />
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface">
+                    <Icon size={18} className="text-text" />
                   </div>
-                  <div className="text-center">
-                    <p className="text-[11px] font-bold" style={{ color: isActive ? m.color : undefined }}>{m.label}</p>
-                    <p className="text-[9px] text-muted leading-tight mt-0.5">{m.desc}</p>
+                  <div>
+                    <p className="text-sm font-black text-text">{m.label}</p>
+                    <p className="text-xs text-muted">{m.desc}</p>
                   </div>
                 </Link>
               )
             })}
           </div>
-          <div className="h-3" />
+          <div style={{ height: 'max(12px, env(safe-area-inset-bottom))' }} />
         </div>
       )}
 
-      {/* Bottom Nav Bar */}
       <nav
-        className="lg:hidden fixed bottom-0 left-0 right-0 bg-surface/95 backdrop-blur-sm border-t border-border z-50 transition-colors"
+        className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-bg/95 backdrop-blur-xl lg:hidden"
         aria-label="Navigasi bawah"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <div className="flex items-stretch h-16">
-
-          {MAIN_MENU.map(m => {
+        <div className="mx-auto flex h-[76px] max-w-[640px] items-stretch">
+          {MAIN_MENU.map((m) => {
             const Icon = m.icon
             const isActive = m.path === '/' ? loc.pathname === '/' : loc.pathname.startsWith(m.path)
             return (
               <Link
                 key={m.path}
                 to={m.path}
-                aria-label={m.label}
                 aria-current={isActive ? 'page' : undefined}
-                className="flex flex-col items-center justify-center flex-1 gap-1 transition-colors"
+                className="flex flex-1 flex-col items-center justify-center gap-1"
               >
-                <div
-                  className="transition-all duration-200 p-1.5 rounded-xl"
-                  style={isActive
-                    ? { backgroundColor: m.color + '18', color: m.color }
-                    : { color: 'var(--color-muted)' }
-                  }
-                >
-                  <Icon size={20} />
+                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${isActive ? 'bg-primary text-text' : 'text-muted'}`}>
+                  <Icon size={18} />
                 </div>
-                <span
-                  className="text-[9px] font-bold tracking-wide leading-none"
-                  style={{ color: isActive ? m.color : 'var(--color-muted)' }}
-                >
-                  {m.label}
-                </span>
+                <span className={`text-[10px] font-bold ${isActive ? 'text-text' : 'text-muted'}`}>{m.label}</span>
               </Link>
             )
           })}
 
-          {/* Tombol Lainnya */}
           <button
-            onClick={() => setShowMore(p => !p)}
+            onClick={() => setShowMore((prev) => !prev)}
             aria-label={showMore ? 'Tutup menu lainnya' : 'Buka menu lainnya'}
             aria-expanded={showMore}
             aria-haspopup="dialog"
-            className="flex flex-col items-center justify-center flex-1 gap-1 transition-colors"
+            className="flex flex-1 flex-col items-center justify-center gap-1"
           >
-            <div
-              className="transition-all duration-200 p-1.5 rounded-xl"
-              style={moreActive || showMore
-                ? { backgroundColor: '#6366f118', color: '#6366f1' }
-                : { color: 'var(--color-muted)' }
-              }
-            >
-              <MoreHorizontal size={20} />
+            <div className={`flex h-10 w-10 items-center justify-center rounded-full ${(showMore || moreActive) ? 'bg-primary text-text' : 'text-muted'}`}>
+              <MoreHorizontal size={18} />
             </div>
-            <span
-              className="text-[9px] font-bold tracking-wide leading-none"
-              style={{ color: moreActive || showMore ? '#6366f1' : 'var(--color-muted)' }}
-            >
-              Lainnya
-            </span>
+            <span className={`text-[10px] font-bold ${(showMore || moreActive) ? 'text-text' : 'text-muted'}`}>Lainnya</span>
           </button>
-
         </div>
       </nav>
     </>

@@ -9,7 +9,7 @@ import {
   Gauge, PiggyBank, Plus, Sparkles, Target, Trash2, TrendingUp, X,
 } from 'lucide-react'
 import { useData } from '../context/DataContext'
-import { fmt, fmtShort, MONTHS } from '../lib/utils'
+import { fmt, fmtShort, MONTHS, isCashflowIncomeTx, isCashflowExpenseTx } from '../lib/utils'
 import { ProgressBar, MetricCard, Insight } from '../components/UI'
 
 const monthKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
@@ -136,10 +136,10 @@ export default function TargetCerdas() {
       return rows.get(ym)
     }
     txData.forEach((t) => {
-      if (!t.date || t.cat === 'Transfer') return
+      if (!t.date) return
       const row = ensure(t.date.slice(0, 7))
-      if (t.type === 'in') row.masuk += t.amount
-      if (t.type === 'out') row.keluar += t.amount
+      if (isCashflowIncomeTx(t)) row.masuk += t.amount
+      if (isCashflowExpenseTx(t)) row.keluar += t.amount
     })
     invData.forEach((t) => {
       if (!t.date) return

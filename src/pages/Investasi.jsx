@@ -155,6 +155,10 @@ export default function Investasi() {
   }
 
   const activeWallet = totals?.walletBalances?.find(w => w.id === walletId)
+  const projectedBuyBalance = action === 'beli' && activeWallet
+    ? Number(activeWallet.calculatedBalance || 0) - (Number(amount) || 0)
+    : null
+  const isBuyBalanceInsufficient = action === 'beli' && walletId && amount && Number(amount) > 0 && projectedBuyBalance < 0
 
   return (
     <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
@@ -285,22 +289,31 @@ export default function Investasi() {
 
             <Field label={action === 'beli' ? "Potong Saldo Dari:" : "Masukkan Saldo Ke:"}>
               {totals?.walletBalances && totals.walletBalances.length > 0 ? (
-                <div className="relative">
-                  <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl flex items-center justify-center pointer-events-none z-10 text-white" style={{ backgroundColor: activeWallet?.color || '#94a3b8' }}>
-                    <Wallet size={16} strokeWidth={2.5} />
+                <>
+                  <div className="relative">
+                    <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl flex items-center justify-center pointer-events-none z-10 text-white" style={{ backgroundColor: activeWallet?.color || '#94a3b8' }}>
+                      <Wallet size={16} strokeWidth={2.5} />
+                    </div>
+                    <select
+                      className={`form-input pl-14 pr-10 py-3 text-sm cursor-pointer appearance-none relative z-0 font-semibold text-text-2 ${
+                        isBuyBalanceInsufficient ? 'border-expense bg-expense-light text-expense focus:border-rose-600' : ''
+                      }`}
+                      value={walletId}
+                      onChange={(e) => { setWalletId(e.target.value); setErr('') }}
+                    >
+                      <option value="" disabled>Pilih Dompet...</option>
+                      {totals.walletBalances.map(w => (
+                        <option key={w.id} value={w.id}>{w.name} - Rp {Math.abs(w.calculatedBalance).toLocaleString('id-ID')}</option>
+                      ))}
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><ChevronDown size={18} strokeWidth={2.5} /></div>
                   </div>
-                  <select
-                    className="form-input pl-14 pr-10 py-3 text-sm cursor-pointer appearance-none relative z-0 font-semibold text-text-2"
-                    value={walletId}
-                    onChange={(e) => setWalletId(e.target.value)}
-                  >
-                    <option value="" disabled>Pilih Dompet...</option>
-                    {totals.walletBalances.map(w => (
-                      <option key={w.id} value={w.id}>{w.name} — Rp {Math.abs(w.calculatedBalance).toLocaleString('id-ID')}</option>
-                    ))}
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><ChevronDown size={18} strokeWidth={2.5} /></div>
-                </div>
+                  {isBuyBalanceInsufficient && (
+                    <p className="text-[11px] font-bold text-expense mt-1.5 leading-tight">
+                      Saldo {activeWallet?.name || 'dompet'} tidak cukup. Tersisa {fmt(activeWallet?.calculatedBalance || 0)}.
+                    </p>
+                  )}
+                </>
               ) : (
                 <div className="bg-bg border border-border rounded-xl px-4 py-3 text-sm text-muted flex items-center gap-2">
                   <Wallet size={16} className="text-slate-400" /> Belum ada dompet. Buat di Dashboard!
@@ -324,7 +337,7 @@ export default function Investasi() {
                 Batal Edit
               </button>
             )}
-            <button onClick={handleAdd} disabled={busy || isQtyError || isAmountError || isPortfolioEmpty}
+            <button onClick={handleAdd} disabled={busy || isQtyError || isAmountError || isPortfolioEmpty || isBuyBalanceInsufficient}
               className={`flex-[2] py-4 rounded-xl text-sm font-bold text-white transition-all cursor-pointer flex items-center justify-center gap-2.5 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
                 action === 'beli' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-orange-500 hover:bg-orange-600'
               }`}>

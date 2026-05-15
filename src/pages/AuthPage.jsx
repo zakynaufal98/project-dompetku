@@ -153,22 +153,22 @@ export default function AuthPage({ defaultMode = 'login' }) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bg p-6 lg:p-0 relative animate-fade-in">
+    <div className="relative flex min-h-screen items-center justify-center bg-bg p-6 lg:p-8 animate-fade-in">
       
       {/* Floating Back Button */}
       <Link 
         to="/"
-        className="absolute top-6 left-6 lg:top-8 lg:left-8 w-12 h-12 bg-surface rounded-full border border-border shadow-sm flex items-center justify-center text-muted hover:text-primary hover:border-primary/30 hover:shadow-md transition-all z-20 group"
+        className="group absolute left-6 top-6 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-text bg-surface text-text transition-all hover:bg-primary-pale lg:left-8 lg:top-8"
         title="Kembali ke Beranda"
       >
         <ArrowLeft size={20} className="group-hover:-translate-x-0.5 transition-transform" />
       </Link>
 
-      <div className="w-full max-w-[1000px] flex flex-col lg:flex-row bg-surface rounded-3xl shadow-card overflow-hidden border border-border">
+      <div className="w-full max-w-[1120px] overflow-hidden rounded-[32px] border border-border bg-surface shadow-2xl shadow-black/5 lg:flex">
         
         {/* ── LEFT PANEL ─────────────────────────────────── */}
-        <div className="relative lg:w-1/2 p-10 lg:p-14 flex flex-col justify-between overflow-hidden">
-          <div className="absolute inset-0 bg-[#FBF1F1] -z-10" />
+        <div className="relative flex flex-col justify-between overflow-hidden bg-bg p-10 lg:w-1/2 lg:p-14">
+          <div className="absolute inset-0 -z-10 bg-bg" />
           
           <div className="absolute top-12 left-12 grid grid-cols-5 gap-2.5 opacity-40">
             {Array(15).fill(0).map((_, i) => (
@@ -177,23 +177,23 @@ export default function AuthPage({ defaultMode = 'login' }) {
           </div>
 
           <div className="mb-14 lg:mb-0 relative z-10 text-center lg:text-left flex flex-col items-center lg:items-start">
-            <div className="w-20 h-20 bg-surface rounded-3xl shadow-card border border-border flex items-center justify-center mb-6">
-              <span className="text-primary font-bold text-4xl leading-none">D</span>
+            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-primary text-[40px] font-black leading-none text-text">
+              D
             </div>
-            <h1 className="font-bold text-primary text-4xl lg:text-5xl tracking-tight mb-2">
+            <h1 className="display-heavy mb-2 text-4xl tracking-tight text-text lg:text-5xl">
               DompetKu Pro
             </h1>
-            <p className="text-text-2 text-lg">Kelola keuangan lebih cerdas</p>
+            <p className="max-w-sm text-lg text-text-2">Kelola uang dengan tampilan yang lebih tenang, jelas, dan fokus pada keputusan penting.</p>
           </div>
 
           <div className="space-y-6 relative z-10">
             {FEATURES.map((f, i) => (
-              <div key={i} className="flex items-center gap-5">
-                <div className="w-16 h-16 rounded-2xl bg-surface border border-border flex items-center justify-center text-primary flex-shrink-0 shadow-sm">
+              <div key={i} className="flex items-center gap-5 rounded-[24px] bg-surface p-4">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary-pale text-text">
                   {f.icon}
                 </div>
                 <div className="flex-1">
-                  <p className="text-text font-semibold text-base leading-tight">{f.title}</p>
+                  <p className="text-base font-black leading-tight text-text">{f.title}</p>
                   <p className="text-muted text-sm">{f.sub}</p>
                 </div>
               </div>
@@ -202,23 +202,23 @@ export default function AuthPage({ defaultMode = 'login' }) {
         </div>
 
         {/* ── RIGHT PANEL ────────────────────────────────── */}
-        <div className="flex-1 flex items-center justify-center p-10 lg:p-14 border-t lg:border-t-0 lg:border-l border-border bg-surface">
+        <div className="flex flex-1 items-center justify-center border-t border-border bg-surface p-10 lg:border-l lg:border-t-0 lg:p-14">
           <div className="w-full max-w-md">
 
-            <div className="flex justify-center border-b border-border2 mb-10">
+            <div className="mb-10 flex justify-center border-b border-border">
               {['login','register'].map(m => (
                 <button key={m} onClick={() => { switchMode(m); navigate(`/${m}`); }}
                   className={`pb-3.5 px-6 text-sm font-semibold transition-all border-b-2 -mb-px bg-transparent cursor-pointer ${
                     mode === m
-                      ? 'border-primary text-primary'
-                      : 'border-transparent text-muted hover:text-text-2'
+                      ? 'border-text text-text'
+                      : 'border-transparent text-muted hover:text-text'
                   }`}>
                   {m === 'login' ? 'Masuk' : 'Daftar'}
                 </button>
               ))}
             </div>
 
-            <h2 className="font-semibold text-2xl text-center text-text mb-10">
+            <h2 className="mb-10 text-center text-3xl font-black text-text">
               {mode === 'login' ? 'Masuk ke Akun Anda' : 'Buat Akun Baru'}
             </h2>
 

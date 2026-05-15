@@ -1,81 +1,119 @@
-import { useRef, useState, useMemo } from 'react'
-import { Share2, Sparkles, Loader2, Flame, Trophy, ChevronRight, ChevronLeft, Target, TrendingUp, TrendingDown, CalendarDays, BarChart3 } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import {
+  Share2,
+  Loader2,
+  ChevronRight,
+  ChevronLeft,
+  Target,
+  CalendarDays,
+  BarChart3,
+  Wallet,
+  TrendingUp,
+  TrendingDown,
+} from 'lucide-react'
 import { useData } from '../context/DataContext'
-import { fmtShort, MONTHS_FULL } from '../lib/utils'
+import { fmtShort, MONTHS_FULL, summarizeFinancialTx, isCashflowExpenseTx } from '../lib/utils'
+
+const slideMeta = [
+  { key: 'overview', label: 'Ringkasan' },
+  { key: 'cashflow', label: 'Arus Kas' },
+  { key: 'habits', label: 'Kebiasaan' },
+  { key: 'balance', label: 'Posisi Akhir' },
+]
 
 export default function ShareReport() {
   const { txData, invData, totals } = useData()
   const reportRef = useRef(null)
   const [isCapturing, setIsCapturing] = useState(false)
   const [activeSlide, setActiveSlide] = useState(0)
-  const [mode, setMode] = useState('bulanan') // 'bulanan' | 'tahunan'
+  const [mode, setMode] = useState('bulanan')
 
-  // --- LOGIKA DATA ---
   const stats = useMemo(() => {
     const now = new Date()
     const currYear = now.getFullYear()
     const currYM = `${currYear}-${String(now.getMonth() + 1).padStart(2, '0')}`
-    const lastYM_date = new Date(currYear, now.getMonth() - 1, 1)
-    const lastYM = `${lastYM_date.getFullYear()}-${String(lastYM_date.getMonth() + 1).padStart(2, '0')}`
-    
+    const lastYMDate = new Date(currYear, now.getMonth() - 1, 1)
+    const lastYM = `${lastYMDate.getFullYear()}-${String(lastYMDate.getMonth() + 1).padStart(2, '0')}`
+
     const periodPrefix = mode === 'tahunan' ? String(currYear) : currYM
     const lastPeriodPrefix = mode === 'tahunan' ? String(currYear - 1) : lastYM
     const periodLabel = mode === 'tahunan' ? `Tahun ${currYear}` : `${MONTHS_FULL[now.getMonth()]} ${currYear}`
-    
-    const expenses = txData.filter(t => t.type === 'out' && t.cat !== 'Transfer' && t.date?.startsWith(periodPrefix))
-    const incomes = txData.filter(t => t.type === 'in' && t.cat !== 'Transfer' && t.date?.startsWith(periodPrefix))
-    
-    const totalOut = expenses.reduce((s, t) => s + t.amount, 0)
-    const totalIn = incomes.reduce((s, t) => s + t.amount, 0)
+
+    const periodTx = txData.filter((t) => t.date?.startsWith(periodPrefix))
+    const expenses = periodTx.filter((t) => isCashflowExpenseTx(t))
+    const periodSummary = summarizeFinancialTx(periodTx)
+    const totalOut = periodSummary.expense
+    const totalIn = periodSummary.income
     const netto = totalIn - totalOut
-    
-    // Periode sebelumnya
-    const lastOut = txData.filter(t => t.type === 'out' && t.cat !== 'Transfer' && t.date?.startsWith(lastPeriodPrefix)).reduce((s, t) => s + t.amount, 0)
-    const lastIn = txData.filter(t => t.type === 'in' && t.cat !== 'Transfer' && t.date?.startsWith(lastPeriodPrefix)).reduce((s, t) => s + t.amount, 0)
-    
-    const outChange = lastOut > 0 ? ((totalOut - lastOut) / lastOut * 100).toFixed(0) : 0
-    const inChange = lastIn > 0 ? ((totalIn - lastIn) / lastIn * 100).toFixed(0) : 0
-    
-    // Top kategori
+
+    const lastSummary = summarizeFinancialTx(txData.filter((t) => t.date?.startsWith(lastPeriodPrefix)))
+    const lastOut = lastSummary.expense
+    const lastIn = lastSummary.income
+
+    const outChange = lastOut > 0 ? ((totalOut - lastOut) / lastOut) * 100 : 0
+    const inChange = lastIn > 0 ? ((totalIn - lastIn) / lastIn) * 100 : 0
+
     const catMap = {}
-    expenses.forEach(t => { catMap[t.cat] = (catMap[t.cat] || 0) + t.amount })
+    expenses.forEach((t) => {
+      catMap[t.cat] = (catMap[t.cat] || 0) + t.amount
+    })
     const topCats = Object.entries(catMap).sort((a, b) => b[1] - a[1]).slice(0, 3)
-    const topCat = topCats[0]?.[0] || 'Lainnya'
+    const topCat = topCats[0]?.[0] || 'Belum ada kategori'
 
-    // Investasi
-    const invTotal = invData.filter(t => t.action === 'beli' && t.date?.startsWith(periodPrefix)).reduce((s, t) => s + t.amount, 0)
-    
-    // Savings rate
-    const savingsRate = totalIn > 0 ? ((netto > 0 ? netto : 0) / totalIn * 100).toFixed(0) : 0
+    const invTotal = invData.filter((t) => t.action === 'beli' && t.date?.startsWith(periodPrefix)).reduce((s, t) => s + t.amount, 0)
+    const savingsRate = totalIn > 0 ? Math.max(0, (netto / totalIn) * 100) : 0
 
-    // Title
-    let title = "Si Paling Hemat 😇"
-    if (totalOut > 5000000) title = "Menteri Keuangan Bocor 💸"
-    else if (totalOut > 2000000) title = "Sobat Survive ✊"
-    if (topCat === 'Konsumsi & Makan') title = "Duta Kuliner 🍜"
-    if (Number(savingsRate) >= 30) title = "Pro Investor 🚀"
+    let title = 'Arus kas cukup stabil'
+    if (Number(savingsRate) >= 30) title = 'Ruang nabungmu lagi bagus'
+    else if (totalOut > totalIn && totalIn > 0) title = 'Pengeluaran lagi lebih agresif'
+    else if (topCat === 'Konsumsi & Makan') title = 'Belanja makan sedang dominan'
 
-    return { 
-      totalOut, totalIn, netto, topCat, topCats, freq: expenses.length, title, 
-      periodLabel, outChange, inChange, invTotal, savingsRate,
-      lastPeriodLabel: mode === 'tahunan' ? `${currYear - 1}` : MONTHS_FULL[lastYM_date.getMonth()]
+    return {
+      totalOut,
+      totalIn,
+      netto,
+      topCat,
+      topCats,
+      freq: expenses.length,
+      title,
+      periodLabel,
+      outChange,
+      inChange,
+      invTotal,
+      savingsRate,
+      endingBalance: totals.saldo,
+      lastPeriodLabel: mode === 'tahunan' ? `${currYear - 1}` : MONTHS_FULL[lastYMDate.getMonth()],
     }
-  }, [txData, invData, mode])
+  }, [txData, invData, totals.saldo, mode])
+
+  const changeTone = (value, inverse = false) => {
+    const positive = value >= 0
+    if (inverse) return positive ? 'text-expense' : 'text-income'
+    return positive ? 'text-income' : 'text-expense'
+  }
 
   const handleShare = async () => {
     if (!reportRef.current) return
     setIsCapturing(true)
     try {
       const { toPng } = await import('html-to-image')
-      const dataUrl = await toPng(reportRef.current, { quality: 1, pixelRatio: 3 })
+      const dataUrl = await toPng(reportRef.current, {
+        quality: 1,
+        pixelRatio: 3,
+        backgroundColor: '#f7f8f5',
+      })
       const blob = await (await fetch(dataUrl)).blob()
-      const file = new File([blob], `wrapped-${mode}-slide-${activeSlide + 1}.png`, { type: blob.type })
+      const file = new File([blob], `dompetku-wrapped-${mode}-${activeSlide + 1}.png`, { type: 'image/png' })
 
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file] })
+        await navigator.share({
+          files: [file],
+          title: `DompetKu Wrapped ${stats.periodLabel}`,
+          text: `Ringkasan ${stats.periodLabel}`,
+        })
       } else {
         const link = document.createElement('a')
-        link.download = `wrapped-${mode}-slide-${activeSlide + 1}.png`
+        link.download = `dompetku-wrapped-${mode}-${activeSlide + 1}.png`
         link.href = dataUrl
         link.click()
       }
@@ -86,209 +124,266 @@ export default function ShareReport() {
     }
   }
 
-  // --- RENDER SLIDES ---
   const slides = [
-    // SLIDE 1: OVERVIEW
-    <div key="s1" className="w-full h-full p-8 flex flex-col justify-between bg-[#0f172a] text-white relative overflow-hidden">
-      <div className="absolute top-[-10%] right-[-20%] w-[80%] h-[50%] rounded-full bg-rose-600/30 blur-[80px]" aria-hidden="true"></div>
-      <div className="absolute bottom-[-15%] left-[-15%] w-[60%] h-[40%] rounded-full bg-indigo-600/20 blur-[60px]" aria-hidden="true"></div>
-      <div className="relative z-10 text-center">
-        <p className="text-[10px] font-black tracking-[0.4em] text-white/40 mb-2 uppercase">Slide 1 / 4</p>
-        <h1 className="text-4xl font-black italic tracking-tighter">WRAPPED</h1>
-        <p className="text-[11px] font-bold text-white/50 mt-1 uppercase tracking-widest">{stats.periodLabel}</p>
-      </div>
-      <div className="relative z-10 space-y-4">
-        <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-[24px] p-6 text-center">
-          <Trophy className="text-yellow-400 mx-auto mb-3" size={40} />
-          <p className="text-[10px] uppercase font-bold text-white/50 tracking-widest mb-1">Gelarmu</p>
-          <p className="text-xl font-black">{stats.title}</p>
+    <div key="overview" className="flex h-full w-full flex-col justify-between bg-[#f7f8f5] p-7 text-[#101211]">
+      <div>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#7c847c]">DompetKu Wrapped</p>
+            <h3 className="mt-2 text-3xl font-black tracking-tight">{stats.periodLabel}</h3>
+          </div>
+          <div className="rounded-full bg-[#dff3c8] px-3 py-1 text-[11px] font-bold text-[#1d2d17]">
+            {slideMeta[0].label}
+          </div>
         </div>
-        <div className="text-center">
-          <p className="text-[11px] font-bold text-white/40 mb-1 uppercase">Total Pengeluaran</p>
-          <p className="text-4xl font-black text-rose-400 tabular-nums">{fmtShort(stats.totalOut)}</p>
+        <div className="rounded-[28px] border border-[#d9ddd6] bg-white p-5 shadow-sm">
+          <p className="text-sm font-bold text-[#7c847c]">Insight utama</p>
+          <p className="mt-2 text-2xl font-black leading-tight text-[#101211]">{stats.title}</p>
         </div>
       </div>
-      <div className="relative z-10 text-center text-[10px] font-bold text-white/30 tracking-widest">DOMPETKU APP</div>
+      <div className="space-y-4">
+        <div className="rounded-[28px] bg-[#101211] p-5 text-white">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-white/55">Pengeluaran</p>
+          <p className="mt-2 text-4xl font-black tabular-nums">{fmtShort(stats.totalOut)}</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-[24px] border border-[#d9ddd6] bg-white p-4">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#7c847c]">Pemasukan</p>
+            <p className="mt-2 text-lg font-black tabular-nums text-income">{fmtShort(stats.totalIn)}</p>
+          </div>
+          <div className="rounded-[24px] border border-[#d9ddd6] bg-white p-4">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#7c847c]">Netto</p>
+            <p className={`mt-2 text-lg font-black tabular-nums ${stats.netto >= 0 ? 'text-income' : 'text-expense'}`}>{fmtShort(stats.netto)}</p>
+          </div>
+        </div>
+      </div>
     </div>,
 
-    // SLIDE 2: CASHFLOW
-    <div key="s2" className="w-full h-full p-8 flex flex-col justify-between bg-[#0f172a] text-white relative overflow-hidden">
-      <div className="absolute top-[-10%] left-[-20%] w-[80%] h-[50%] rounded-full bg-teal-600/20 blur-[80px]" aria-hidden="true"></div>
-      <div className="relative z-10 text-center">
-        <p className="text-[10px] font-black tracking-[0.4em] text-white/40 mb-2 uppercase">Slide 2 / 4</p>
-        <h1 className="text-4xl font-black italic tracking-tighter">CASHFLOW</h1>
-      </div>
-      <div className="relative z-10 space-y-4">
-        <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-[24px] p-5">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] font-bold text-white/50 uppercase">Pemasukan</p>
-            <span className={`text-[10px] font-black ${Number(stats.inChange) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {Number(stats.inChange) >= 0 ? '↑' : '↓'} {Math.abs(Number(stats.inChange))}% vs {stats.lastPeriodLabel}
-            </span>
+    <div key="cashflow" className="flex h-full w-full flex-col justify-between bg-[#f7f8f5] p-7 text-[#101211]">
+      <div>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#7c847c]">Perbandingan</p>
+            <h3 className="mt-2 text-3xl font-black tracking-tight">Arus Kas</h3>
           </div>
-          <p className="text-2xl font-black text-emerald-400 tabular-nums">+{fmtShort(stats.totalIn)}</p>
-        </div>
-        <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-[24px] p-5">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] font-bold text-white/50 uppercase">Pengeluaran</p>
-            <span className={`text-[10px] font-black ${Number(stats.outChange) <= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {Number(stats.outChange) >= 0 ? '↑' : '↓'} {Math.abs(Number(stats.outChange))}% vs {stats.lastPeriodLabel}
-            </span>
+          <div className="rounded-full bg-[#dff3c8] px-3 py-1 text-[11px] font-bold text-[#1d2d17]">
+            {slideMeta[1].label}
           </div>
-          <p className="text-2xl font-black text-rose-400 tabular-nums">-{fmtShort(stats.totalOut)}</p>
         </div>
-        <div className="bg-gradient-to-r from-indigo-600/30 to-purple-600/30 backdrop-blur-md border border-white/10 rounded-[24px] p-5 text-center">
-          <p className="text-[10px] font-bold text-white/50 uppercase mb-1">Netto</p>
-          <p className={`text-3xl font-black tabular-nums ${stats.netto >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{fmtShort(stats.netto)}</p>
-        </div>
-      </div>
-      <div className="relative z-10 text-center text-[10px] font-bold text-white/30 tracking-widest">DOMPETKU APP</div>
-    </div>,
-
-    // SLIDE 3: HABITS
-    <div key="s3" className="w-full h-full p-8 flex flex-col justify-between bg-[#0f172a] text-white relative overflow-hidden">
-      <div className="absolute top-[-10%] left-[-20%] w-[80%] h-[50%] rounded-full bg-indigo-600/30 blur-[80px]" aria-hidden="true"></div>
-      <div className="relative z-10 text-center">
-        <p className="text-[10px] font-black tracking-[0.4em] text-white/40 mb-2 uppercase">Slide 3 / 4</p>
-        <h1 className="text-4xl font-black italic tracking-tighter">HABITS</h1>
-      </div>
-      <div className="relative z-10 space-y-4">
-        <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-[24px] p-5">
-          <Flame className="text-orange-400 mb-2" size={24} />
-          <p className="text-[10px] font-bold text-white/50 uppercase">Frekuensi Transaksi</p>
-          <p className="text-2xl font-black">{stats.freq} Kali</p>
-        </div>
-        <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-[24px] p-5">
-          <BarChart3 className="text-indigo-400 mb-2" size={24} />
-          <p className="text-[10px] font-bold text-white/50 uppercase mb-2">Top 3 Pengeluaran</p>
-          <div className="space-y-2">
-            {stats.topCats.map(([cat, val], i) => (
-              <div key={cat} className="flex items-center justify-between">
-                <span className="text-sm font-bold flex items-center gap-2">
-                  <span className="text-xs text-white/40">{i + 1}.</span> {cat}
-                </span>
-                <span className="text-xs font-black text-rose-400 tabular-nums">{fmtShort(val)}</span>
+        <div className="space-y-3">
+          <div className="rounded-[24px] border border-[#d9ddd6] bg-white p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#7c847c]">Pemasukan</p>
+                <p className="mt-2 text-2xl font-black text-income tabular-nums">+{fmtShort(stats.totalIn)}</p>
               </div>
-            ))}
+              <div className={`flex items-center gap-1 text-xs font-bold ${changeTone(stats.inChange)}`}>
+                <TrendingUp size={14} className={stats.inChange < 0 ? 'rotate-180' : ''} />
+                {Math.abs(stats.inChange).toFixed(0)}%
+              </div>
+            </div>
+            <p className="mt-3 text-xs font-medium text-[#7c847c]">dibanding {stats.lastPeriodLabel}</p>
+          </div>
+          <div className="rounded-[24px] border border-[#d9ddd6] bg-white p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#7c847c]">Pengeluaran</p>
+                <p className="mt-2 text-2xl font-black text-expense tabular-nums">-{fmtShort(stats.totalOut)}</p>
+              </div>
+              <div className={`flex items-center gap-1 text-xs font-bold ${changeTone(stats.outChange, true)}`}>
+                <TrendingDown size={14} className={stats.outChange < 0 ? 'rotate-180' : ''} />
+                {Math.abs(stats.outChange).toFixed(0)}%
+              </div>
+            </div>
+            <p className="mt-3 text-xs font-medium text-[#7c847c]">dibanding {stats.lastPeriodLabel}</p>
           </div>
         </div>
-        {stats.invTotal > 0 && (
-          <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-[24px] p-5">
-            <Target className="text-emerald-400 mb-2" size={24} />
-            <p className="text-[10px] font-bold text-white/50 uppercase">Total Investasi</p>
-            <p className="text-2xl font-black text-emerald-400">{fmtShort(stats.invTotal)}</p>
+      </div>
+      <div className="rounded-[28px] bg-[#eaf0e7] p-5">
+        <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#7c847c]">Kesimpulan</p>
+        <p className="mt-2 text-lg font-black leading-snug text-[#101211]">
+          {stats.netto >= 0 ? 'Uang masuk masih lebih besar dari uang keluar.' : 'Arus kas sedang negatif dan perlu dijaga.'}
+        </p>
+      </div>
+    </div>,
+
+    <div key="habits" className="flex h-full w-full flex-col justify-between bg-[#f7f8f5] p-7 text-[#101211]">
+      <div>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#7c847c]">Perilaku</p>
+            <h3 className="mt-2 text-3xl font-black tracking-tight">Kebiasaan Belanja</h3>
+          </div>
+          <div className="rounded-full bg-[#dff3c8] px-3 py-1 text-[11px] font-bold text-[#1d2d17]">
+            {slideMeta[2].label}
+          </div>
+        </div>
+        <div className="rounded-[28px] border border-[#d9ddd6] bg-white p-5 shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#7c847c]">Kategori utama</p>
+          <p className="mt-2 text-2xl font-black leading-tight text-[#101211]">{stats.topCat}</p>
+          <p className="mt-2 text-sm font-medium text-[#7c847c]">{stats.freq} transaksi tercatat pada periode ini</p>
+        </div>
+      </div>
+      <div className="space-y-3">
+        {stats.topCats.slice(0, 3).map(([cat, val], index) => (
+          <div key={cat} className="flex items-center justify-between rounded-[22px] border border-[#d9ddd6] bg-white px-4 py-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#7c847c]">#{index + 1}</p>
+              <p className="mt-1 text-sm font-black text-[#101211]">{cat}</p>
+            </div>
+            <p className="text-sm font-black tabular-nums text-expense">{fmtShort(val)}</p>
+          </div>
+        ))}
+        {stats.topCats.length === 0 && (
+          <div className="rounded-[22px] border border-[#d9ddd6] bg-white px-4 py-6 text-sm font-medium text-[#7c847c]">
+            Belum ada pengeluaran di periode ini.
           </div>
         )}
       </div>
-      <div className="relative z-10 text-center text-[10px] font-bold text-white/30 tracking-widest">DOMPETKU APP</div>
     </div>,
 
-    // SLIDE 4: BALANCE
-    <div key="s4" className="w-full h-full p-8 flex flex-col justify-between bg-[#0f172a] text-white relative overflow-hidden">
-      <div className="absolute bottom-[-10%] right-[-20%] w-[80%] h-[50%] rounded-full bg-emerald-600/20 blur-[80px]" aria-hidden="true"></div>
-      <div className="relative z-10 text-center">
-        <p className="text-[10px] font-black tracking-[0.4em] text-white/40 mb-2 uppercase">Slide 4 / 4</p>
-        <h1 className="text-4xl font-black italic tracking-tighter">BALANCE</h1>
-      </div>
-      <div className="relative z-10 text-center space-y-5">
-        <p className="text-sm font-medium text-white/70 italic">"Uang bisa dicari, tapi diskon belum tentu datang lagi."</p>
-        
-        <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-[24px] p-6">
-          <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest mb-2">Savings Rate</p>
-          <p className="text-5xl font-black text-yellow-400 tabular-nums">{stats.savingsRate}%</p>
-          <p className="text-[10px] font-medium text-white/40 mt-2">dari total pemasukanmu berhasil diamankan</p>
+    <div key="balance" className="flex h-full w-full flex-col justify-between bg-[#f7f8f5] p-7 text-[#101211]">
+      <div>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#7c847c]">Posisi akhir</p>
+            <h3 className="mt-2 text-3xl font-black tracking-tight">Saldo & Tabungan</h3>
+          </div>
+          <div className="rounded-full bg-[#dff3c8] px-3 py-1 text-[11px] font-bold text-[#1d2d17]">
+            {slideMeta[3].label}
+          </div>
         </div>
-
-        <div className="py-5 border-y border-white/10">
-          <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest mb-2">Saldo Akhir</p>
-          <p className="text-3xl font-black text-emerald-400 tabular-nums">{fmtShort(totals.saldo)}</p>
+        <div className="rounded-[28px] bg-[#101211] p-5 text-white">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-white/55">Saldo akhir</p>
+          <p className="mt-2 text-4xl font-black tabular-nums">{fmtShort(stats.endingBalance)}</p>
         </div>
       </div>
-      <div className="relative z-10 text-center text-[10px] font-bold text-white/30 tracking-widest">DOMPETKU APP</div>
-    </div>
+      <div className="space-y-3">
+        <div className="rounded-[24px] border border-[#d9ddd6] bg-white p-5">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#7c847c]">Savings rate</p>
+          <p className="mt-2 text-3xl font-black text-income tabular-nums">{stats.savingsRate.toFixed(0)}%</p>
+          <p className="mt-2 text-sm font-medium text-[#7c847c]">dari pemasukan berhasil kamu sisakan</p>
+        </div>
+        {stats.invTotal > 0 && (
+          <div className="rounded-[24px] border border-[#d9ddd6] bg-white p-5">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#7c847c]">Investasi dibeli</p>
+            <p className="mt-2 text-2xl font-black text-income tabular-nums">{fmtShort(stats.invTotal)}</p>
+          </div>
+        )}
+      </div>
+    </div>,
   ]
 
   return (
-    <section 
-      className="bg-surface border border-border rounded-[32px] p-8 md:p-10 shadow-sm flex flex-col md:flex-row items-center justify-between gap-10"
-      aria-labelledby="wrapped-title"
-    >
-      <div className="flex-1 space-y-6">
-        <div>
-          <h2 id="wrapped-title" className="text-3xl md:text-4xl font-black text-text tracking-tight mb-3">
-            Dompetku <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-rose-500">Wrapped</span>
-          </h2>
-          <p className="text-muted text-sm md:text-base max-w-sm">
-            Pilih mode dan slide yang ingin kamu pamerkan. Share langsung ke Instagram Story!
-          </p>
-        </div>
-        
-        {/* Mode Toggle */}
-        <div className="flex gap-2">
-          <button onClick={() => { setMode('bulanan'); setActiveSlide(0) }} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${mode === 'bulanan' ? 'bg-income text-white shadow-lg shadow-income/20' : 'bg-bg text-muted border border-border2 hover:text-text'}`}>
-            <CalendarDays size={14} className="inline mr-1.5" /> Bulanan
-          </button>
-          <button onClick={() => { setMode('tahunan'); setActiveSlide(0) }} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${mode === 'tahunan' ? 'bg-income text-white shadow-lg shadow-income/20' : 'bg-bg text-muted border border-border2 hover:text-text'}`}>
-            <BarChart3 size={14} className="inline mr-1.5" /> Tahunan
-          </button>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          <button 
-            onClick={handleShare} 
-            disabled={isCapturing} 
-            className="btn-primary px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 border-none shadow-xl shadow-indigo-500/20 w-full md:w-fit focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all active:scale-95"
-            aria-label={`Bagikan Slide ${activeSlide + 1} ke media sosial`}
-          >
-            {isCapturing ? <Loader2 size={20} className="animate-spin" aria-hidden="true" /> : <Share2 size={20} aria-hidden="true" />}
-            <span>{isCapturing ? 'Memotret...' : `Share Slide ${activeSlide + 1}`}</span>
-          </button>
-          
-          <p className="text-[10px] font-bold text-muted uppercase tracking-widest text-center md:text-left" aria-live="polite">
-            💡 Tips: Geser kartu dan klik share lagi untuk slide lainnya
-          </p>
-        </div>
-      </div>
-
-      <div className="relative group" role="region" aria-label="Carousel Laporan">
-        {/* Navigasi Carousel */}
-        <button 
-          onClick={() => setActiveSlide(s => s === 0 ? slides.length - 1 : s - 1)}
-          className="absolute -left-5 top-1/2 -translate-y-1/2 z-20 w-11 h-11 bg-white dark:bg-slate-800 shadow-lg rounded-full flex items-center justify-center text-text hover:scale-110 transition-transform border border-border focus:ring-2 focus:ring-indigo-500"
-          aria-label="Slide sebelumnya"
-        >
-          <ChevronLeft size={24} />
-        </button>
-        <button 
-          onClick={() => setActiveSlide(s => s === slides.length - 1 ? 0 : s + 1)}
-          className="absolute -right-5 top-1/2 -translate-y-1/2 z-20 w-11 h-11 bg-white dark:bg-slate-800 shadow-lg rounded-full flex items-center justify-center text-text hover:scale-110 transition-transform border border-border focus:ring-2 focus:ring-indigo-500"
-          aria-label="Slide berikutnya"
-        >
-          <ChevronRight size={24} />
-        </button>
-
-        {/* Frame Preview */}
-        <div 
-          className="w-[280px] rounded-[32px] overflow-hidden shadow-2xl border-8 border-bg" 
-          style={{ aspectRatio: '9/16' }}
-          aria-live="auto"
-        >
-          <div ref={reportRef} className="w-full h-full" aria-hidden="true">
-            {slides[activeSlide]}
+    <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]" aria-labelledby="wrapped-title">
+      <div className="rounded-[28px] border border-border bg-bg p-5 md:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 id="wrapped-title" className="text-2xl font-black tracking-tight text-text">
+              DompetKu Wrapped
+            </h2>
+            <p className="mt-2 max-w-xl text-sm text-muted">
+              Ringkasan shareable untuk periode pilihanmu. Dari web, tombol bagikan akan membuka share sheet perangkat jika browser mendukungnya.
+            </p>
+          </div>
+          <div className="inline-flex rounded-full border border-border bg-surface p-1">
+            <button
+              onClick={() => {
+                setMode('bulanan')
+                setActiveSlide(0)
+              }}
+              className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition-colors ${mode === 'bulanan' ? 'bg-primary text-text' : 'text-muted hover:text-text'}`}
+            >
+              <CalendarDays size={14} /> Bulanan
+            </button>
+            <button
+              onClick={() => {
+                setMode('tahunan')
+                setActiveSlide(0)
+              }}
+              className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition-colors ${mode === 'tahunan' ? 'bg-primary text-text' : 'text-muted hover:text-text'}`}
+            >
+              <BarChart3 size={14} /> Tahunan
+            </button>
           </div>
         </div>
 
-        {/* Indikator Titik */}
-        <div className="flex justify-center gap-2 mt-4" role="tablist">
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-border bg-surface p-4">
+            <div className="flex items-center gap-2 text-muted"><Wallet size={15} /><span className="text-xs font-bold uppercase tracking-[0.14em]">Netto</span></div>
+            <p className={`mt-3 text-xl font-black tabular-nums ${stats.netto >= 0 ? 'text-income' : 'text-expense'}`}>{fmtShort(stats.netto)}</p>
+          </div>
+          <div className="rounded-2xl border border-border bg-surface p-4">
+            <div className="flex items-center gap-2 text-muted"><Target size={15} /><span className="text-xs font-bold uppercase tracking-[0.14em]">Kategori utama</span></div>
+            <p className="mt-3 line-clamp-2 text-base font-black text-text">{stats.topCat}</p>
+          </div>
+          <div className="rounded-2xl border border-border bg-surface p-4">
+            <div className="flex items-center gap-2 text-muted"><Share2 size={15} /><span className="text-xs font-bold uppercase tracking-[0.14em]">Share</span></div>
+            <p className="mt-3 text-sm font-medium text-text">Paling aman dibagikan lewat share sheet perangkat.</p>
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-2">
+          {slideMeta.map((slide, index) => (
+            <button
+              key={slide.key}
+              onClick={() => setActiveSlide(index)}
+              className={`rounded-full px-3 py-2 text-sm font-bold transition-colors ${activeSlide === index ? 'bg-text text-white' : 'bg-surface text-muted hover:text-text'}`}
+            >
+              {slide.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col items-center gap-4">
+        <div className="relative" role="region" aria-label="Preview wrapped">
+          <button
+            onClick={() => setActiveSlide((s) => (s === 0 ? slides.length - 1 : s - 1))}
+            className="absolute -left-4 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-surface text-text shadow-sm transition-transform hover:scale-105"
+            aria-label="Slide sebelumnya"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <button
+            onClick={() => setActiveSlide((s) => (s === slides.length - 1 ? 0 : s + 1))}
+            className="absolute -right-4 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-surface text-text shadow-sm transition-transform hover:scale-105"
+            aria-label="Slide berikutnya"
+          >
+            <ChevronRight size={18} />
+          </button>
+
+          <div className="w-[280px] overflow-hidden rounded-[32px] border-[8px] border-white shadow-2xl" style={{ aspectRatio: '9 / 16' }}>
+            <div ref={reportRef} className="h-full w-full" aria-hidden="true">
+              {slides[activeSlide]}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2" role="tablist">
           {slides.map((_, i) => (
             <button
-              key={i} 
+              key={i}
               onClick={() => setActiveSlide(i)}
-              className={`h-2 rounded-full transition-all ${activeSlide === i ? 'bg-indigo-500 w-5' : 'bg-slate-300 w-2 hover:bg-slate-400'}`} 
+              className={`h-2 rounded-full transition-all ${activeSlide === i ? 'w-6 bg-text' : 'w-2 bg-border hover:bg-muted'}`}
               aria-label={`Slide ${i + 1}`}
             />
           ))}
         </div>
+
+        <button
+          onClick={handleShare}
+          disabled={isCapturing}
+          className="btn-primary w-full justify-center px-6 py-3"
+          aria-label={`Bagikan ${slideMeta[activeSlide].label}`}
+        >
+          {isCapturing ? <Loader2 size={18} className="animate-spin" /> : <Share2 size={18} />}
+          {isCapturing ? 'Menyiapkan gambar...' : `Bagikan ${slideMeta[activeSlide].label}`}
+        </button>
+
+        <p className="max-w-[280px] text-center text-[11px] font-medium text-muted">
+          Web app tidak bisa memaksa langsung ke Instagram Story. Di mobile yang mendukung, tombol ini akan membuka share sheet sehingga kamu bisa lanjut memilih aplikasi tujuan.
+        </p>
       </div>
     </section>
   )

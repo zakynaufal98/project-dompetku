@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useData } from '../context/DataContext'
-import { CATEGORY_TREE, fmtShort, CAT_ICONS, CHART_COLORS } from '../lib/utils'
+import { CATEGORY_TREE, fmtShort, CAT_ICONS, CHART_COLORS, isCashflowExpenseTx } from '../lib/utils'
 import { Plus, Trash2, Edit2, Target, AlertTriangle, Check, X } from 'lucide-react'
 import { ProgressBar } from './UI'
 
@@ -18,7 +18,7 @@ export default function BudgetWidget() {
   // Hitung pengeluaran bulan ini per kategori
   const expensesThisMonth = useMemo(() => {
     const expenses = {}
-    txData.filter(t => t.type === 'out' && t.date?.startsWith(currentMonthPrefix) && t.cat !== 'Transfer').forEach(t => {
+    txData.filter(t => t.date?.startsWith(currentMonthPrefix) && isCashflowExpenseTx(t)).forEach(t => {
       const cat = t.cat || 'Lainnya'
       expenses[cat] = (expenses[cat] || 0) + t.amount
     })

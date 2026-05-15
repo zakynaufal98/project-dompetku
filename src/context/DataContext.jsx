@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './AuthContext'
-import { CATEGORY_TREE } from '../lib/utils'
+import { CATEGORY_TREE, isCashflowIncomeTx, isCashflowExpenseTx } from '../lib/utils'
 
 const DataContext = createContext(null)
 
@@ -31,6 +31,7 @@ export function DataProvider({ children }) {
     type: r.tipe, cat: r.cat, sub_cat: r.sub_cat, date: r.tgl, 
     wallet_id: r.wallet_id,
     bill_id: r.bill_id || null,
+    investment_id: r.investment_id || null,
     created_by_email: r.created_by_email || null,
     user_id: r.user_id,
     ts: new Date(r.created_at).getTime(),
@@ -203,34 +204,143 @@ export function DataProvider({ children }) {
     String(error?.message || '').toLowerCase().includes('source_bill_id')
   )
 
+  const isMissingInvestmentIdColumn = (error) => (
+    error?.code === 'PGRST204' &&
+    String(error?.message || '').toLowerCase().includes('investment_id')
+  )
+
   const withoutField = (obj, field) => {
     const { [field]: _removed, ...rest } = obj
     return rest
   }
 
-  const addTx = async ({ desc, amount, type, cat, sub_cat, date, wallet_id = null, bill_id = null }) => {
-    if (!canWriteActiveAccount) return readonlyError
-    const payload = { user_id: effectiveUserId, keterangan: desc, amount, tipe: type, cat, sub_cat, tgl: date, wallet_id, created_by_email: user.email }
-    if (bill_id) payload.bill_id = bill_id
+  const getWalletCalculatedBalance = (walletId) => {
+    const wallet = walletData.find(w => w.id === walletId)
+    if (!wallet) return 0
+    const walletTx = txData.filter(t => t.wallet_id === walletId)
+    const walletIn = walletTx.filter(t => t.type === 'in').reduce((sum, t) => sum + t.amount, 0)
+    const walletOut = walletTx.filter(t => t.type === 'out').reduce((sum, t) => sum + t.amount, 0)
+    return (Number(wallet.balance) || 0) + walletIn - walletOut
+  }
 
-    const { data, error } = await supabase.from('transaksi')
-      .insert(payload)
-      .select().single()
-    if (error && bill_id && isMissingBillIdColumn(error)) {
-      const { data: fallbackData, error: fallbackError } = await supabase.from('transaksi')
-        .insert(withoutField(payload, 'bill_id'))
-        .select().single()
-      if (fallbackError) return fallbackError
-      setTxData(prev => [mapTx(fallbackData), ...prev])
-      return null
+  const getProjectedWalletBalance = ({ wallet_id = null, type, amount, originalTx = null }) => {
+    if (!wallet_id || type !== 'out') return Infinity
+    let projected = getWalletCalculatedBalance(wallet_id)
+
+    if (originalTx?.wallet_id === wallet_id) {
+      if (originalTx.type === 'out') projected += Number(originalTx.amount) || 0
+      if (originalTx.type === 'in') projected -= Number(originalTx.amount) || 0
     }
-    if (error) return error
-    setTxData(prev => [mapTx(data), ...prev])
-    return null
+
+    projected -= Number(amount) || 0
+    return projected
+  }
+
+  const validateWalletBalance = ({ wallet_id = null, type, amount, originalTx = null }) => {
+    if (!wallet_id || type !== 'out') return null
+    const projected = getProjectedWalletBalance({ wallet_id, type, amount, originalTx })
+    if (projected >= 0) return null
+    const walletName = walletData.find(w => w.id === wallet_id)?.name || 'dompet'
+    return new Error(`Saldo ${walletName} tidak mencukupi untuk transaksi ini.`)
+  }
+
+  const insertTxRecord = async ({ desc, amount, type, cat, sub_cat, date, wallet_id = null, bill_id = null, investment_id = null }, options = {}) => {
+    if (!canWriteActiveAccount) return { data: null, error: readonlyError }
+    if (!options.skipBalanceCheck) {
+      const balanceError = validateWalletBalance({ wallet_id, type, amount })
+      if (balanceError) return { data: null, error: balanceError }
+    }
+
+    let payload = { user_id: effectiveUserId, keterangan: desc, amount, tipe: type, cat, sub_cat, tgl: date, wallet_id, created_by_email: user.email }
+    if (bill_id) payload.bill_id = bill_id
+    if (investment_id) payload.investment_id = investment_id
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const { data, error } = await supabase.from('transaksi').insert(payload).select().single()
+      if (!error) {
+        const mapped = mapTx(data)
+        setTxData(prev => [mapped, ...prev])
+        return { data: mapped, error: null }
+      }
+      if (payload.bill_id && isMissingBillIdColumn(error)) {
+        payload = withoutField(payload, 'bill_id')
+        continue
+      }
+      if (payload.investment_id && isMissingInvestmentIdColumn(error)) {
+        payload = withoutField(payload, 'investment_id')
+        continue
+      }
+      return { data: null, error }
+    }
+
+    return { data: null, error: new Error('Gagal menyimpan transaksi.') }
+  }
+
+  const restoreBillAfterDeletedPayment = async (tx) => {
+    const paidBillId = tx?.type === 'out' ? tx.bill_id : null
+    const paidBillName = tx?.type === 'out' && tx?.desc?.startsWith('Bayar Tagihan:')
+      ? tx.desc.replace('Bayar Tagihan:', '').trim()
+      : ''
+
+    if (!paidBillId && !paidBillName) return
+
+    const paidBill = paidBillId
+      ? billData.find(b => b.id === paidBillId && b.is_lunas)
+      : billData
+        .filter(b =>
+          b.is_lunas &&
+          b.nama_tagihan?.toLowerCase() === paidBillName.toLowerCase() &&
+          Number(b.amount) === Number(tx.amount)
+        )
+        .sort((a, b) => Math.abs(new Date(a.jatuh_tempo) - new Date(tx.date)) - Math.abs(new Date(b.jatuh_tempo) - new Date(tx.date)))[0]
+
+    if (!paidBill) return
+
+    const { error: restoreError } = await supabase
+      .from('tagihan')
+      .update({ is_lunas: false })
+      .eq('id', paidBill.id)
+      .eq('user_id', effectiveUserId)
+
+    if (!restoreError) {
+      setBillData(prev => prev.map(b => b.id === paidBill.id ? { ...b, is_lunas: false } : b))
+    }
+
+    const generatedNextBill = billData.find(b => b.source_bill_id === paidBill.id && !b.is_lunas)
+    if (!generatedNextBill) return
+
+    const { error: deleteGeneratedError } = await supabase
+      .from('tagihan')
+      .delete()
+      .eq('id', generatedNextBill.id)
+      .eq('user_id', effectiveUserId)
+
+    if (!deleteGeneratedError) {
+      setBillData(prev => prev.filter(b => b.id !== generatedNextBill.id))
+    }
+  }
+
+  const deleteTxRecord = async (id, options = {}) => {
+    if (!canWriteActiveAccount) return { data: null, error: readonlyError }
+    const tx = txData.find(t => t.id === id)
+    const { error } = await supabase.from('transaksi').delete().eq('id', id).eq('user_id', effectiveUserId)
+    if (error) return { data: null, error }
+
+    setTxData(prev => prev.filter(t => t.id !== id))
+    if (options.restoreRelatedBill) await restoreBillAfterDeletedPayment(tx)
+    return { data: tx, error: null }
+  }
+
+  const addTx = async (payload) => {
+    const { error } = await insertTxRecord(payload)
+    return error
   }
   
   const updateTx = async (id, { desc, amount, type, cat, sub_cat, date, wallet_id = null }) => {
     if (!canWriteActiveAccount) return readonlyError
+    const originalTx = txData.find(t => t.id === id)
+    const balanceError = validateWalletBalance({ wallet_id, type, amount, originalTx })
+    if (balanceError) return balanceError
     const { data, error } = await supabase.from('transaksi')
       .update({ keterangan: desc, amount, tipe: type, cat, sub_cat, tgl: date, wallet_id })
       .eq('id', id).eq('user_id', effectiveUserId).select().single()
@@ -239,54 +349,7 @@ export function DataProvider({ children }) {
   }
 
   const deleteTx = async (id) => {
-    if (!canWriteActiveAccount) return readonlyError
-    const tx = txData.find(t => t.id === id)
-    const paidBillId = tx?.type === 'out' ? tx.bill_id : null
-    const paidBillName = tx?.type === 'out' && tx?.desc?.startsWith('Bayar Tagihan:')
-      ? tx.desc.replace('Bayar Tagihan:', '').trim()
-      : ''
-
-    const { error } = await supabase.from('transaksi').delete().eq('id', id).eq('user_id', effectiveUserId)
-    if (!error) {
-      setTxData(prev => prev.filter(t => t.id !== id))
-
-      if (paidBillId || paidBillName) {
-        const paidBill = paidBillId
-          ? billData.find(b => b.id === paidBillId && b.is_lunas)
-          : billData
-          .filter(b =>
-            b.is_lunas &&
-            b.nama_tagihan?.toLowerCase() === paidBillName.toLowerCase() &&
-            Number(b.amount) === Number(tx.amount)
-          )
-          .sort((a, b) => Math.abs(new Date(a.jatuh_tempo) - new Date(tx.date)) - Math.abs(new Date(b.jatuh_tempo) - new Date(tx.date)))[0]
-
-        if (paidBill) {
-          const { error: restoreError } = await supabase
-            .from('tagihan')
-            .update({ is_lunas: false })
-            .eq('id', paidBill.id)
-            .eq('user_id', effectiveUserId)
-
-          if (!restoreError) {
-            setBillData(prev => prev.map(b => b.id === paidBill.id ? { ...b, is_lunas: false } : b))
-          }
-
-          const generatedNextBill = billData.find(b => b.source_bill_id === paidBill.id && !b.is_lunas)
-          if (generatedNextBill) {
-            const { error: deleteGeneratedError } = await supabase
-              .from('tagihan')
-              .delete()
-              .eq('id', generatedNextBill.id)
-              .eq('user_id', effectiveUserId)
-
-            if (!deleteGeneratedError) {
-              setBillData(prev => prev.filter(b => b.id !== generatedNextBill.id))
-            }
-          }
-        }
-      }
-    }
+    const { error } = await deleteTxRecord(id, { restoreRelatedBill: true })
     return error
   }
 
@@ -339,6 +402,33 @@ export function DataProvider({ children }) {
     return error;
   }
 
+  const insertBillRecord = async ({ nama_tagihan, amount, jatuh_tempo, source_bill_id = null }) => {
+    if (!canWriteActiveAccount) return { data: null, error: readonlyError }
+    let payload = { user_id: effectiveUserId, nama_tagihan, amount, jatuh_tempo }
+    if (source_bill_id) payload.source_bill_id = source_bill_id
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const { data, error } = await supabase.from('tagihan').insert(payload).select().single()
+      if (!error) {
+        setBillData(prev => [...prev, data].sort((a, b) => new Date(a.jatuh_tempo) - new Date(b.jatuh_tempo)))
+        return { data, error: null }
+      }
+      if (payload.source_bill_id && isMissingSourceBillIdColumn(error)) {
+        payload = withoutField(payload, 'source_bill_id')
+        continue
+      }
+      return { data: null, error }
+    }
+
+    return { data: null, error: new Error('Gagal menyimpan tagihan.') }
+  }
+
+  const deleteBillRecord = async (id) => {
+    const { error } = await supabase.from('tagihan').delete().eq('id', id).eq('user_id', effectiveUserId)
+    if (!error) setBillData(prev => prev.filter(b => b.id !== id))
+    return error
+  }
+
   const validateSellInvestment = (invType, subType, amount, qty, excludeId = null) => {
     let availableQty = 0; let availableAmount = 0;
     invData.filter(t => t.subType === subType && t.id !== excludeId).forEach(t => {
@@ -357,55 +447,166 @@ export function DataProvider({ children }) {
     return null; 
   };
 
+  const buildInvestmentJournalEntries = ({ investmentId, subType, amount, action, qty, date, wallet_id = null, excludeId = null }) => {
+    if (action === 'beli') {
+      return [{
+        desc: `Beli Aset: ${subType}`,
+        amount,
+        type: 'out',
+        cat: 'Transfer',
+        sub_cat: 'Beli Investasi',
+        date,
+        wallet_id,
+        investment_id: investmentId,
+      }]
+    }
+
+    let totalQty = 0
+    let totalModal = 0
+    const history = [...invData].filter(t => t.subType === subType && t.id !== excludeId).sort((a, b) => a.ts - b.ts)
+
+    history.forEach(t => {
+      if (t.action === 'beli') {
+        totalQty += (t.qty || 0)
+        totalModal += t.amount
+      } else {
+        const avgCost = totalQty > 0 ? (totalModal / totalQty) : 0
+        totalQty -= (t.qty || 0)
+        totalModal -= ((t.qty || 0) * avgCost)
+      }
+    })
+
+    const currentAvgCost = totalQty > 0 ? (totalModal / totalQty) : 0
+    const modalKembali = qty * currentAvgCost
+    const realizedPnL = amount - modalKembali
+    const entries = [{
+      desc: `Tarik Modal: ${subType}`,
+      amount: modalKembali,
+      type: 'in',
+      cat: 'Transfer',
+      sub_cat: 'Tarik Investasi',
+      date,
+      wallet_id,
+      investment_id: investmentId,
+    }]
+
+    if (realizedPnL > 0) {
+      entries.push({
+        desc: `Profit: ${subType}`,
+        amount: realizedPnL,
+        type: 'in',
+        cat: 'Pemasukan Utama',
+        sub_cat: 'Profit Investasi',
+        date,
+        wallet_id,
+        investment_id: investmentId,
+      })
+    } else if (realizedPnL < 0) {
+      entries.push({
+        desc: `Loss: ${subType}`,
+        amount: Math.abs(realizedPnL),
+        type: 'out',
+        cat: 'Lainnya',
+        sub_cat: 'Rugi Investasi',
+        date,
+        wallet_id,
+        investment_id: investmentId,
+      })
+    }
+
+    return entries
+  }
+
+  const amountsAlmostEqual = (left, right, tolerance = 0.01) => Math.abs(Number(left || 0) - Number(right || 0)) <= tolerance
+
+  const matchesInvestmentJournalEntry = (tx, entry) =>
+    tx?.desc === entry?.desc &&
+    tx?.type === entry?.type &&
+    tx?.cat === entry?.cat &&
+    tx?.sub_cat === entry?.sub_cat &&
+    tx?.date === entry?.date &&
+    tx?.wallet_id === entry?.wallet_id &&
+    amountsAlmostEqual(tx?.amount, entry?.amount)
+
+  const findInvestmentJournalTxs = (investmentTx) => {
+    const expectedEntries = buildInvestmentJournalEntries({
+      investmentId: investmentTx.id,
+      subType: investmentTx.subType,
+      amount: investmentTx.amount,
+      action: investmentTx.action,
+      qty: investmentTx.qty || 0,
+      date: investmentTx.date,
+      wallet_id: investmentTx.wallet_id,
+      excludeId: investmentTx.id,
+    })
+
+    const direct = txData.filter(t => t.investment_id === investmentTx.id)
+    const fallback = txData.filter(tx => expectedEntries.some(entry => matchesInvestmentJournalEntry(tx, entry)))
+    const combined = [...direct, ...fallback]
+    const unique = combined.filter((tx, index, arr) => arr.findIndex(item => item.id === tx.id) === index)
+
+    if (unique.length > 0) return unique
+
+    return txData.filter(tx =>
+      tx.date === investmentTx.date &&
+      tx.wallet_id === investmentTx.wallet_id &&
+      ((tx.sub_cat === 'Tarik Investasi' && tx.desc?.includes(investmentTx.subType)) ||
+        (tx.sub_cat === 'Profit Investasi' && tx.desc?.includes(investmentTx.subType)) ||
+        (tx.sub_cat === 'Rugi Investasi' && tx.desc?.includes(investmentTx.subType)) ||
+        (tx.sub_cat === 'Beli Investasi' && tx.desc?.includes(investmentTx.subType)))
+    )
+  }
+
+  const recreateTxSnapshots = async (snapshots) => {
+    for (const tx of snapshots) {
+      const { error } = await insertTxRecord({
+        desc: tx.desc,
+        amount: tx.amount,
+        type: tx.type,
+        cat: tx.cat,
+        sub_cat: tx.sub_cat,
+        date: tx.date,
+        wallet_id: tx.wallet_id,
+        bill_id: tx.bill_id,
+        investment_id: tx.investment_id,
+      }, { skipBalanceCheck: true })
+      if (error) return error
+    }
+    return null
+  }
+
   // 👇 PERBAIKAN BESAR: LOGIKA DOUBLE-ENTRY UNTUK INVESTASI 👇
   const addInv = async ({ invType, subType, desc, amount, action, unit, qty, date, wallet_id = null }) => {
     if (!canWriteActiveAccount) return readonlyError
-    let realizedPnL = 0;
-    let modalKembali = 0;
-
-    // 1. Jika Jual, Hitung Average Cost & Profit/Loss
     if (action === 'jual') {
-      const err = validateSellInvestment(invType, subType, amount, qty);
-      if (err) return err; 
-
-      let totalQty = 0; let totalModal = 0;
-      // Urutkan riwayat dari yang paling lama untuk menghitung Average Cost berjalan
-      const history = [...invData].filter(t => t.subType === subType).sort((a,b) => a.ts - b.ts);
-      
-      history.forEach(t => {
-        if (t.action === 'beli') {
-          totalQty += (t.qty || 0);
-          totalModal += t.amount;
-        } else if (t.action === 'jual') {
-          const avgCost = totalQty > 0 ? (totalModal / totalQty) : 0;
-          totalQty -= (t.qty || 0);
-          totalModal -= ((t.qty || 0) * avgCost);
-        }
-      });
-
-      const currentAvgCost = totalQty > 0 ? (totalModal / totalQty) : 0;
-      modalKembali = qty * currentAvgCost;
-      realizedPnL = amount - modalKembali;
+      const err = validateSellInvestment(invType, subType, amount, qty)
+      if (err) return err
     }
 
-    // 2. Simpan Catatan di Tabel Investasi
     const { data, error } = await supabase.from('investasi').insert({ user_id: effectiveUserId, inv_type: invType, sub_type: subType, keterangan: desc, amount, action, unit, qty, tgl: date, wallet_id }).select().single()
     if (error) return error
 
-    // 3. ✨ THE MAGIC: Otomatisasi Jurnal Transaksi (Cashflow) ✨
-    if (action === 'beli') {
-      // Catat sebagai Transfer Keluar (Kas berkurang, Aset bertambah)
-      await addTx({ desc: `Beli Aset: ${subType}`, amount, type: 'out', cat: 'Transfer', sub_cat: 'Beli Investasi', date, wallet_id });
-    } else if (action === 'jual') {
-      // Catat Pengembalian Modal sebagai Transfer Masuk
-      await addTx({ desc: `Tarik Modal: ${subType}`, amount: modalKembali, type: 'in', cat: 'Transfer', sub_cat: 'Tarik Investasi', date, wallet_id });
-      
-      // Catat Profit atau Loss secara murni
-      if (realizedPnL > 0) {
-        await addTx({ desc: `Profit: ${subType}`, amount: realizedPnL, type: 'in', cat: 'Pemasukan Utama', sub_cat: 'Profit Investasi', date, wallet_id });
-      } else if (realizedPnL < 0) {
-        await addTx({ desc: `Loss: ${subType}`, amount: Math.abs(realizedPnL), type: 'out', cat: 'Lainnya', sub_cat: 'Rugi Investasi', date, wallet_id });
+    const entries = buildInvestmentJournalEntries({
+      investmentId: data.id,
+      subType,
+      amount,
+      action,
+      qty: qty || 0,
+      date,
+      wallet_id,
+    })
+
+    const createdTxIds = []
+    for (const entry of entries) {
+      const { data: tx, error: txError } = await insertTxRecord(entry)
+      if (txError) {
+        for (const txId of createdTxIds.reverse()) {
+          await deleteTxRecord(txId)
+        }
+        await supabase.from('investasi').delete().eq('id', data.id).eq('user_id', effectiveUserId)
+        return txError
       }
+      createdTxIds.push(tx.id)
     }
 
     setInvData(prev => [mapInv(data), ...prev])
@@ -414,98 +615,193 @@ export function DataProvider({ children }) {
 
   const updateInv = async (id, { invType, subType, desc, amount, action, unit, qty, date, wallet_id = null }) => {
     if (!canWriteActiveAccount) return readonlyError
-    // (Untuk MVP, update investasi kita biarkan manual, tapi akan kita perbaiki nanti jika perlu)
     if (action === 'jual') {
-      const err = validateSellInvestment(invType, subType, amount, qty, id);
-      if (err) return err; 
+      const err = validateSellInvestment(invType, subType, amount, qty, id)
+      if (err) return err
     }
+
+    const originalInv = invData.find(t => t.id === id)
+    if (!originalInv) return new Error('Data investasi tidak ditemukan.')
+
+    const oldJournalTxs = findInvestmentJournalTxs(originalInv)
+    const oldSnapshots = oldJournalTxs.map(tx => ({ ...tx }))
+    const deletedSnapshots = []
+
+    for (const tx of oldJournalTxs) {
+      const { error: deleteError } = await deleteTxRecord(tx.id)
+      if (deleteError) {
+        if (deletedSnapshots.length > 0) {
+          const restoreError = await recreateTxSnapshots(deletedSnapshots)
+          if (restoreError) return restoreError
+        }
+        return deleteError
+      }
+      deletedSnapshots.push(tx)
+    }
+
+    const nextEntries = buildInvestmentJournalEntries({
+      investmentId: id,
+      subType,
+      amount,
+      action,
+      qty: qty || 0,
+      date,
+      wallet_id,
+      excludeId: id,
+    })
+
+    const createdTxIds = []
+    for (const entry of nextEntries) {
+      const { data: tx, error: txError } = await insertTxRecord(entry)
+      if (txError) {
+        for (const txId of createdTxIds.reverse()) {
+          await deleteTxRecord(txId)
+        }
+        if (oldSnapshots.length > 0) {
+          const restoreError = await recreateTxSnapshots(oldSnapshots)
+          if (restoreError) return restoreError
+        }
+        return txError
+      }
+      createdTxIds.push(tx.id)
+    }
+
     const { data, error } = await supabase.from('investasi')
       .update({ inv_type: invType, sub_type: subType, keterangan: desc, amount, action, unit, qty, tgl: date, wallet_id })
       .eq('id', id).eq('user_id', effectiveUserId).select().single()
-    if (!error) setInvData(prev => prev.map(t => t.id === id ? mapInv(data) : t))
-    return error
+
+    if (error) {
+      for (const txId of createdTxIds.reverse()) {
+        await deleteTxRecord(txId)
+      }
+      if (oldSnapshots.length > 0) {
+        const restoreError = await recreateTxSnapshots(oldSnapshots)
+        if (restoreError) return restoreError
+      }
+      return error
+    }
+
+    setInvData(prev => prev.map(t => t.id === id ? mapInv(data) : t))
+    return null
   }
+
   const deleteInv = async (id) => {
     if (!canWriteActiveAccount) return readonlyError
+    const originalInv = invData.find(t => t.id === id)
+    if (!originalInv) return new Error('Data investasi tidak ditemukan.')
+
+    const journalTxs = findInvestmentJournalTxs(originalInv)
+    const snapshots = journalTxs.map(tx => ({ ...tx }))
+    const deletedSnapshots = []
+
+    for (const tx of journalTxs) {
+      const { error: deleteError } = await deleteTxRecord(tx.id)
+      if (deleteError) {
+        if (deletedSnapshots.length > 0) {
+          const restoreError = await recreateTxSnapshots(deletedSnapshots)
+          if (restoreError) return restoreError
+        }
+        return deleteError
+      }
+      deletedSnapshots.push(tx)
+    }
+
     const { error } = await supabase.from('investasi').delete().eq('id', id).eq('user_id', effectiveUserId)
-    if (!error) setInvData(prev => prev.filter(t => t.id !== id))
+    if (error) {
+      if (snapshots.length > 0) {
+        const restoreError = await recreateTxSnapshots(snapshots)
+        if (restoreError) return restoreError
+      }
+      return error
+    }
+
+    setInvData(prev => prev.filter(t => t.id !== id))
     return error
   }
 
   const transferWallet = async ({ fromId, toId, amount, fee, descOut, descIn, date }) => {
-    const errOut = await addTx({ desc: descOut, amount, type: 'out', cat: 'Transfer', date, wallet_id: fromId });
-    if (errOut) return errOut;
-    const errIn = await addTx({ desc: descIn, amount, type: 'in', cat: 'Transfer', date, wallet_id: toId });
-    if (errIn) return errIn;
-    if (fee && fee > 0) {
-      const errFee = await addTx({ desc: 'Biaya Admin Transfer', amount: fee, type: 'out', cat: 'Lainnya', sub_cat: 'Biaya Admin', date, wallet_id: fromId });
-      return errFee;
+    const createdTxIds = []
+    const { data: outTx, error: errOut } = await insertTxRecord({ desc: descOut, amount, type: 'out', cat: 'Transfer', sub_cat: 'Transfer Keluar', date, wallet_id: fromId })
+    if (errOut) return errOut
+    createdTxIds.push(outTx.id)
+
+    const { data: inTx, error: errIn } = await insertTxRecord({ desc: descIn, amount, type: 'in', cat: 'Transfer', sub_cat: 'Transfer Masuk', date, wallet_id: toId })
+    if (errIn) {
+      await deleteTxRecord(outTx.id)
+      return errIn
     }
-    return null;
+    createdTxIds.push(inTx.id)
+
+    if (fee && fee > 0) {
+      const { error: errFee } = await insertTxRecord({ desc: 'Biaya Admin Transfer', amount: fee, type: 'out', cat: 'Lainnya', sub_cat: 'Biaya Admin', date, wallet_id: fromId })
+      if (errFee) {
+        for (const txId of createdTxIds.reverse()) {
+          await deleteTxRecord(txId)
+        }
+        return errFee
+      }
+    }
+    return null
   }
 
   const addBill = async ({ nama_tagihan, amount, jatuh_tempo, source_bill_id = null }) => {
-    if (!canWriteActiveAccount) return readonlyError
-    const payload = { user_id: effectiveUserId, nama_tagihan, amount, jatuh_tempo }
-    if (source_bill_id) payload.source_bill_id = source_bill_id
-
-    const { data, error } = await supabase.from('tagihan').insert(payload).select().single()
-    if (error && source_bill_id && isMissingSourceBillIdColumn(error)) {
-      const { data: fallbackData, error: fallbackError } = await supabase
-        .from('tagihan')
-        .insert(withoutField(payload, 'source_bill_id'))
-        .select()
-        .single()
-      if (!fallbackError) setBillData(prev => [...prev, fallbackData].sort((a,b) => new Date(a.jatuh_tempo) - new Date(b.jatuh_tempo)))
-      return fallbackError
-    }
-    if (!error) setBillData(prev => [...prev, data].sort((a,b) => new Date(a.jatuh_tempo) - new Date(b.jatuh_tempo)))
+    const { error } = await insertBillRecord({ nama_tagihan, amount, jatuh_tempo, source_bill_id })
     return error
   }
   
   const toggleBill = async (id, currentStatus, walletId = null) => {
     if (!canWriteActiveAccount) return readonlyError
-    const isLunasNow = !currentStatus;
-    const { error } = await supabase.from('tagihan').update({ is_lunas: isLunasNow }).eq('id', id).eq('user_id', effectiveUserId)
-    
-    if (!error) {
-      setBillData(prev => prev.map(b => b.id === id ? { ...b, is_lunas: isLunasNow } : b))
-      
-      if (isLunasNow) {
-        const bill = billData.find(b => b.id === id);
-        if (bill) {
-          const today = new Date().toISOString().split('T')[0];
-          
-          // 👇 MAGIC: Mencatat pengeluaran menggunakan Dompet dan Kategori yang Benar 👇
-          await addTx({ 
-            desc: `Bayar Tagihan: ${bill.nama_tagihan}`, 
-            amount: Number(bill.amount), 
-            type: 'out', 
-            cat: 'Tagihan & Utilitas', // Sesuaikan dengan kategori di utils.js
-            sub_cat: 'Lain-lain',
-            date: today, 
-            wallet_id: walletId, // Uang akan langsung terpotong dari dompet pilihan
-            bill_id: bill.id
-          });
-          
-          // Membuat duplikat untuk bulan depan
-          const dateObj = new Date(bill.jatuh_tempo);
-          dateObj.setMonth(dateObj.getMonth() + 1);
-          await addBill({ 
-            nama_tagihan: bill.nama_tagihan, 
-            amount: Number(bill.amount), 
-            jatuh_tempo: dateObj.toISOString().split('T')[0],
-            source_bill_id: bill.id
-          });
-        }
-      }
+    const isLunasNow = !currentStatus
+    const bill = billData.find(b => b.id === id)
+    if (!bill) return new Error('Tagihan tidak ditemukan.')
+
+    if (!isLunasNow) {
+      const { error } = await supabase.from('tagihan').update({ is_lunas: false }).eq('id', id).eq('user_id', effectiveUserId)
+      if (!error) setBillData(prev => prev.map(b => b.id === id ? { ...b, is_lunas: false } : b))
+      return error
     }
+
+    const today = new Date().toISOString().split('T')[0]
+    const { data: paymentTx, error: paymentError } = await insertTxRecord({
+      desc: `Bayar Tagihan: ${bill.nama_tagihan}`,
+      amount: Number(bill.amount),
+      type: 'out',
+      cat: 'Tagihan & Utilitas',
+      sub_cat: 'Lain-lain',
+      date: today,
+      wallet_id: walletId,
+      bill_id: bill.id,
+    })
+    if (paymentError) return paymentError
+
+    const dateObj = new Date(bill.jatuh_tempo)
+    dateObj.setMonth(dateObj.getMonth() + 1)
+    const { data: nextBill, error: nextBillError } = await insertBillRecord({
+      nama_tagihan: bill.nama_tagihan,
+      amount: Number(bill.amount),
+      jatuh_tempo: dateObj.toISOString().split('T')[0],
+      source_bill_id: bill.id
+    })
+    if (nextBillError) {
+      await deleteTxRecord(paymentTx.id)
+      return nextBillError
+    }
+
+    const { error } = await supabase.from('tagihan').update({ is_lunas: true }).eq('id', id).eq('user_id', effectiveUserId)
+    if (error) {
+      if (nextBill?.id) await deleteBillRecord(nextBill.id)
+      await deleteTxRecord(paymentTx.id)
+      return error
+    }
+
+    setBillData(prev => prev.map(b => b.id === id ? { ...b, is_lunas: true } : b))
+    return null
   }
   
   const deleteBill = async (id) => {
     if (!canWriteActiveAccount) return readonlyError
-    const { error } = await supabase.from('tagihan').delete().eq('id', id).eq('user_id', effectiveUserId)
-    if (!error) setBillData(prev => prev.filter(b => b.id !== id))
+    const error = await deleteBillRecord(id)
+    return error
   }
 
   const addTarget = async ({ name, amount, saved, monthlyBoost }) => {
@@ -531,9 +827,8 @@ export function DataProvider({ children }) {
 
   // 👇 LOGIKA TOTALS MENJADI SUPER BERSIH KARENA SEMUA ARUS KAS DITANGANI TABEL TRANSAKSI 👇
   const totals = useMemo(() => {
-    const isNonCash = (t) => t.cat === 'Transfer' || t.cat === 'Piutang'
-    const totalIn  = txData.filter(t => t.type === 'in'  && !isNonCash(t)).reduce((s, t) => s + t.amount, 0)
-    const totalOut = txData.filter(t => t.type === 'out' && !isNonCash(t)).reduce((s, t) => s + t.amount, 0)
+    const totalIn  = txData.filter(t => isCashflowIncomeTx(t)).reduce((s, t) => s + t.amount, 0)
+    const totalOut = txData.filter(t => isCashflowExpenseTx(t)).reduce((s, t) => s + t.amount, 0)
     
     const invBuy = invData.filter(t => t.action === 'beli').reduce((s, t) => s + t.amount, 0)
     const invSell = invData.filter(t => t.action === 'jual').reduce((s, t) => s + t.amount, 0)

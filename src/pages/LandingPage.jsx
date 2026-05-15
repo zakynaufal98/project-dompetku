@@ -89,26 +89,26 @@ function MiniBarChart({ color = '#4F46E5' }) {
 function DashboardPreview() {
   return (
     <div className="relative w-full select-none" aria-hidden="true" role="presentation">
-      <div className="absolute -inset-6 bg-gradient-to-br from-primary/15 via-income/8 to-gold/15 rounded-[60px] blur-3xl" />
+      <div className="absolute -inset-6 bg-gradient-to-br from-primary/20 via-white/10 to-primary/5 rounded-[60px] blur-3xl" />
 
       {/* Main card */}
       <div className="relative bg-surface border border-border rounded-[28px] shadow-2xl overflow-hidden">
         {/* Gradient header */}
-        <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 p-5 relative overflow-hidden">
+        <div className="bg-[#0e0f0c] p-5 relative overflow-hidden">
           <GrainOverlay id="grain-card" opacity={0.07} />
           <div className="flex justify-between items-start mb-5">
             <div>
-              <p className="text-indigo-300 text-xs font-medium mb-1">Total Saldo</p>
-              <p className="text-white text-[26px] font-black tracking-tight leading-none">Rp 24.580.000</p>
+              <p className="text-primary/70 text-xs font-medium mb-1">Total Saldo</p>
+              <p className="text-primary text-[26px] font-black tracking-tight leading-none">Rp 24.580.000</p>
             </div>
-            <div className="w-9 h-9 bg-white/15 rounded-xl flex items-center justify-center">
-              <Wallet size={16} className="text-white" />
+            <div className="w-9 h-9 bg-primary rounded-full flex items-center justify-center text-text">
+              <Wallet size={16} />
             </div>
           </div>
           <AreaSparkline />
           <div className="flex justify-between mt-1.5">
-            <span className="text-indigo-300 text-[11px]">Jan</span>
-            <span className="text-indigo-300 text-[11px]">Jun</span>
+            <span className="text-primary/70 text-[11px]">Jan</span>
+            <span className="text-primary/70 text-[11px]">Jun</span>
             <span className="text-white text-[11px] font-bold">↑ 18.4%</span>
           </div>
         </div>
@@ -116,9 +116,9 @@ function DashboardPreview() {
         {/* Stats row */}
         <div className="grid grid-cols-3 divide-x divide-border border-b border-border">
           {[
-            { label: 'Pemasukan', value: 'Rp 8.5jt', color: '#14B8A6' },
-            { label: 'Keluar', value: 'Rp 3.2jt', color: '#A855F7' },
-            { label: 'Investasi', value: 'Rp 2.1jt', color: '#F59E0B' },
+            { label: 'Pemasukan', value: 'Rp 8.5jt', color: '#2ead4b' },
+            { label: 'Keluar', value: 'Rp 3.2jt', color: '#d03238' },
+            { label: 'Investasi', value: 'Rp 2.1jt', color: '#38c8ff' },
           ].map(({ label, value, color }) => (
             <div key={label} className="p-3 text-center">
               <p className="text-xs font-bold" style={{ color }}>{value}</p>
@@ -192,15 +192,13 @@ export default function LandingPage() {
     <div className="min-h-screen bg-bg flex flex-col font-sans overflow-x-hidden text-text">
 
       {/* ── NAV ── */}
-      <nav aria-label="Navigasi utama" className="flex items-center justify-between px-6 py-3 md:px-14 bg-surface/80 backdrop-blur-xl sticky top-0 z-50 border-b border-border">
+      <nav aria-label="Navigasi utama" className="sticky top-0 z-50 flex items-center justify-between border-b border-border bg-bg/95 px-6 py-4 backdrop-blur-xl md:px-14">
         <a href="/" className="flex items-center gap-2.5 no-underline" aria-label="DompetKu Pro – Beranda">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg"
-            style={{ background: 'linear-gradient(135deg, #6366f1, #4338ca)' }}>
-            <Wallet size={15} className="text-white" />
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-text shadow-sm">
+            <Wallet size={17} />
           </div>
           <div className="hidden sm:flex items-baseline gap-0.5">
-            <span className="font-black text-base tracking-tight text-text">DompetKu</span>
-            <span className="font-black text-base text-primary"> Pro</span>
+            <span className="font-black text-lg tracking-tight text-text">DompetKu Pro</span>
           </div>
         </a>
 
@@ -210,7 +208,7 @@ export default function LandingPage() {
             { label: 'Cara Kerja', id: 'how-it-works' },
             { label: 'Tentang', id: 'cta-section' },
           ].map(({ label, id }) => (
-            <button key={label} onClick={() => scrollTo(id)} className="px-4 py-2 text-sm font-medium text-muted hover:text-text transition-colors rounded-lg cursor-pointer bg-transparent border-none">
+            <button key={label} onClick={() => scrollTo(id)} className="rounded-full border-none bg-transparent px-4 py-2 text-sm font-bold text-text-2 transition-colors hover:bg-primary-pale hover:text-text cursor-pointer">
               {label}
             </button>
           ))}
@@ -220,14 +218,14 @@ export default function LandingPage() {
           <button
             onClick={() => navigate('/login')}
             aria-label="Masuk ke akun DompetKu Pro"
-            className="min-h-[40px] px-4 py-2 text-sm font-bold text-muted hover:text-text transition-colors cursor-pointer rounded-lg bg-transparent border-none"
+            className="min-h-[40px] rounded-full border border-text bg-surface px-4 py-2 text-sm font-bold text-text transition-colors hover:bg-primary-pale cursor-pointer"
           >
             Masuk
           </button>
           <button
             onClick={() => navigate('/register')}
             aria-label="Daftar akun DompetKu Pro gratis"
-            className="min-h-[40px] bg-text text-bg px-5 py-2.5 rounded-full text-sm font-bold hover:opacity-90 transition-all cursor-pointer shadow-lg"
+            className="min-h-[40px] rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-text shadow-lg shadow-primary/20 transition-all hover:bg-primary-light cursor-pointer"
           >
             Mulai Gratis
           </button>
@@ -237,28 +235,24 @@ export default function LandingPage() {
       <main id="main-content" aria-label="Halaman utama DompetKu Pro">
 
         {/* ── HERO ── */}
-        <section aria-labelledby="hero-heading" className="relative px-6 md:px-14 pt-16 md:pt-24 pb-24 max-w-7xl mx-auto w-full">
+        <section aria-labelledby="hero-heading" className="relative mx-auto w-full max-w-7xl px-6 pb-24 pt-16 md:px-14 md:pt-24">
           <div className="absolute top-0 left-1/3 w-[500px] h-[500px] bg-primary/6 rounded-full blur-[120px] -z-10 pointer-events-none" aria-hidden="true" />
           <div className="absolute top-20 right-0 w-[400px] h-[400px] bg-income/6 rounded-full blur-[100px] -z-10 pointer-events-none" aria-hidden="true" />
           <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-gold/6 rounded-full blur-[80px] -z-10 pointer-events-none" aria-hidden="true" />
 
-          <div className="flex flex-col lg:flex-row items-center gap-16 lg:gap-12">
+          <div className="grid items-center gap-16 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12">
             {/* Left: text */}
             <div className="flex-1 max-w-2xl">
-              <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full mb-7 animate-fade-up border"
-                style={{ backgroundColor: 'rgba(20,184,166,0.08)', borderColor: 'rgba(20,184,166,0.2)' }}>
-                <span className="w-1.5 h-1.5 rounded-full bg-income animate-pulse" />
-                <span className="text-income text-xs font-bold tracking-wider">GRATIS SELAMANYA • TANPA KARTU KREDIT</span>
+              <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-text bg-surface px-3.5 py-2 animate-fade-up">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                <span className="text-xs font-bold tracking-wider text-text">GRATIS SELAMANYA • TANPA KARTU KREDIT</span>
               </div>
 
-              <h1 id="hero-heading" className="text-5xl sm:text-6xl md:text-[68px] font-black tracking-tight leading-[1.05] mb-7 animate-fade-up" style={{ animationDelay: '80ms' }}>
-                Kendalikan{' '}
-                Uangmu,{' '}
+              <h1 id="hero-heading" className="mb-7 text-5xl font-black leading-[0.98] tracking-tight animate-fade-up sm:text-6xl md:text-[72px]" style={{ animationDelay: '80ms' }}>
+                Kendalikan uangmu.
                 <br className="hidden sm:block" />
-                Wujudkan{' '}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-indigo-400 to-income">
-                  Impianmu.
-                </span>
+                Wujudkan targetmu.
+                <span className="mt-2 block text-primary">Dengan tenang.</span>
               </h1>
 
               <p className="text-xl text-muted font-medium leading-relaxed mb-9 max-w-lg animate-fade-up" style={{ animationDelay: '160ms' }}>

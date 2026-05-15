@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { Trash2, Loader2, ReceiptText, BriefcaseBusiness, PieChart as PieChartIcon, ArrowLeft, ChevronDown, Pencil, Check, X } from 'lucide-react'
-import { fmtShort, CAT_ICONS, INV_TYPES, CHART_COLORS } from '../lib/utils'
+import { fmt, fmtShort, CAT_ICONS, INV_TYPES, CHART_COLORS, getCashflowMainCategory, getExpenseDistributionCategory } from '../lib/utils'
 
 export const BankLogo = ({ name = '', size = 'md' }) => {
   if (!name) return null;
@@ -50,7 +50,7 @@ export const TxItem = ({ t, onDelete, onEdit, isInv, walletName, inputterName })
       ? INV_TYPES[t.invType].icon 
       : <BriefcaseBusiness size={18} strokeWidth={2.5} />;
   } else {
-    const mainCatIcon = t.cat ? t.cat : 'Lainnya';
+    const mainCatIcon = getCashflowMainCategory(t);
     IconElement = (CAT_ICONS && CAT_ICONS[mainCatIcon]) 
       ? CAT_ICONS[mainCatIcon] 
       : <ReceiptText size={18} strokeWidth={2.5} />;
@@ -60,11 +60,11 @@ export const TxItem = ({ t, onDelete, onEdit, isInv, walletName, inputterName })
   if (isInv) {
     catText = `${t.action === 'beli' ? 'Beli' : 'Jual'} ${t.invType || 'Aset'} ${t.subType ? `• ${t.subType}` : ''}`;
   } else {
-    const mainCat = t.cat || 'Lainnya';
+    const mainCat = getCashflowMainCategory(t);
     let subCat = '';
     if (t.sub_cat && t.sub_cat !== mainCat) {
       subCat = t.sub_cat;
-    } else if (!t.sub_cat && t.cat !== 'Transfer') { 
+    } else if (!t.sub_cat && mainCat !== 'Transfer') { 
       subCat = 'Lain-lain';
     }
     catText = subCat ? (
@@ -203,9 +203,9 @@ export const TxItem = ({ t, onDelete, onEdit, isInv, walletName, inputterName })
 
 export function Empty({ icon, text }) {
   return (
-    <div className="flex flex-col items-center justify-center text-muted2 py-6">
+    <div className="flex flex-col items-center justify-center rounded-[24px] bg-bg px-6 py-10 text-center text-muted">
       {icon}
-      <p className="text-sm font-medium mt-2">{text}</p>
+      <p className="mt-3 text-sm font-medium">{text}</p>
     </div>
   )
 }
@@ -216,7 +216,7 @@ export function Tabs({ value, onChange, options }) {
       {options.map(o => (
         <button key={o.value} onClick={() => onChange(o.value)}
           className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
-            value === o.value ? 'bg-expense-light text-expense border border-expense/20' : 'bg-surface text-muted2 border border-border2 hover:border-border'
+            value === o.value ? 'bg-primary text-text border border-primary' : 'bg-surface text-muted border border-border hover:bg-primary-pale hover:text-text'
           }`}>
           {o.label}
         </button>
@@ -228,7 +228,7 @@ export function Tabs({ value, onChange, options }) {
 export function Field({ label, children }) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-xs font-bold text-muted ml-1">{label}</label>
+      <label className="ml-1 block text-[11px] font-bold uppercase tracking-[0.16em] text-muted">{label}</label>
       {children}
     </div>
   )
@@ -236,20 +236,20 @@ export function Field({ label, children }) {
 
 export function PanelHeader({ title, badge, icon, sub }) {
   return (
-    <div className="flex items-center justify-between border-b border-border pb-3.5 mb-4">
+    <div className="mb-5 flex items-center justify-between border-b border-border pb-4">
       <div className="flex items-center gap-3">
         {icon && (
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-muted2 bg-bg border border-border">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-bg text-text border border-border">
             {icon}
           </div>
         )}
         <div>
-          {sub && <p className="text-[9px] font-bold text-muted uppercase tracking-[0.15em] mb-0.5">{sub}</p>}
-          <h3 className="font-black text-text text-base tracking-tight">{title}</h3>
+          {sub && <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-muted">{sub}</p>}
+          <h3 className="text-xl font-black tracking-tight text-text">{title}</h3>
         </div>
       </div>
       {badge && (
-        <span className="text-[10px] font-bold text-muted bg-bg border border-border px-2.5 py-1 rounded-lg uppercase tracking-wider">
+        <span className="rounded-full bg-primary-pale px-3 py-1 text-[11px] font-bold text-text">
           {badge}
         </span>
       )}
@@ -303,6 +303,47 @@ export function Insight({ icon, title, text }) {
   )
 }
 
+export function BreakdownPanel({ title = 'Cara angka dihitung', summary, note }) {
+  const rows = [
+    { key: 'realIncome', label: 'Pemasukan riil', value: summary?.realIncome || 0, className: 'text-income' },
+    { key: 'actualOut', label: 'Uang keluar aktual', value: -(summary?.actualOut || 0), className: 'text-gold' },
+    summary?.investmentLiquidation > 0
+      ? { key: 'investmentLiquidation', label: 'Pencairan investasi', value: summary.investmentLiquidation, className: 'text-invest' }
+      : null,
+    summary?.investmentProfit > 0
+      ? { key: 'investmentProfit', label: 'Profit investasi', value: summary.investmentProfit, className: 'text-income' }
+      : null,
+    summary?.excludedIn > 0
+      ? { key: 'excludedIn', label: 'Dana non-pendapatan yang meng-offset beban', value: summary.excludedIn, className: 'text-invest' }
+      : null,
+    summary?.internalTransferIn > 0 || summary?.internalTransferOut > 0
+      ? { key: 'internalTransfer', label: 'Transfer internal diabaikan', value: (summary?.internalTransferIn || 0) + (summary?.internalTransferOut || 0), className: 'text-muted' }
+      : null,
+    { key: 'expense', label: 'Pengeluaran bersih', value: -(summary?.expense || 0), className: 'text-expense' },
+    { key: 'net', label: 'Selisih bersih', value: summary?.net || 0, className: (summary?.net || 0) >= 0 ? 'text-income' : 'text-expense' },
+  ].filter(Boolean)
+
+  return (
+    <div className="rounded-[24px] border border-border bg-bg/70 p-4">
+      <div className="mb-3">
+        <p className="text-sm font-bold text-text">{title}</p>
+        {note && <p className="mt-1 text-xs font-medium leading-relaxed text-muted">{note}</p>}
+      </div>
+      <div className="space-y-2.5">
+        {rows.map((row) => (
+          <div key={row.key} className="flex items-start justify-between gap-3 rounded-2xl bg-surface px-3.5 py-3">
+            <span className="text-xs font-semibold leading-relaxed text-text-2">{row.label}</span>
+            <span className={`shrink-0 text-sm font-black tabular-nums ${row.className}`}>
+              {row.value > 0 ? '+' : ''}
+              {fmt(row.value)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ---------------------------------------------------------
 // ✨ KOMPONEN SUPER: INTERACTIVE DONUT DRILL-DOWN ✨
 // ---------------------------------------------------------
@@ -319,7 +360,13 @@ const DonutTooltip = ({ active, payload }) => {
   )
 }
 
-export function InteractiveDonut({ data }) {
+export function InteractiveDonut({
+  data,
+  categoryResolver = getExpenseDistributionCategory,
+  emptyText = 'Belum ada pengeluaran',
+  centerLabel = 'Total',
+  netAdjustment = 0,
+}) {
   const [activeCat, setActiveCat] = useState(null)
   
   // 👇 1. Buat Referensi (Ref) untuk membungkus area Donut
@@ -343,24 +390,29 @@ export function InteractiveDonut({ data }) {
 
   const { donutD, groupedOut, totalAll } = useMemo(() => {
     const m = {}
-    let tAll = 0;
-    
+    let tAll = 0
+
     data.forEach(t => {
-      const mainCat = t.cat || 'Lainnya'
+      const mainCat = categoryResolver(t)
       const subCat = t.sub_cat || 'Lain-lain'
 
       if (!m[mainCat]) m[mainCat] = { total: 0, subs: {} }
       m[mainCat].total += t.amount
       m[mainCat].subs[subCat] = (m[mainCat].subs[subCat] || 0) + t.amount
-      tAll += t.amount;
+      tAll += t.amount
     })
+
+    const effectiveTotal = Math.max(0, tAll - Math.max(0, netAdjustment))
+    const ratio = tAll > 0 ? effectiveTotal / tAll : 1
 
     const grouped = Object.entries(m)
       .sort((a,b) => b[1].total - a[1].total)
       .map(([main, d]) => ({
         main,
-        total: d.total,
-        subs: Object.entries(d.subs).sort((a,b) => b[1] - a[1])
+        total: d.total * ratio,
+        subs: Object.entries(d.subs)
+          .sort((a,b) => b[1] - a[1])
+          .map(([subName, subVal]) => [subName, subVal * ratio])
       }))
 
     const donut = grouped.map((g, i) => ({
@@ -369,14 +421,14 @@ export function InteractiveDonut({ data }) {
       fill: CHART_COLORS[i % CHART_COLORS.length]
     }))
 
-    return { donutD: donut, groupedOut: grouped, totalAll: tAll }
-  }, [data])
+    return { donutD: donut, groupedOut: grouped, totalAll: effectiveTotal }
+  }, [data, categoryResolver, netAdjustment])
 
   if (!donutD.length) {
     return (
       <div className="flex-1 flex flex-col justify-center items-center opacity-50 min-h-[250px]">
         <PieChartIcon size={48} className="text-muted2 mb-3" strokeWidth={1}/>
-        <p className="text-sm font-medium">Belum ada pengeluaran</p>
+        <p className="text-sm font-medium">{emptyText}</p>
       </div>
     )
   }
@@ -409,7 +461,7 @@ export function InteractiveDonut({ data }) {
         {/* Teks Tengah */}
         {!activeCat && (
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span className="text-[10px] text-muted2 font-bold uppercase tracking-widest text-center">Total</span>
+            <span className="text-[10px] text-muted2 font-bold uppercase tracking-widest text-center">{centerLabel}</span>
             <span className="tabular-nums font-bold text-xl text-text tracking-tight mt-0.5">{fmtShort(totalAll)}</span>
           </div>
         )}

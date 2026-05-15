@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { Download, FileSpreadsheet, FileText, ChevronDown, Loader2 } from 'lucide-react'
 import { useData } from '../context/DataContext'
+import { isCashflowIncomeTx, isCashflowExpenseTx, getCashflowMainCategory, getCashflowDisplayCategory, summarizeFinancialTx } from '../lib/utils'
 
 export default function ExportData({ isYearly = false }) {
   const { txData = [], invData = [], totals } = useData()
@@ -22,18 +23,32 @@ export default function ExportData({ isYearly = false }) {
     }
   }, [])
 
+  function formatRp(num = 0) {
+    return `Rp ${Number(num || 0).toLocaleString('id-ID')}`
+  }
+
+  function formatDate(date) {
+    return new Date(`${date}T00:00:00`).toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    })
+  }
+
   const reportData = useMemo(() => {
     const now = new Date()
     const fallbackYear = String(now.getFullYear())
     const fallbackYM = `${fallbackYear}-${String(now.getMonth() + 1).padStart(2, '0')}`
     const targetPeriod = exportDate || (isYearly ? fallbackYear : fallbackYM)
     const filterFn = (t) => t.date?.startsWith(targetPeriod)
+    const periodTx = txData.filter(filterFn)
+    const periodSummary = summarizeFinancialTx(periodTx)
 
-    const expenses = txData.filter(t => t.type === 'out' && (t.cat !== 'Transfer' || t.sub_cat === 'Bayar Pinjaman') && filterFn(t))
-    const incomes = txData.filter(t => t.type === 'in' && t.cat !== 'Transfer' && filterFn(t))
+    const expenses = txData.filter(t => isCashflowExpenseTx(t) && filterFn(t))
+    const incomes = txData.filter(t => isCashflowIncomeTx(t) && filterFn(t))
     const investments = invData.filter(t => t.action === 'beli' && filterFn(t))
-    const masuk = incomes.reduce((s, t) => s + t.amount, 0)
-    const keluar = expenses.reduce((s, t) => s + t.amount, 0)
+    const masuk = periodSummary.income
+    const keluar = periodSummary.expense
     const invest = investments.reduce((s, t) => s + t.amount, 0)
     const netto = masuk - keluar
     const savingsRate = masuk > 0 ? (((Math.max(netto, 0) + invest) / masuk) * 100).toFixed(1) : '0.0'
@@ -41,19 +56,19 @@ export default function ExportData({ isYearly = false }) {
     const totalLoss = txData.filter(t => t.sub_cat === 'Rugi Investasi' && filterFn(t)).reduce((s, t) => s + t.amount, 0)
 
     const catMap = {}
-    expenses.forEach(t => { catMap[t.cat || 'Lainnya'] = (catMap[t.cat || 'Lainnya'] || 0) + t.amount })
+    expenses.forEach(t => { const mainCat = getCashflowMainCategory(t); catMap[mainCat] = (catMap[mainCat] || 0) + t.amount })
     const allCategories = Object.entries(catMap).sort((a, b) => b[1] - a[1])
     const topCategories = allCategories.slice(0, 5)
 
     const inCatMap = {}
-    incomes.forEach(t => { inCatMap[t.cat || 'Lainnya'] = (inCatMap[t.cat || 'Lainnya'] || 0) + t.amount })
+    incomes.forEach(t => { const mainCat = getCashflowMainCategory(t); inCatMap[mainCat] = (inCatMap[mainCat] || 0) + t.amount })
     const incomeCategories = Object.entries(inCatMap).sort((a, b) => b[1] - a[1])
 
     const combinedTx = [
-      ...txData.filter(t => t.cat !== 'Transfer' && filterFn(t)).map(t => ({
+      ...txData.filter(t => (isCashflowIncomeTx(t) || isCashflowExpenseTx(t)) && filterFn(t)).map(t => ({
         ...t,
         displayType: t.type === 'in' ? 'Pemasukan' : 'Pengeluaran',
-        displayCat: t.sub_cat ? `${t.cat || 'Lainnya'} › ${t.sub_cat}` : (t.cat || 'Lainnya'),
+        displayCat: getCashflowDisplayCategory(t),
         color: t.type === 'in' ? '#059669' : '#DC2626',
         sign: t.type === 'in' ? '+' : '-',
       })),
@@ -86,16 +101,46 @@ export default function ExportData({ isYearly = false }) {
       insightColor = '#2563EB'; insightBg = [239, 246, 255]
     }
 
+    const periodBreakdown = isYearly
+      ? Array.from({ length: 12 }, (_, monthIndex) => {
+          const ym = `${targetPeriod}-${String(monthIndex + 1).padStart(2, '0')}`
+          const monthlySummary = summarizeFinancialTx(txData.filter(t => t.date?.startsWith(ym)))
+          const periodIn = monthlySummary.income
+          const periodOut = monthlySummary.expense
+          const periodInvest = invData.filter(t => t.date?.startsWith(ym) && t.action === 'beli').reduce((s, t) => s + t.amount, 0)
+          return {
+            label: new Date(`${ym}-01T00:00:00`).toLocaleDateString('id-ID', { month: 'short' }),
+            masuk: periodIn,
+            keluar: periodOut,
+            invest: periodInvest,
+            net: periodIn - periodOut,
+          }
+        }).filter(row => row.masuk > 0 || row.keluar > 0 || row.invest > 0)
+      : [...combinedTx]
+          .sort((a, b) => new Date(a.date) - new Date(b.date))
+          .reduce((rows, tx) => {
+            const lastRow = rows[rows.length - 1]
+            const currentLabel = formatDate(tx.date)
+            if (!lastRow || lastRow.label !== currentLabel) {
+              rows.push({ label: currentLabel, masuk: 0, keluar: 0, invest: 0, net: 0 })
+            }
+            const row = rows[rows.length - 1]
+            if (tx.displayType === 'Beli Aset') row.invest += Number(tx.amount || 0)
+            else if (tx.sign === '+') row.masuk += Number(tx.amount || 0)
+            else row.keluar += Number(tx.amount || 0)
+            row.net = row.masuk - row.keluar
+            return rows
+          }, [])
+
+    const periodBreakdownTitle = isYearly ? 'Ringkasan per Bulan' : 'Ringkasan per Hari'
+
     return {
       masuk, keluar, invest, netto, savingsRate, topCategories, allCategories, incomeCategories,
       totalGain, totalLoss, insightText: insight, insightColor, insightBg,
-      allTransaksi: combinedTx, periodeText,
+      allTransaksi: combinedTx, periodeText, periodBreakdown, periodBreakdownTitle,
       saldoSaatIni: totals?.saldo || 0, totalTx: combinedTx.length
     }
   }, [txData, invData, isYearly, totals, exportDate])
-
-  const formatRp = (num = 0) => `Rp ${Number(num || 0).toLocaleString('id-ID')}`
-  const formatDate = (date) => new Date(`${date}T00:00:00`).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
 
   const hexToRgb = (hex) => {
     const clean = String(hex || '#0F172A').replace('#', '')
@@ -124,8 +169,8 @@ export default function ExportData({ isYearly = false }) {
 
     const summaryRows = [
       { label: 'Saldo Saat Ini',   val: reportData.saldoSaatIni,  style: 'StyleIndigo' },
-      { label: 'Total Pemasukan',  val: reportData.masuk,          style: 'StyleGreen'  },
-      { label: 'Total Pengeluaran',val: -reportData.keluar,        style: 'StyleRed'    },
+      { label: 'Pemasukan Riil',   val: reportData.masuk,          style: 'StyleGreen'  },
+      { label: 'Pengeluaran Bersih',val: -reportData.keluar,       style: 'StyleRed'    },
       { label: 'Arus Kas Bersih',  val: reportData.netto,          style: reportData.netto >= 0 ? 'StyleGreen' : 'StyleRed' },
       { label: 'Total Investasi',  val: reportData.invest,         style: 'StyleBlue'   },
       { label: 'Profit Investasi', val: reportData.totalGain,      style: 'StyleGreen'  },
@@ -338,8 +383,38 @@ export default function ExportData({ isYearly = false }) {
   </WorksheetOptions>
  </Worksheet>
 
- <!-- ════════════ SHEET 2: TRANSAKSI ════════════ -->
- <Worksheet ss:Name="Transaksi">
+ <!-- ???????????????????????????????????? SHEET 2: PERIODE ???????????????????????????????????? -->
+<Worksheet ss:Name="Periode">
+ <Table>
+  <Column ss:Width="150"/><Column ss:Width="120"/><Column ss:Width="120"/><Column ss:Width="120"/><Column ss:Width="120"/>
+  ${row([cell(reportData.periodBreakdownTitle.toUpperCase(), 'SecDark', 'String', 4)], 22)}
+  ${row([cell(`Periode: ${reportData.periodeText}`, 'SubTitle', 'String', 4)], 18)}
+  ${row([cell('', 'Empty', 'String', 4)], 6)}
+  ${row([
+    cell(isYearly ? 'Bulan' : 'Tanggal', 'ColHeader'),
+    cell('Pemasukan', 'ColHeader'),
+    cell('Pengeluaran', 'ColHeader'),
+    cell('Investasi', 'ColHeader'),
+    cell('Netto', 'ColHeader'),
+  ])}
+  ${reportData.periodBreakdown.map((item, i) => {
+    const isAlt = i % 2 === 1
+    return row([
+      cell(item.label, isAlt ? 'TextAlt' : 'Text'),
+      numCell(item.masuk, isAlt ? 'CurrencyAlt' : 'Currency'),
+      numCell(-item.keluar, isAlt ? 'CurrencyAlt' : 'Currency'),
+      numCell(-item.invest, isAlt ? 'CurrencyAlt' : 'Currency'),
+      numCell(item.net, isAlt ? 'CurrencyAlt' : 'Currency'),
+    ])
+  }).join('')}
+ </Table>
+ <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+  <FreezePanes/><FrozenNoSplit/><SplitHorizontal>4</SplitHorizontal><TopRowBottomPane>4</TopRowBottomPane>
+ </WorksheetOptions>
+</Worksheet>
+
+<!-- ???????????????????????????????????? SHEET 3: TRANSAKSI ???????????????????????????????????? -->
+<Worksheet ss:Name="Transaksi">
   <Table>
    <Column ss:Width="100"/><Column ss:Width="120"/><Column ss:Width="200"/><Column ss:Width="260"/><Column ss:Width="130"/>
    ${row([cell('RIWAYAT TRANSAKSI', 'SecDark', 'String', 4)], 22)}
@@ -706,6 +781,29 @@ export default function ExportData({ isYearly = false }) {
       // 6. RIWAYAT TRANSAKSI
       // ────────────────────────────────────────────────
       checkPage(20)
+
+      if (reportData.periodBreakdown.length > 0) {
+        checkPage(18)
+        sectionHeader(reportData.periodBreakdownTitle.toUpperCase(), C.indigo, `${reportData.periodBreakdown.length} periode`)
+        colHeaders([
+          { label: isYearly ? 'Bulan' : 'Tanggal', x: M + 3 },
+          { label: 'Masuk', x: M + 72 },
+          { label: 'Keluar', x: M + 110 },
+          { label: 'Invest', x: M + 146 },
+          { label: 'Netto', x: W - M - 3, align: 'right' },
+        ])
+
+        reportData.periodBreakdown.forEach((item, i) => {
+          dataRow([
+            { text: item.label, x: M + 3, color: C.slate },
+            { text: formatRp(item.masuk), x: M + 72, color: C.green, bold: true },
+            { text: formatRp(item.keluar), x: M + 110, color: C.redL, bold: true },
+            { text: formatRp(item.invest), x: M + 146, color: C.blue, bold: true },
+            { text: formatRp(item.net), x: W - M - 3, color: item.net >= 0 ? C.green : C.redL, bold: true, align: 'right' },
+          ], i)
+        })
+        y += 4
+      }
       sectionHeader(`RIWAYAT TRANSAKSI`, C.indigoL, `${reportData.totalTx} data`)
       colHeaders([
         { label: 'Tanggal',    x: M + 3 },
@@ -808,7 +906,7 @@ export default function ExportData({ isYearly = false }) {
             </div>
             <div>
               <p className="text-sm font-bold text-text">Excel Analitik</p>
-              <p className="text-[10px] text-muted mt-0.5">3 sheet: Ringkasan, Transaksi, Kategori</p>
+              <p className="text-[10px] text-muted mt-0.5">4 sheet: Ringkasan, Periode, Transaksi, Kategori</p>
             </div>
           </button>
         </div>

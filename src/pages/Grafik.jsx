@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts'
 import { useData } from '../context/DataContext'
-import { fmt, fmtShort, fmtChartAxis, MONTHS, CHART_COLORS } from '../lib/utils'
+import { fmt, fmtShort, fmtChartAxis, MONTHS, CHART_COLORS, isCashflowExpenseTx, getCashflowMainCategory, summarizeFinancialTx, matchesQuickFilterPreset } from '../lib/utils'
 import { Empty, PanelHeader, ProgressBar, TxItem } from '../components/UI'
 import { LineChart, BarChartHorizontal, PieChart as PieChartIcon, X, BarChart2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -22,7 +22,7 @@ const CustomTooltip = ({ active, payload, label }) => {
           {p.name}: <span style={{ color: p.color }}>{fmtShort(p.value)}</span>
         </p>
       ))}
-      {payload.length === 1 && payload[0].name === 'Pengeluaran Murni' && hasLabel && label.includes(' ') && (
+      {payload.length === 1 && payload[0].name === 'Pengeluaran Bersih' && hasLabel && label.includes(' ') && (
         <p className="text-[10px] text-income font-medium mt-2 pt-2 border-t border-border">
           Klik batang untuk lihat detail ✨
         </p>
@@ -37,9 +37,10 @@ const CustomTooltip = ({ active, payload, label }) => {
 const DayDetailDrawer = ({ date, label, data, walletData, onClose, onDelete }) => {
   if (!date) return null;
   return createPortal(
-    <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm transition-opacity animate-fade-in flex items-center justify-center p-4 sm:p-6" onClick={onClose}>
+    <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm transition-opacity animate-fade-in flex items-end sm:items-center justify-center p-3 sm:p-6" onClick={onClose}>
       <div 
-        className="bg-surface shadow-2xl flex flex-col transition-all duration-300 ease-out animate-fade-up w-full max-w-md max-h-[85vh] rounded-[32px] overflow-hidden border border-border"
+        className="bg-surface shadow-2xl flex flex-col transition-all duration-300 ease-out animate-fade-up w-full max-w-md max-h-[calc(100dvh-1rem)] rounded-t-[28px] sm:rounded-[32px] overflow-hidden border border-border"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         onClick={(e) => e.stopPropagation()} 
       >
         <div className="flex items-center justify-between px-6 py-5 border-b border-border bg-surface z-10 shrink-0">
@@ -85,10 +86,12 @@ const DayDetailDrawer = ({ date, label, data, walletData, onClose, onDelete }) =
 // ==========================================
 // 3. KOMPONEN UTAMA (HALAMAN GRAFIK)
 // ==========================================
-export default function Grafik() {
+export default function Grafik({ quickFilter = 'semua' }) {
   const { txData, invData, walletData, deleteTx } = useData()
   const now = new Date()
   const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  const filteredTxData = useMemo(() => txData.filter((t) => matchesQuickFilterPreset(t, quickFilter, now)), [txData, quickFilter, now])
+  const filteredInvData = useMemo(() => invData.filter((t) => matchesQuickFilterPreset(t, quickFilter, now)), [invData, quickFilter, now])
 
   const [selectedDate, setSelectedDate] = useState(null)
   const [selectedLabel, setSelectedLabel] = useState('')
@@ -98,57 +101,51 @@ export default function Grafik() {
   // 1. Saldo Pertumbuhan (Membaca semua arus kas)
   const saldoLine = useMemo(() => {
     let cum = 0
-    return [...txData].sort((a,b) => new Date(a.date) - new Date(b.date)).map(t => {
+    return [...filteredTxData].sort((a,b) => new Date(a.date) - new Date(b.date)).map(t => {
       cum += t.type === 'in' ? t.amount : -t.amount
       return { date: t.date?.slice(5), saldo: cum }
     })
-  }, [txData])
+  }, [filteredTxData])
 
   // 2. Kategori Pengeluaran (MURNI: Abaikan Transfer)
   const catData = useMemo(() => {
     const m = {}
-    txData
-      .filter(t => t.type === 'out' && t.date?.startsWith(currentMonthPrefix) && t.cat !== 'Transfer')
-      .forEach(t => { m[t.cat] = (m[t.cat] || 0) + t.amount })
+    filteredTxData
+      .filter(t => t.date?.startsWith(currentMonthPrefix) && isCashflowExpenseTx(t))
+      .forEach(t => {
+        const mainCat = getCashflowMainCategory(t)
+        m[mainCat] = (m[mainCat] || 0) + t.amount
+      })
       
     return Object.entries(m).sort((a,b) => b[1] - a[1]).slice(0,8)
       .map(([name, value]) => ({ name: name.length > 14 ? name.slice(0,13) + '…' : name, value }))
-  }, [txData, currentMonthPrefix])
+  }, [filteredTxData, currentMonthPrefix])
 
-  // 3. Rasio Bulan Ini (MURNI)
+  // 3. Rasio Bulan Ini
   const ratioData = useMemo(() => {
-    let inM = 0, outM = 0, invM = 0;
+    const summary = summarizeFinancialTx(filteredTxData.filter((t) => t.date?.startsWith(currentMonthPrefix)))
+    let invM = 0;
     
-    txData.forEach(t => {
-      if (t.date?.startsWith(currentMonthPrefix)) {
-        if (t.type === 'in' && t.cat !== 'Transfer') inM += t.amount;
-        if (t.type === 'out' && t.cat !== 'Transfer') outM += t.amount;
-      }
-    });
-    
-    invData.forEach(t => {
+    filteredInvData.forEach(t => {
       if (t.date?.startsWith(currentMonthPrefix) && t.action === 'beli') invM += t.amount;
     });
 
     return [
-      { name: 'Pemasukan Murni',  value: inM,  fill: '#4F46E5' },
-      { name: 'Pengeluaran Murni', value: outM, fill: '#FF8A00' },
+      { name: 'Pemasukan Riil',  value: summary.realIncome,  fill: '#4F46E5' },
+      { name: 'Pengeluaran Bersih', value: summary.expense, fill: '#FF8A00' },
       { name: 'Investasi',   value: invM, fill: '#10B981' },
     ].filter(d => d.value > 0);
-  }, [txData, invData, currentMonthPrefix]);
+  }, [filteredTxData, filteredInvData, currentMonthPrefix]);
 
-  // 4. Arus Kas 6 Bulan (MURNI)
+  // 4. Arus Kas 6 Bulan
   const cashflowData = useMemo(() => {
     return Array.from({length: 6}, (_, i) => {
       const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
       const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      
-      const pemasukan = txData.filter(t => t.type === 'in' && t.cat !== 'Transfer' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0);
-      const pengeluaran = txData.filter(t => t.type === 'out' && t.cat !== 'Transfer' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0);
-      
-      return { name: MONTHS[d.getMonth()], Pemasukan: pemasukan, Pengeluaran: pengeluaran }
+      const summary = summarizeFinancialTx(filteredTxData.filter((t) => t.date?.startsWith(ym)))
+      return { name: MONTHS[d.getMonth()], Pemasukan: summary.realIncome, Pengeluaran: summary.expense }
     })
-  }, [txData, now]);
+  }, [filteredTxData, now]);
 
   // 5. Investasi 6 Bulan (Tetap membaca invData)
   const invLine = useMemo(() => Array.from({length: 6}, (_, i) => {
@@ -156,10 +153,10 @@ export default function Grafik() {
     const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
     return {
       name: MONTHS[d.getMonth()],
-      Beli: invData.filter(t => t.action === 'beli' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0),
-      Jual: invData.filter(t => t.action === 'jual' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0),
+      Beli: filteredInvData.filter(t => t.action === 'beli' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0),
+      Jual: filteredInvData.filter(t => t.action === 'jual' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0),
     }
-  }), [invData, now])
+  }), [filteredInvData, now])
 
   // 6. Pengeluaran Harian (MURNI)
   const dailyExpense = useMemo(() => {
@@ -171,21 +168,21 @@ export default function Grafik() {
       const dateStr = `${prefix}${String(i).padStart(2, '0')}`;
       
       // HANYA hitung pengeluaran gaya hidup, abaikan transfer investasi
-      const val = txData.filter(t => t.type === 'out' && (t.cat !== 'Transfer' || t.sub_cat === 'Bayar Pinjaman') && t.date === dateStr).reduce((s, t) => s + t.amount, 0);
+      const val = filteredTxData.filter(t => t.date === dateStr && isCashflowExpenseTx(t)).reduce((s, t) => s + t.amount, 0);
 
-      data.push({ tanggal: String(i), "Pengeluaran Murni": val, labelInfo: `${i} ${MONTHS[m]}`, fullDate: dateStr });
+      data.push({ tanggal: String(i), "Pengeluaran Bersih": val, labelInfo: `${i} ${MONTHS[m]}`, fullDate: dateStr });
       if (val > maxDay.value) maxDay = { date: `${i} ${MONTHS[m]}`, value: val };
     }
     return { data, maxDay, currentMonthLabel: `${MONTHS[m]} ${y}` };
-  }, [txData, now])
+  }, [filteredTxData, now])
 
   // 7. Data Detail Harian (Menampilkan HANYA pengeluaran murni yang sesuai dengan chart)
   const selectedDayData = useMemo(() => {
     if (!selectedDate) return [];
-    return txData
-      .filter(t => t.date === selectedDate && t.type === 'out' && (t.cat !== 'Transfer' || t.sub_cat === 'Bayar Pinjaman'))
+    return filteredTxData
+      .filter(t => t.date === selectedDate && isCashflowExpenseTx(t))
       .sort((a,b) => b.ts - a.ts);
-  }, [selectedDate, txData])
+  }, [selectedDate, filteredTxData])
 
 
   // ─── RENDER UI (SUPER BERSIH KARENA COMPONENT COMPOSITION) ───────────
@@ -197,7 +194,7 @@ export default function Grafik() {
           <p className="text-muted text-sm font-medium mt-1">Visualisasi mendalam arus kas murnimu</p>
         </div>
 
-        {txData.length === 0 && (
+        {filteredTxData.length === 0 && (
           <div className="bg-surface border border-border rounded-[24px] p-12 text-center shadow-sm">
             <div className="w-16 h-16 rounded-2xl bg-bg text-muted2 flex items-center justify-center mx-auto mb-4">
               <BarChart2 size={28} strokeWidth={1.5} />
@@ -213,7 +210,7 @@ export default function Grafik() {
         {/* 1. GRAFIK PENGELUARAN HARIAN */}
         <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm">
           <div className="flex justify-between items-start mb-6">
-            <PanelHeader title={`Pengeluaran Harian Murni (${dailyExpense.currentMonthLabel})`} />
+            <PanelHeader title={`Pengeluaran Harian (${dailyExpense.currentMonthLabel})`} />
             {dailyExpense.maxDay.value > 0 && (
               <div className="text-right bg-expense-light px-4 py-2 rounded-xl border border-expense/20">
                 <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest block mb-0.5">Hari Terboros</span>
@@ -229,16 +226,16 @@ export default function Grafik() {
                 <YAxis tickFormatter={fmtChartAxis} tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
                 <Tooltip cursor={{fill: 'rgb(var(--color-bg) / 0.8)'}} content={<CustomTooltip />} />
                 <Bar 
-                  dataKey="Pengeluaran Murni" radius={[4, 4, 0, 0]} maxBarSize={30}
+                  dataKey="Pengeluaran Bersih" radius={[4, 4, 0, 0]} maxBarSize={30}
                   className="cursor-pointer hover:opacity-80 transition-opacity"
                   onClick={(data) => {
-                    if(data["Pengeluaran Murni"] > 0) {
+                    if(data["Pengeluaran Bersih"] > 0) {
                       setSelectedDate(data.fullDate); setSelectedLabel(data.labelInfo);
                     }
                   }}
                 >
                   {dailyExpense.data.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry["Pengeluaran Murni"] === dailyExpense.maxDay.value && entry["Pengeluaran Murni"] > 0 ? '#E11D48' : '#FF8A00'} />
+                    <Cell key={`cell-${index}`} fill={entry["Pengeluaran Bersih"] === dailyExpense.maxDay.value && entry["Pengeluaran Bersih"] > 0 ? '#E11D48' : '#FF8A00'} />
                   ))}
                 </Bar>
               </BarChart>
@@ -280,7 +277,7 @@ export default function Grafik() {
                     <XAxis type="number" tickFormatter={fmtChartAxis} tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
                     <YAxis type="category" dataKey="name" tick={{fontSize:11, fill:'#64748b', fontWeight: 600}} width={110} axisLine={false} tickLine={false} />
                     <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgb(var(--color-bg) / 0.8)'}} />
-                    <Bar dataKey="value" name="Pengeluaran Murni" radius={[0,6,6,0]} maxBarSize={16}>
+                    <Bar dataKey="value" name="Pengeluaran Operasional" radius={[0,6,6,0]} maxBarSize={16}>
                       {catData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                     </Bar>
                   </BarChart>
@@ -293,7 +290,7 @@ export default function Grafik() {
         {/* 3. ARUS KAS & RASIO */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm order-2 lg:order-1">
-            <PanelHeader title="Arus Kas Murni (6 Bulan Terakhir)" />
+            <PanelHeader title="Arus Kas Bersih (6 Bulan Terakhir)" />
             <div className="mt-4 h-[250px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={cashflowData} barGap={4} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>

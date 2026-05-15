@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { useData } from '../context/DataContext'
-import { fmt, fmtShort, fmtChartAxis, MONTHS, MONTHS_FULL, CHART_COLORS, CAT_ICONS } from '../lib/utils'
+import { fmt, fmtShort, fmtChartAxis, MONTHS, MONTHS_FULL, CHART_COLORS, CAT_ICONS, isCashflowExpenseTx, isInternalTransferTx, getExpenseDistributionCategory, getCashflowDisplayCategory, summarizeFinancialTx, matchesQuickFilterPreset, isDateQuickFilterPreset } from '../lib/utils'
 import { Empty, PanelHeader, InteractiveDonut, ProgressBar } from '../components/UI'
 import { CalendarDays, ClipboardList, TrendingUp, TrendingDown, Crown, AlertTriangle, Zap, Award } from 'lucide-react'
 
@@ -20,7 +20,7 @@ const CustomTooltip = ({ active, payload, label }) => {
   )
 }
 
-export default function Tahunan() {
+export default function Tahunan({ quickFilter = 'semua' }) {
   const { txData, invData } = useData()
   const now = new Date()
   
@@ -36,11 +36,18 @@ export default function Tahunan() {
     window.dispatchEvent(new CustomEvent('updateExportDate', { detail: year }))
   }, [year])
 
-  const txT  = txData.filter(t => t.date?.startsWith(year))
-  const invT = invData.filter(t => t.date?.startsWith(year))
+  const txT = txData.filter((t) => {
+    const matchPeriod = isDateQuickFilterPreset(quickFilter) ? true : t.date?.startsWith(year)
+    return matchPeriod && matchesQuickFilterPreset(t, quickFilter, now)
+  })
+  const invT = invData.filter((t) => {
+    const matchPeriod = isDateQuickFilterPreset(quickFilter) ? true : t.date?.startsWith(year)
+    return matchPeriod && matchesQuickFilterPreset(t, quickFilter, now)
+  })
   
-  const txIn   = txT.filter(t => t.type === 'in' && t.cat !== 'Transfer').reduce((s,t) => s + t.amount, 0)
-  const txOut  = txT.filter(t => t.type === 'out' && (t.cat !== 'Transfer' || t.sub_cat === 'Bayar Pinjaman')).reduce((s,t) => s + t.amount, 0)
+  const yearSummary = useMemo(() => summarizeFinancialTx(txT), [txT])
+  const txIn = yearSummary.realIncome
+  const txOut = yearSummary.expense
   
   const invBuy  = invT.filter(t => t.action === 'beli').reduce((s,t) => s + t.amount, 0)
   const invSell = invT.filter(t => t.action === 'jual').reduce((s,t) => s + t.amount, 0)
@@ -50,15 +57,23 @@ export default function Tahunan() {
   // Data per bulan
   const monthData = useMemo(() => MONTHS.map((name, i) => {
     const ym = `${year}-${String(i + 1).padStart(2, '0')}`
-    const masuk  = txData.filter(t => t.type === 'in' && t.cat !== 'Transfer' && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0)
-    const keluar = txData.filter(t => t.type === 'out' && (t.cat !== 'Transfer' || t.sub_cat === 'Bayar Pinjaman') && t.date?.startsWith(ym)).reduce((s,t) => s + t.amount, 0)
+    const summary = summarizeFinancialTx(txData.filter((t) => {
+      const matchPeriod = isDateQuickFilterPreset(quickFilter) ? true : t.date?.startsWith(ym)
+      return matchPeriod && matchesQuickFilterPreset(t, quickFilter, now)
+    }))
+    const masuk = summary.realIncome
+    const keluar = summary.expense
     return { name, fullName: MONTHS_FULL[i], masuk, keluar, net: masuk - keluar, index: i }
-  }), [txData, year])
+  }), [txData, year, quickFilter, now])
 
   // YoY Comparison
   const lastYear = String(Number(year) - 1)
-  const lastTxIn = txData.filter(t => t.type === 'in' && t.cat !== 'Transfer' && t.date?.startsWith(lastYear)).reduce((s,t) => s + t.amount, 0)
-  const lastTxOut = txData.filter(t => t.type === 'out' && (t.cat !== 'Transfer' || t.sub_cat === 'Bayar Pinjaman') && t.date?.startsWith(lastYear)).reduce((s,t) => s + t.amount, 0)
+  const lastYearSummary = useMemo(
+    () => summarizeFinancialTx(txData.filter((t) => t.date?.startsWith(lastYear) && matchesQuickFilterPreset(t, quickFilter, now))),
+    [txData, lastYear, quickFilter, now]
+  )
+  const lastTxIn = lastYearSummary.realIncome
+  const lastTxOut = lastYearSummary.expense
   const yoyInChange = lastTxIn > 0 ? ((txIn - lastTxIn) / lastTxIn * 100).toFixed(1) : null
   const yoyOutChange = lastTxOut > 0 ? ((txOut - lastTxOut) / lastTxOut * 100).toFixed(1) : null
 
@@ -79,7 +94,7 @@ export default function Tahunan() {
   // Top 10 transaksi terbesar
   const topTransactions = useMemo(() => {
     return txT
-      .filter(t => t.type === 'out' && (t.cat !== 'Transfer' || t.sub_cat === 'Bayar Pinjaman'))
+      .filter(isCashflowExpenseTx)
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 10)
   }, [txT])
@@ -89,13 +104,16 @@ export default function Tahunan() {
 
   // Donut data
   const txYearOut = useMemo(() => {
-    return txT.filter(t => t.type === 'out' && (t.cat !== 'Transfer' || t.sub_cat === 'Bayar Pinjaman'));
+    return txT.filter((t) => t.type === 'out' && !isInternalTransferTx(t));
   }, [txT]);
 
   // Category breakdown with progress
   const catBreakdown = useMemo(() => {
     const m = {}
-    txYearOut.forEach(t => { m[t.cat || 'Lainnya'] = (m[t.cat || 'Lainnya'] || 0) + t.amount })
+    txYearOut.forEach(t => {
+      const mainCat = getExpenseDistributionCategory(t)
+      m[mainCat] = (m[mainCat] || 0) + t.amount
+    })
     return Object.entries(m).sort((a, b) => b[1] - a[1])
   }, [txYearOut])
   
@@ -122,7 +140,7 @@ export default function Tahunan() {
           <p className={`tabular-nums font-bold text-lg sm:text-xl tracking-tight truncate ${nettoTahunan >= 0 ? 'text-text' : 'text-expense'}`}>{fmt(nettoTahunan)}</p>
         </div>
         <div className="bg-surface border border-border rounded-2xl p-4 shadow-sm">
-          <p className="text-muted text-[10px] font-bold uppercase tracking-wider mb-1">Pemasukan</p>
+          <p className="text-muted text-[10px] font-bold uppercase tracking-wider mb-1">Pemasukan Riil</p>
           <p className="tabular-nums font-bold text-base sm:text-lg text-income tracking-tight truncate">{fmtShort(txIn)}</p>
           {yoyInChange !== null && (
             <div className="flex items-center gap-1 mt-1">
@@ -132,7 +150,7 @@ export default function Tahunan() {
           )}
         </div>
         <div className="bg-surface border border-border rounded-2xl p-4 shadow-sm">
-          <p className="text-muted text-[10px] font-bold uppercase tracking-wider mb-1">Pengeluaran</p>
+          <p className="text-muted text-[10px] font-bold uppercase tracking-wider mb-1">Pengeluaran Bersih</p>
           <p className="tabular-nums font-bold text-base sm:text-lg text-gold tracking-tight truncate">{fmtShort(txOut)}</p>
           {yoyOutChange !== null && (
             <div className="flex items-center gap-1 mt-1">
@@ -142,8 +160,12 @@ export default function Tahunan() {
           )}
         </div>
         <div className="bg-surface border border-border rounded-2xl p-4 shadow-sm">
-          <p className="text-muted text-[10px] font-bold uppercase tracking-wider mb-1">Investasi</p>
-          <p className="tabular-nums font-bold text-base sm:text-lg text-invest tracking-tight truncate">{fmtShort(Math.max(0, invNet))}</p>
+          <p className="text-muted text-[10px] font-bold uppercase tracking-wider mb-1">Pencairan Investasi</p>
+          <p className="tabular-nums font-bold text-base sm:text-lg text-invest tracking-tight truncate">{fmtShort(yearSummary.investmentLiquidation)}</p>
+        </div>
+        <div className="bg-surface border border-border rounded-2xl p-4 shadow-sm">
+          <p className="text-muted text-[10px] font-bold uppercase tracking-wider mb-1">Profit Investasi</p>
+          <p className="tabular-nums font-bold text-base sm:text-lg text-income tracking-tight truncate">{fmtShort(yearSummary.investmentProfit)}</p>
         </div>
         <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-4 shadow-sm text-white">
           <p className="text-white/70 text-[10px] font-bold uppercase tracking-wider mb-1">Savings Rate</p>
@@ -198,8 +220,8 @@ export default function Tahunan() {
               <XAxis dataKey="name" tick={{fontSize:12, fill:'#94a3b8'}} axisLine={false} tickLine={false} dy={10} />
               <YAxis width={45} tickFormatter={fmtChartAxis} tick={{fontSize:12, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgb(var(--color-bg) / 0.8)'}} />
-              <Bar dataKey="masuk" name="Pemasukan Murni" fill="#4F46E5" radius={[6,6,0,0]} maxBarSize={24} />
-              <Bar dataKey="keluar" name="Pengeluaran Murni" fill="#FF8A00" radius={[6,6,0,0]} maxBarSize={24} />
+              <Bar dataKey="masuk" name="Pemasukan Riil" fill="#4F46E5" radius={[6,6,0,0]} maxBarSize={24} />
+              <Bar dataKey="keluar" name="Pengeluaran Bersih" fill="#FF8A00" radius={[6,6,0,0]} maxBarSize={24} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -208,8 +230,11 @@ export default function Tahunan() {
       {/* Donut + Tabel – stacked on mobile */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <div className="bg-surface border border-border rounded-2xl p-4 sm:p-6 shadow-sm lg:col-span-2 flex flex-col">
-          <PanelHeader title="Distribusi Pengeluaran" />
-          <InteractiveDonut data={txYearOut} />
+          <PanelHeader title="Distribusi Pengeluaran Bersih" sub="Selain transfer internal" />
+          <p className="mb-2 text-xs font-medium leading-relaxed text-muted">
+            Grafik ini disesuaikan ke pengeluaran bersih tahunan. Jika ada pinjaman masuk atau arus masuk non-pendapatan lain, total kategori akan ikut ditekan secara proporsional.
+          </p>
+          <InteractiveDonut data={txYearOut} centerLabel="Peng. Bersih" netAdjustment={yearSummary.excludedIn} />
         </div>
         <div className="bg-surface border border-border rounded-2xl p-4 sm:p-6 shadow-sm lg:col-span-3 overflow-x-auto">
           <PanelHeader title="Rekapitulasi Arus Kas" />
@@ -264,7 +289,7 @@ export default function Tahunan() {
                     <span className="text-[9px] font-bold text-muted bg-border px-1.5 py-0.5 rounded uppercase tracking-wider">
                       {new Date(t.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
                     </span>
-                    <span className="text-[11px] font-semibold text-muted2">{t.cat}{t.sub_cat ? ` ▶ ${t.sub_cat}` : ''}</span>
+                    <span className="text-[11px] font-semibold text-muted2">{getCashflowDisplayCategory(t)}</span>
                   </div>
                 </div>
                 <span className="font-black text-sm tabular-nums text-expense flex-shrink-0">-{fmtShort(t.amount)}</span>
@@ -280,7 +305,7 @@ export default function Tahunan() {
           <PanelHeader title="Breakdown Pengeluaran per Kategori" />
           <div className="space-y-4 mt-4 max-h-[350px] overflow-y-auto pr-1 custom-scrollbar">
             {catBreakdown.map(([cat, val], i) => {
-              const pct = txOut > 0 ? (val / txOut * 100).toFixed(1) : 0
+              const pct = txYearOut.length > 0 ? (val / txYearOut.reduce((sum, tx) => sum + tx.amount, 0) * 100).toFixed(1) : 0
               return (
                 <div key={cat}>
                   <div className="flex justify-between items-center mb-1.5 gap-2">

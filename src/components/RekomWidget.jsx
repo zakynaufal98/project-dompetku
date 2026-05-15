@@ -1,90 +1,134 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useData } from '../context/DataContext'
-import { fmtShort } from '../lib/utils'
+import { fmtShort, getCashflowMainCategory, isCashflowExpenseTx, summarizeFinancialTx } from '../lib/utils'
 import {
-  Lightbulb, TrendingDown, TrendingUp, BookOpen,
-  AlertTriangle, PieChart, CheckCircle2, ArrowRight, Sparkles
+  Lightbulb,
+  TrendingDown,
+  TrendingUp,
+  BookOpen,
+  AlertTriangle,
+  PieChart,
+  CheckCircle2,
+  ArrowRight,
+  Sparkles,
+  Landmark,
+  Wallet,
 } from 'lucide-react'
 
-function buildRekom(txData, billData, budgetData) {
-  const now    = new Date()
+function buildRecommendations(txData, billData, budgetData) {
+  const now = new Date()
   const currYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  const last3  = Array.from({ length: 3 }, (_, i) => {
+  const last3 = Array.from({ length: 3 }, (_, i) => {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
   })
 
-  const monthIn  = txData.filter(t => t.type === 'in'  && t.cat !== 'Transfer' && t.date?.startsWith(currYM)).reduce((s, t) => s + t.amount, 0)
-  const monthOut = txData.filter(t => t.type === 'out' && t.cat !== 'Transfer' && t.date?.startsWith(currYM)).reduce((s, t) => s + t.amount, 0)
-  const savingsRate = monthIn > 0 ? Math.max(0, (monthIn - monthOut) / monthIn) : 0
-
-  const bulanAktif = last3.filter(ym => txData.some(t => t.date?.startsWith(ym))).length
+  const monthTx = txData.filter((t) => t.date?.startsWith(currYM))
+  const summary = summarizeFinancialTx(monthTx)
+  const roomAmount = summary.realIncome - summary.expense
+  const roomRate = summary.realIncome > 0 ? roomAmount / summary.realIncome : 0
+  const bulanAktif = last3.filter((ym) => txData.some((t) => t.date?.startsWith(ym))).length
 
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const overdueBills = billData.filter(b => {
+  const overdueBills = billData.filter((b) => {
     if (b.is_lunas) return false
     const due = new Date(b.jatuh_tempo)
     due.setHours(0, 0, 0, 0)
     return due < today
   })
 
-  const catSpend = {}
-  txData.filter(t => t.type === 'out' && t.cat !== 'Transfer' && t.date?.startsWith(currYM))
-    .forEach(t => { catSpend[t.cat] = (catSpend[t.cat] || 0) + t.amount })
-  const topCat = Object.entries(catSpend).sort((a, b) => b[1] - a[1])[0]
+  const categorySpend = {}
+  monthTx
+    .filter((t) => isCashflowExpenseTx(t))
+    .forEach((t) => {
+      const mainCat = getCashflowMainCategory(t)
+      categorySpend[mainCat] = (categorySpend[mainCat] || 0) + t.amount
+    })
+  const topCat = Object.entries(categorySpend).sort((a, b) => b[1] - a[1])[0]
 
-  const overBudgets = budgetData.filter(b => {
-    const spent = txData.filter(t => t.type === 'out' && t.cat === b.category && t.date?.startsWith(currYM)).reduce((s, t) => s + t.amount, 0)
+  const overBudgets = budgetData.filter((b) => {
+    const spent = monthTx
+      .filter((t) => isCashflowExpenseTx(t) && getCashflowMainCategory(t) === b.category)
+      .reduce((sum, t) => sum + t.amount, 0)
     return spent > b.amount
   })
 
   const items = []
 
   if (overdueBills.length > 0) {
-    const totalOverdue = overdueBills.reduce((s, b) => s + Number(b.amount), 0)
+    const totalOverdue = overdueBills.reduce((sum, b) => sum + Number(b.amount), 0)
     items.push({
       level: 'danger',
       icon: <AlertTriangle size={18} />,
       title: `${overdueBills.length} tagihan melewati jatuh tempo`,
-      desc: `Total ${fmtShort(totalOverdue)} belum dibayar. Segera selesaikan agar skor tidak turun.`,
-      action: 'Bayar di Dashboard',
+      desc: `Total ${fmtShort(totalOverdue)} masih tertunda. Prioritaskan ini dulu supaya arus kas bulan depan tidak ikut sesak.`,
+      action: 'Buka dashboard',
       link: '/',
+    })
+  }
+
+  if (summary.realIncome === 0 && summary.expense > 0) {
+    items.push({
+      level: 'warning',
+      icon: <Wallet size={18} />,
+      title: 'Belum ada pemasukan riil bulan ini',
+      desc: `Sudah ada pengeluaran bersih ${fmtShort(summary.expense)}. Pastikan pemasukan utama atau pemasukan lain tercatat agar insight tidak menyesatkan.`,
+      action: 'Cek transaksi',
+      link: '/transaksi',
+    })
+  } else if (summary.expense > summary.realIncome) {
+    items.push({
+      level: 'danger',
+      icon: <TrendingDown size={18} />,
+      title: 'Pengeluaran bersih melebihi pemasukan riil',
+      desc: `Defisit ${fmtShort(summary.expense - summary.realIncome)} bulan ini. Fokus dulu ke kategori terbesar sebelum menambah komitmen baru.`,
+      action: 'Lihat laporan',
+      link: '/laporan/bulanan',
+    })
+  } else if (summary.realIncome > 0 && roomRate < 0.1) {
+    items.push({
+      level: 'warning',
+      icon: <TrendingDown size={18} />,
+      title: 'Ruang finansial bulan ini tipis',
+      desc: topCat
+        ? `Sisa dari pemasukan riil kurang dari 10%. Pengeluaran terbesar masih di "${topCat[0]}" sebesar ${fmtShort(topCat[1])}.`
+        : 'Sisa dari pemasukan riil kurang dari 10%. Coba tahan pengeluaran yang bisa ditunda.',
+      action: 'Cek rincian',
+      link: '/transaksi',
     })
   }
 
   if (overBudgets.length > 0) {
     items.push({
       level: 'warning',
-      icon: <TrendingDown size={18} />,
-      title: `${overBudgets.length} kategori melebihi anggaran`,
-      desc: `Kategori ${overBudgets.map(b => b.category).join(', ')} sudah melampaui batas bulan ini.`,
-      action: 'Tinjau Anggaran',
+      icon: <PieChart size={18} />,
+      title: `${overBudgets.length} kategori melewati anggaran`,
+      desc: `Yang perlu dilihat dulu: ${overBudgets.map((b) => b.category).join(', ')}.`,
+      action: 'Tinjau anggaran',
       link: '/laporan/bulanan',
     })
   }
 
-  if (monthIn > 0 && monthOut > monthIn) {
+  if (summary.investmentLiquidation > 0) {
     items.push({
-      level: 'danger',
-      icon: <AlertTriangle size={18} />,
-      title: 'Pengeluaran melebihi pemasukan',
-      desc: `Defisit ${fmtShort(monthOut - monthIn)}. Cari pos pengeluaran yang bisa dipangkas.`,
-      action: 'Cek Transaksi',
-      link: '/transaksi',
+      level: 'info',
+      icon: <Landmark size={18} />,
+      title: 'Ada pencairan investasi bulan ini',
+      desc: `${fmtShort(summary.investmentLiquidation)} masuk ke dompet, tapi tetap dipisahkan dari pemasukan riil agar laporan tidak bias.`,
+      action: 'Lihat investasi',
+      link: '/investasi',
     })
   }
 
-  if (monthIn > 0 && savingsRate < 0.1 && monthOut <= monthIn) {
+  if (summary.investmentProfit > 0) {
     items.push({
-      level: 'warning',
-      icon: <TrendingDown size={18} />,
-      title: 'Rasio tabungan terlalu rendah',
-      desc: topCat
-        ? `Pengeluaran terbesar di "${topCat[0]}" (${fmtShort(topCat[1])}). Coba kurangi di sana.`
-        : 'Pengeluaran hampir menyamai pemasukan. Cari pos yang bisa dikurangi.',
-      action: 'Lihat Laporan',
-      link: '/laporan/bulanan',
+      level: 'success',
+      icon: <TrendingUp size={18} />,
+      title: 'Investasi memberi hasil positif',
+      desc: `Profit investasi ${fmtShort(summary.investmentProfit)} sudah terbaca sebagai hasil tambahan bulan ini.`,
+      action: 'Buka investasi',
+      link: '/investasi',
     })
   }
 
@@ -92,9 +136,9 @@ function buildRekom(txData, billData, budgetData) {
     items.push({
       level: 'info',
       icon: <BookOpen size={18} />,
-      title: 'Konsistensi mencatat perlu ditingkatkan',
-      desc: `Aktif di ${bulanAktif} dari 3 bulan terakhir. Data lengkap membuat analisis lebih akurat.`,
-      action: 'Tambah Transaksi',
+      title: 'Data historis masih tipis',
+      desc: `Baru ada aktivitas di ${bulanAktif} dari 3 bulan terakhir. Semakin lengkap pencatatan, semakin enak insight dibaca.`,
+      action: 'Tambah transaksi',
       link: '/transaksi',
     })
   }
@@ -103,9 +147,9 @@ function buildRekom(txData, billData, budgetData) {
     items.push({
       level: 'info',
       icon: <PieChart size={18} />,
-      title: 'Belum ada anggaran bulanan',
-      desc: 'Atur batas pengeluaran per kategori untuk kendali keuangan yang lebih baik.',
-      action: 'Atur Anggaran',
+      title: 'Belum ada anggaran kategori',
+      desc: 'Batas kategori membantu membedakan mana pengeluaran yang sehat dan mana yang mulai melebar.',
+      action: 'Atur anggaran',
       link: '/laporan/bulanan',
     })
   }
@@ -114,21 +158,21 @@ function buildRekom(txData, billData, budgetData) {
     items.push({
       level: 'success',
       icon: <CheckCircle2 size={18} />,
-      title: 'Kondisi keuangan sangat baik!',
-      desc: savingsRate >= 0.2
-        ? `Rasio tabungan ${Math.round(savingsRate * 100)}% — jauh di atas rata-rata. Pertimbangkan investasikan kelebihannya.`
-        : 'Semua indikator dalam kondisi baik. Pertahankan kebiasaan finansial yang sehat.',
+      title: 'Insight bulan ini terlihat rapi',
+      desc: summary.realIncome > 0
+        ? `Pemasukan riil masih lebih besar ${fmtShort(roomAmount)} dari pengeluaran bersih. Pertahankan ritmenya.`
+        : 'Belum ada sinyal yang perlu dikhawatirkan dari data bulan ini.',
       action: null,
     })
   }
 
-  if (savingsRate >= 0.2 && items.length > 0 && !items.some(i => i.level === 'danger')) {
+  if (summary.realIncome > 0 && roomRate >= 0.2 && !items.some((item) => item.level === 'danger')) {
     items.push({
       level: 'success',
-      icon: <TrendingUp size={18} />,
-      title: `Tabungan ${Math.round(savingsRate * 100)}% — pertahankan!`,
-      desc: 'Kamu menyisihkan lebih dari 20% pemasukan. Alokasikan ke investasi untuk hasil optimal.',
-      action: 'Lihat Investasi',
+      icon: <Sparkles size={18} />,
+      title: `Ruang finansial ${Math.round(roomRate * 100)}% masih aman`,
+      desc: 'Kondisi ini cukup sehat untuk menabung atau menambah alokasi investasi secara bertahap.',
+      action: 'Cek investasi',
       link: '/investasi',
     })
   }
@@ -137,30 +181,52 @@ function buildRekom(txData, billData, budgetData) {
 }
 
 const LEVEL = {
-  danger:  { border: 'border-l-red-500',    iconBg: 'bg-red-500/10',    iconColor: 'text-red-500',    badge: 'bg-red-500/10 text-red-500 border-red-500/20',    label: 'Segera' },
-  warning: { border: 'border-l-amber-500',  iconBg: 'bg-amber-500/10',  iconColor: 'text-amber-500',  badge: 'bg-amber-500/10 text-amber-500 border-amber-500/20', label: 'Perhatian' },
-  info:    { border: 'border-l-indigo-500', iconBg: 'bg-indigo-500/10', iconColor: 'text-indigo-500', badge: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20', label: 'Tips' },
-  success: { border: 'border-l-emerald-500',iconBg: 'bg-emerald-500/10',iconColor: 'text-emerald-500',badge: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20', label: 'Bagus' },
+  danger: {
+    border: 'border-l-red-500',
+    iconBg: 'bg-red-500/10',
+    iconColor: 'text-red-500',
+    badge: 'bg-red-500/10 text-red-500 border-red-500/20',
+    label: 'Segera',
+  },
+  warning: {
+    border: 'border-l-amber-500',
+    iconBg: 'bg-amber-500/10',
+    iconColor: 'text-amber-500',
+    badge: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+    label: 'Perhatian',
+  },
+  info: {
+    border: 'border-l-indigo-500',
+    iconBg: 'bg-indigo-500/10',
+    iconColor: 'text-indigo-500',
+    badge: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20',
+    label: 'Konteks',
+  },
+  success: {
+    border: 'border-l-emerald-500',
+    iconBg: 'bg-emerald-500/10',
+    iconColor: 'text-emerald-500',
+    badge: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+    label: 'Bagus',
+  },
 }
 
 export default function RekomWidget() {
   const { txData, billData, budgetData } = useData()
-  const items = useMemo(() => buildRekom(txData, billData, budgetData), [txData, billData, budgetData])
+  const items = useMemo(() => buildRecommendations(txData, billData, budgetData), [txData, billData, budgetData])
 
-  const dangerCount  = items.filter(i => i.level === 'danger').length
-  const warningCount = items.filter(i => i.level === 'warning').length
+  const dangerCount = items.filter((item) => item.level === 'danger').length
+  const warningCount = items.filter((item) => item.level === 'warning').length
 
   return (
     <div className="bg-surface border border-border rounded-2xl shadow-sm overflow-hidden">
-
-      {/* Header */}
       <div className="flex items-center gap-3 px-6 py-5 border-b border-border">
         <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
           <Lightbulb size={18} />
         </div>
         <div>
           <h2 className="font-bold text-sm text-text">Rekomendasi Untukmu</h2>
-          <p className="text-[10px] text-muted font-medium">Berdasarkan data keuangan bulan ini</p>
+          <p className="text-[10px] text-muted font-medium">Berbasis pemasukan riil, pengeluaran bersih, tagihan, dan anggaran bulan ini</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
           {dangerCount > 0 && (
@@ -181,25 +247,24 @@ export default function RekomWidget() {
         </div>
       </div>
 
-      {/* Grid items */}
       <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-3">
         {items.map((item, i) => {
-          const s = LEVEL[item.level]
+          const style = LEVEL[item.level]
           return (
-            <div key={i} className={`flex gap-4 p-4 rounded-2xl bg-bg border border-border border-l-4 ${s.border} hover:border-border2 transition-colors`}>
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${s.iconBg} ${s.iconColor}`}>
+            <div key={i} className={`flex gap-4 p-4 rounded-2xl bg-bg border border-border border-l-4 ${style.border} hover:border-border2 transition-colors`}>
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${style.iconBg} ${style.iconColor}`}>
                 {item.icon}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span className={`text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border ${s.badge}`}>
-                    {s.label}
+                  <span className={`text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border ${style.badge}`}>
+                    {style.label}
                   </span>
                 </div>
                 <p className="text-sm font-bold text-text leading-tight mb-1">{item.title}</p>
                 <p className="text-xs text-muted leading-relaxed">{item.desc}</p>
                 {item.action && (
-                  <Link to={item.link} className={`inline-flex items-center gap-1 mt-2 text-[11px] font-bold ${s.iconColor} hover:underline`}>
+                  <Link to={item.link} className={`inline-flex items-center gap-1 mt-2 text-[11px] font-bold ${style.iconColor} hover:underline`}>
                     {item.action} <ArrowRight size={11} />
                   </Link>
                 )}

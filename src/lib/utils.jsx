@@ -79,6 +79,112 @@ export const fmtUnit = (num) => {
   return Number(num.toFixed(4)).toString();
 }
 
+export const QUICK_FILTERS = [
+  { value: 'semua', label: 'Semua' },
+  { value: 'bulan-ini', label: 'Bulan ini' },
+  { value: '7-hari', label: '7 hari' },
+  { value: 'makan-transport', label: 'Makan & transport' },
+  { value: 'tagihan', label: 'Tagihan' },
+]
+
+export const isDateQuickFilterPreset = (preset) => preset === 'bulan-ini' || preset === '7-hari'
+
+export const isCashflowExcludedCat = (cat) => cat === 'Transfer' || cat === 'Piutang' || cat === 'Pinjaman'
+export const isDebtMutationTx = (tx) =>
+  (tx?.cat === 'Transfer' && (tx?.sub_cat === 'Bayar Pinjaman' || tx?.sub_cat === 'Terima Pinjaman')) ||
+  tx?.cat === 'Pinjaman'
+export const isInternalTransferTx = (tx) =>
+  tx?.cat === 'Transfer' && (!tx?.sub_cat || tx?.sub_cat === 'Transfer Keluar' || tx?.sub_cat === 'Transfer Masuk')
+export const isInvestmentLiquidationTx = (tx) => tx?.type === 'in' && tx?.sub_cat === 'Tarik Investasi'
+export const isInvestmentProfitTx = (tx) => tx?.type === 'in' && tx?.sub_cat === 'Profit Investasi'
+export const isCashflowIncomeTx = (tx) => tx?.type === 'in' && !isCashflowExcludedCat(tx?.cat) && !isDebtMutationTx(tx)
+export const isCashflowExpenseTx = (tx) => tx?.type === 'out' && !isCashflowExcludedCat(tx?.cat) && !isDebtMutationTx(tx)
+export const summarizeFinancialTx = (transactions = []) => {
+  const income = transactions.filter((tx) => isCashflowIncomeTx(tx)).reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0)
+  const investmentLiquidation = transactions.filter((tx) => isInvestmentLiquidationTx(tx)).reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0)
+  const investmentProfit = transactions.filter((tx) => isInvestmentProfitTx(tx)).reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0)
+  const internalTransferIn = transactions
+    .filter((tx) => tx?.type === 'in' && isInternalTransferTx(tx))
+    .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0)
+  const internalTransferOut = transactions
+    .filter((tx) => tx?.type === 'out' && isInternalTransferTx(tx))
+    .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0)
+  const excludedIn = transactions
+    .filter((tx) => tx?.type === 'in' && !isInternalTransferTx(tx) && !isCashflowIncomeTx(tx))
+    .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0)
+  const excludedOut = transactions
+    .filter((tx) => tx?.type === 'out' && !isInternalTransferTx(tx) && !isCashflowExpenseTx(tx))
+    .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0)
+  const actualOut = transactions
+    .filter((tx) => tx?.type === 'out' && !isInternalTransferTx(tx))
+    .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0)
+  const actualIn = transactions
+    .filter((tx) => tx?.type === 'in' && !isInternalTransferTx(tx))
+    .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0)
+  const expense = Math.max(0, actualOut - excludedIn)
+
+  return {
+    income,
+    realIncome: Math.max(0, income - investmentProfit),
+    expense,
+    net: income - expense,
+    investmentLiquidation,
+    investmentProfit,
+    actualIn,
+    actualOut,
+    excludedIn,
+    excludedOut,
+    internalTransferIn,
+    internalTransferOut,
+  }
+}
+
+export const matchesQuickFilterPreset = (tx, preset = 'semua', referenceDate = new Date()) => {
+  if (!tx || preset === 'semua') return true
+
+  const txDate = tx.date || tx.tgl || ''
+  const desc = String(tx.desc || tx.keterangan || '').toLowerCase()
+  const mainCat = getCashflowMainCategory(tx)
+  const currentYM = `${referenceDate.getFullYear()}-${String(referenceDate.getMonth() + 1).padStart(2, '0')}`
+
+  if (preset === 'bulan-ini') return txDate.startsWith(currentYM)
+
+  if (preset === '7-hari') {
+    const end = new Date(referenceDate)
+    end.setHours(0, 0, 0, 0)
+    const start = new Date(end)
+    start.setDate(start.getDate() - 6)
+    const txTime = new Date(`${txDate}T00:00:00`).getTime()
+    return Number.isFinite(txTime) && txTime >= start.getTime() && txTime <= end.getTime()
+  }
+
+  if (preset === 'makan-transport') {
+    return mainCat === 'Konsumsi & Makan' || mainCat === 'Transportasi'
+  }
+
+  if (preset === 'tagihan') {
+    return mainCat === 'Tagihan & Utilitas' || Boolean(tx?.bill_id) || desc.includes('bayar tagihan')
+  }
+
+  return true
+}
+export const getCashflowMainCategory = (tx) => {
+  if (isDebtMutationTx(tx)) return 'Kewajiban & Cicilan'
+  return tx?.cat || 'Lainnya'
+}
+export const getExpenseDistributionCategory = (tx) => {
+  if (!tx) return 'Lainnya'
+  if (isDebtMutationTx(tx) && tx?.type === 'out') return 'Kewajiban & Cicilan'
+  if (tx?.type === 'out' && tx?.sub_cat === 'Beli Investasi') return 'Investasi & Alokasi'
+  return getCashflowMainCategory(tx)
+}
+export const getCashflowDisplayCategory = (tx) => {
+  const mainCat = getCashflowMainCategory(tx)
+  const subCat = tx?.sub_cat || ''
+  if (!subCat || subCat === mainCat) return mainCat
+  return `${mainCat} › ${subCat}`
+}
+
 export const today = () => {
   const d = new Date()
   const y = d.getFullYear()

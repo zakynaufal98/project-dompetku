@@ -65,24 +65,21 @@ function AppLayout() {
 
   return (
     <DataProvider>
-      {/* ACCESSIBILITY: wrapper div tetap dipakai agar layout flex terjaga */}
-      <div className="flex h-[100dvh] overflow-hidden transition-colors duration-300">
+      <div className="flex min-h-[100dvh] overflow-hidden transition-colors duration-300 bg-bg">
 
-        {/* Sidebar - hanya di desktop */}
         <div className="hidden lg:block" aria-hidden="true">
           <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
         </div>
 
-        {/* ACCESSIBILITY: <main> landmark agar screen reader bisa lompat ke konten */}
         <main
           ref={mainRef}
           id="main-content"
           aria-label="Konten utama"
-          className="flex-1 h-full overflow-y-auto w-full relative pb-24 lg:pb-0 scroll-smooth"
+          className="flex-1 min-h-[100dvh] overflow-y-auto w-full relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0 scroll-smooth"
         >
           <Navbar />
 
-          <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
+          <div className="px-4 py-5 md:px-6 md:py-6 lg:px-8 lg:py-8 max-w-[1320px] mx-auto">
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/"              element={<Dashboard />} />
@@ -119,4 +116,3 @@ export default function App() {
     </BrowserRouter>
   )
 }
-

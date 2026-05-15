@@ -1,10 +1,10 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useData } from '../context/DataContext'
-import { fmt, fmtShort, MONTHS_FULL, CHART_COLORS, CAT_ICONS } from '../lib/utils'
+import { fmt, fmtShort, MONTHS_FULL, CHART_COLORS, CAT_ICONS, isInternalTransferTx, getExpenseDistributionCategory, summarizeFinancialTx, matchesQuickFilterPreset, isDateQuickFilterPreset } from '../lib/utils'
 import { TxItem, Empty, PanelHeader, ProgressBar, InteractiveDonut } from '../components/UI'
 import { ClipboardList, CalendarX, CalendarDays } from 'lucide-react'
 
-export default function Bulanan() {
+export default function Bulanan({ quickFilter = 'semua' }) {
   // 👇 PERBAIKAN 1: Tambahkan walletData untuk menampilkan badge dompet di riwayat
   const { txData, invData, walletData } = useData()
   const now = new Date()
@@ -24,29 +24,35 @@ export default function Bulanan() {
   }, [ym])
   
   // Ambil semua arus kas bulan ini
-  const txBln = txData.filter(t=>t.date?.startsWith(ym));
+  const txBln = txData.filter((t) => {
+    const matchPeriod = isDateQuickFilterPreset(quickFilter) ? true : t.date?.startsWith(ym)
+    return matchPeriod && matchesQuickFilterPreset(t, quickFilter, now)
+  })
   
-  // 👇 PERBAIKAN 2: Hitung Pemasukan & Pengeluaran Murni (Abaikan Transfer)
-  const txIn  = txBln.filter(t=>t.type==='in' && t.cat !== 'Transfer').reduce((s,t)=>s+t.amount,0)
-  const txOut = txBln.filter(t=>t.type==='out' && (t.cat !== 'Transfer' || t.sub_cat === 'Bayar Pinjaman')).reduce((s,t)=>s+t.amount,0)
+  const monthSummary = useMemo(() => summarizeFinancialTx(txBln), [txBln])
+  const txIn = monthSummary.realIncome
+  const txOut = monthSummary.expense
   
   // Netto (Uang yang berhasil disisihkan bulan ini, investasi tidak dihitung sebagai pengeluaran)
   const nettoBulanIni = txIn - txOut;
 
   // Tetap ambil data invData hanya untuk menampilkan metrik volume investasi bulan ini (bukan untuk cashflow)
-  const invBln = invData.filter(t=>t.date?.startsWith(ym))
+  const invBln = invData.filter((t) => {
+    const matchPeriod = isDateQuickFilterPreset(quickFilter) ? true : t.date?.startsWith(ym)
+    return matchPeriod && matchesQuickFilterPreset(t, quickFilter, now)
+  })
   const invBuy = invBln.filter(t=>t.action==='beli').reduce((s,t)=>s+t.amount,0)
   const invSell= invBln.filter(t=>t.action==='jual').reduce((s,t)=>s+t.amount,0)
   const invNet = invBuy - invSell
 
-  // Filter khusus untuk Interactive Donut & Progress Bar (Hanya Pengeluaran Murni)
-  const txBlnOut = useMemo(() => txBln.filter(t => t.type === 'out' && (t.cat !== 'Transfer' || t.sub_cat === 'Bayar Pinjaman')), [txBln]);
+  // Semua uang keluar selain transfer internal untuk distribusi
+  const txBlnOut = useMemo(() => txBln.filter((t) => t.type === 'out' && !isInternalTransferTx(t)), [txBln]);
 
   // Data Murni untuk PROGRESS BAR KANAN
   const catOut = useMemo(()=>{
     const m={}
     txBlnOut.forEach(t=>{
-      const mainCat = t.cat || 'Lainnya'
+      const mainCat = getExpenseDistributionCategory(t)
       m[mainCat]=(m[mainCat]||0)+t.amount
     })
     return m
@@ -94,16 +100,20 @@ export default function Bulanan() {
           <p className={`tabular-nums font-bold text-xl sm:text-2xl tracking-tight truncate ${nettoBulanIni >= 0 ? 'text-text' : 'text-expense'}`}>{fmt(nettoBulanIni)}</p>
         </div>
         <div className="bg-surface border border-border rounded-2xl p-4 shadow-sm">
-          <p className="text-muted text-[10px] font-bold uppercase tracking-wider mb-1">Pemasukan</p>
+          <p className="text-muted text-[10px] font-bold uppercase tracking-wider mb-1">Pemasukan Riil</p>
           <p className="tabular-nums font-bold text-base sm:text-xl text-income tracking-tight truncate">{fmtShort(txIn)}</p>
         </div>
         <div className="bg-surface border border-border rounded-2xl p-4 shadow-sm">
-          <p className="text-muted text-[10px] font-bold uppercase tracking-wider mb-1">Pengeluaran</p>
+          <p className="text-muted text-[10px] font-bold uppercase tracking-wider mb-1">Pengeluaran Bersih</p>
           <p className="tabular-nums font-bold text-base sm:text-xl text-gold tracking-tight truncate">{fmtShort(txOut)}</p>
         </div>
         <div className="bg-surface border border-border rounded-2xl p-4 shadow-sm col-span-1">
-          <p className="text-muted text-[10px] font-bold uppercase tracking-wider mb-1">Investasi</p>
-          <p className="tabular-nums font-bold text-base sm:text-xl text-invest tracking-tight truncate">{fmtShort(Math.max(0, invNet))}</p>
+          <p className="text-muted text-[10px] font-bold uppercase tracking-wider mb-1">Pencairan Investasi</p>
+          <p className="tabular-nums font-bold text-base sm:text-xl text-invest tracking-tight truncate">{fmtShort(monthSummary.investmentLiquidation)}</p>
+        </div>
+        <div className="bg-surface border border-border rounded-2xl p-4 shadow-sm col-span-1">
+          <p className="text-muted text-[10px] font-bold uppercase tracking-wider mb-1">Profit Investasi</p>
+          <p className="tabular-nums font-bold text-base sm:text-xl text-income tracking-tight truncate">{fmtShort(monthSummary.investmentProfit)}</p>
         </div>
         <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-4 shadow-sm text-white col-span-1">
           <p className="text-white/70 text-[10px] font-bold uppercase tracking-wider mb-1">Savings Rate</p>
@@ -114,8 +124,11 @@ export default function Bulanan() {
       {/* Donut + Progress — stacked on mobile, side by side on lg */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <div className="bg-surface border border-border rounded-2xl p-4 sm:p-6 shadow-sm lg:col-span-2 flex flex-col">
-          <PanelHeader title="Distribusi Pengeluaran" />
-          <InteractiveDonut data={txBlnOut} />
+          <PanelHeader title="Distribusi Pengeluaran Bersih" sub="Selain transfer internal" />
+          <p className="mb-2 text-xs font-medium leading-relaxed text-muted">
+            Grafik ini disesuaikan ke pengeluaran bersih. Jika ada pinjaman masuk atau arus masuk non-pendapatan lain, total kategori akan ikut ditekan secara proporsional.
+          </p>
+          <InteractiveDonut data={txBlnOut} centerLabel="Peng. Bersih" netAdjustment={monthSummary.excludedIn} />
         </div>
         <div className="bg-surface border border-border rounded-2xl p-4 sm:p-6 shadow-sm lg:col-span-3">
           <PanelHeader title="Progress Pengeluaran" />

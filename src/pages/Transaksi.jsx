@@ -1,15 +1,16 @@
 import { useState, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useData } from '../context/DataContext'
-import { fmt, fmtShort, today } from '../lib/utils'
-import { TxItem, Empty, Tabs, Field, PanelHeader } from '../components/UI'
+import { fmt, fmtShort, today, summarizeFinancialTx, QUICK_FILTERS, matchesQuickFilterPreset, isDateQuickFilterPreset } from '../lib/utils'
+import { TxItem, Empty, Tabs, Field, PanelHeader, BreakdownPanel } from '../components/UI'
 import DescInput from '../components/DescInput'
 import RecurringWidget from '../components/RecurringWidget'
 import CategoryManager from '../components/CategoryManager'
+import FinancialDefinitionsModal from '../components/FinancialDefinitionsModal'
 import {
   ArrowDownLeft, ArrowUpRight, Banknote,
   Calendar, PlusCircle, ReceiptText, Loader2, Search,
-  Wallet, ChevronDown, Sparkles, BriefcaseBusiness, ArrowUpDown, X, Check, SlidersHorizontal
+  Wallet, ChevronDown, Sparkles, BriefcaseBusiness, ArrowUpDown, X, Check, SlidersHorizontal, BookOpen
 } from 'lucide-react'
 
 export default function Transaksi() {
@@ -57,6 +58,9 @@ export default function Transaksi() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedMonth, setSelectedMonth] = useState(today().substring(0, 7))
   const [sortBy, setSortBy] = useState('terbaru')
+  const [showCalcDetails, setShowCalcDetails] = useState(false)
+  const [quickFilter, setQuickFilter] = useState('semua')
+  const [showDefinitions, setShowDefinitions] = useState(false)
 
   useEffect(() => {
     if (walletData?.length > 0 && !walletId) setWalletId(walletData[0].id)
@@ -123,6 +127,52 @@ export default function Transaksi() {
   const editAvailableMainCats = Object.keys(effectiveCategoryTree?.[editType] || {})
   const editAvailableSubCats = editMainCat && effectiveCategoryTree?.[editType]?.[editMainCat] ? effectiveCategoryTree[editType][editMainCat] : []
 
+  const favoriteCategories = useMemo(() => {
+    const map = {}
+    txData
+      .filter((t) => t.type === type && t.cat)
+      .forEach((t) => {
+        const key = `${t.cat}|||${t.sub_cat || ''}`
+        if (!map[key]) map[key] = { cat: t.cat, subCat: t.sub_cat || '', count: 0, lastDate: t.date }
+        map[key].count += 1
+        if ((t.date || '') > (map[key].lastDate || '')) map[key].lastDate = t.date
+      })
+
+    return Object.values(map)
+      .sort((a, b) => b.count - a.count || (b.lastDate || '').localeCompare(a.lastDate || ''))
+      .slice(0, 5)
+  }, [txData, type])
+
+  const quickTemplates = useMemo(() => {
+    const map = {}
+    txData
+      .filter((t) => t.type === type && t.cat && t.desc)
+      .forEach((t) => {
+        const key = `${t.desc}|||${t.cat}|||${t.sub_cat || ''}`
+        if (!map[key]) {
+          map[key] = {
+            desc: t.desc,
+            amount: t.amount,
+            cat: t.cat,
+            subCat: t.sub_cat || '',
+            wallet_id: t.wallet_id || '',
+            count: 0,
+            lastDate: t.date,
+          }
+        }
+        map[key].count += 1
+        if ((t.date || '') >= (map[key].lastDate || '')) {
+          map[key].amount = t.amount
+          map[key].wallet_id = t.wallet_id || ''
+          map[key].lastDate = t.date
+        }
+      })
+
+    return Object.values(map)
+      .sort((a, b) => b.count - a.count || (b.lastDate || '').localeCompare(a.lastDate || ''))
+      .slice(0, 4)
+  }, [txData, type])
+
   // ── Handlers ──────────────────────────────────────────
   const handleAdd = async () => {
     if (!desc.trim())          { setErr('Keterangan wajib diisi'); return }
@@ -160,14 +210,30 @@ export default function Transaksi() {
     else handleCloseEdit()
   }
 
+  const applyFavoriteCategory = (item) => {
+    setMainCat(item.cat)
+    setSubCat(item.subCat || '')
+    setErr('')
+  }
+
+  const applyQuickTemplate = (item) => {
+    setDesc(item.desc || '')
+    setAmount(String(item.amount || ''))
+    setMainCat(item.cat || '')
+    setSubCat(item.subCat || '')
+    if (item.wallet_id) setWalletId(item.wallet_id)
+    setErr('')
+  }
+
   // ── Filter / sort / group ──────────────────────────────
   const filtered = txData
     .filter(t => {
       const matchTab = filter === 'semua' || t.type === filter
-      const matchMonth = selectedMonth ? t.date.startsWith(selectedMonth) : true
+      const matchMonth = isDateQuickFilterPreset(quickFilter) ? true : (selectedMonth ? t.date.startsWith(selectedMonth) : true)
+      const matchQuickFilter = matchesQuickFilterPreset(t, quickFilter, new Date())
       const q = searchQuery.toLowerCase()
       const matchSearch = (t.desc?.toLowerCase().includes(q)) || (t.cat?.toLowerCase().includes(q))
-      return matchTab && matchMonth && matchSearch
+      return matchTab && matchMonth && matchQuickFilter && matchSearch
     })
     .sort((a, b) => {
       switch (sortBy) {
@@ -185,25 +251,22 @@ export default function Transaksi() {
     filtered.forEach(t => {
       if (!groups[t.date]) groups[t.date] = { items: [], totalIn: 0, totalOut: 0 }
       groups[t.date].items.push(t)
-      if (t.cat !== 'Transfer' && !t.cat?.startsWith('Transfer') && t.cat !== 'Piutang') {
-        if (t.type === 'in') groups[t.date].totalIn += t.amount
-        if (t.type === 'out') groups[t.date].totalOut += t.amount
-      }
+    })
+    Object.keys(groups).forEach((dateKey) => {
+      const summary = summarizeFinancialTx(groups[dateKey].items)
+      groups[dateKey].totalIn = summary.income
+      groups[dateKey].totalOut = summary.expense
     })
     return groups
   }, [filtered])
 
   const monthlySummary = useMemo(() => {
-    let inMonth = 0, outMonth = 0
-    txData.forEach(t => {
-      if (selectedMonth && !t.date.startsWith(selectedMonth)) return
-      if (t.cat !== 'Transfer' && !t.cat?.startsWith('Transfer') && t.cat !== 'Piutang') {
-        if (t.type === 'in') inMonth += t.amount
-        if (t.type === 'out') outMonth += t.amount
-      }
+    const monthTx = txData.filter((t) => {
+      const matchMonth = isDateQuickFilterPreset(quickFilter) ? true : (!selectedMonth || t.date.startsWith(selectedMonth))
+      return matchMonth && matchesQuickFilterPreset(t, quickFilter, new Date())
     })
-    return { inMonth, outMonth }
-  }, [txData, selectedMonth])
+    return summarizeFinancialTx(monthTx)
+  }, [txData, selectedMonth, quickFilter])
 
   const getDayLabel = (dateStr) => {
     const d = new Date(dateStr)
@@ -249,6 +312,37 @@ export default function Transaksi() {
   const isAddBalanceInsufficient = type === 'out' && walletId && amount && addProjectedBalance < 0
   const isEditBalanceInsufficient = editType === 'out' && editWalletId && editAmount && editProjectedBalance < 0
 
+  const formWarnings = useMemo(() => {
+    const warnings = []
+    const amountNum = Number(amount) || 0
+    const lowerDesc = desc.trim().toLowerCase()
+
+    if (type === 'in' && /gaji|bonus|tpp|tunjangan/.test(lowerDesc) && mainCat && mainCat !== 'Pemasukan Utama') {
+      warnings.push('Transaksi ini terlihat seperti pendapatan utama. Biasanya lebih pas masuk kategori Pemasukan Utama.')
+    }
+    if (/transfer/.test(lowerDesc)) {
+      warnings.push(type === 'out'
+        ? 'Kalau ini pindah antar dompet, lebih aman dicatat lewat alur transfer agar tidak terbaca sebagai pengeluaran.'
+        : 'Kalau ini hasil transfer antar dompet, jangan dihitung sebagai pemasukan riil.')
+    }
+    if (/pinjam|hutang|cicilan/.test(lowerDesc)) {
+      warnings.push(type === 'in'
+        ? 'Dana pinjaman akan menambah saldo, tapi tidak dihitung sebagai pemasukan riil.'
+        : 'Pembayaran hutang akan terbaca sebagai kewajiban, bukan belanja operasional.')
+    }
+    if (type === 'out' && /invest|tabung|reksa|saham|emas|deposito/.test(lowerDesc)) {
+      warnings.push('Kalau ini alokasi aset atau investasi, pertimbangkan catat lewat halaman investasi supaya laporan lebih rapi.')
+    }
+    if (mainCat === 'Lainnya' && lowerDesc.length >= 4) {
+      warnings.push('Kategori masih "Lainnya". Kalau memungkinkan, pilih kategori yang lebih spesifik agar insight lebih akurat.')
+    }
+    if (type === 'out' && activeWallet?.calculatedBalance > 0 && amountNum >= activeWallet.calculatedBalance * 0.5) {
+      warnings.push('Nominal ini cukup besar dibanding saldo dompet aktif. Cek lagi dompet, kategori, dan tujuan transaksi.')
+    }
+
+    return [...new Set(warnings)]
+  }, [type, desc, amount, mainCat, activeWallet])
+
   return (
     <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
 
@@ -258,6 +352,14 @@ export default function Transaksi() {
           <h1 className="font-black text-2xl text-text tracking-tight">Transaksi</h1>
           <p className="text-muted text-sm font-medium mt-1">Catat dan pantau arus kas harianmu.</p>
         </div>
+        <button
+          type="button"
+          onClick={() => setShowDefinitions(true)}
+          className="inline-flex items-center gap-2 self-start rounded-full border border-border bg-surface px-4 py-2 text-xs font-bold text-text transition-colors hover:bg-bg"
+        >
+          <BookOpen size={14} />
+          Pusat definisi keuangan
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -289,6 +391,48 @@ export default function Transaksi() {
               <ArrowUpRight size={18} strokeWidth={2.5} /> Pengeluaran
             </button>
           </div>
+
+          {(quickTemplates.length > 0 || favoriteCategories.length > 0) && (
+            <div className="space-y-3 rounded-[20px] border border-border bg-bg/60 p-4">
+              {quickTemplates.length > 0 && (
+                <div>
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted">Template cepat</p>
+                  <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                    {quickTemplates.map((item) => (
+                      <button
+                        key={`${item.desc}-${item.cat}-${item.subCat}`}
+                        type="button"
+                        onClick={() => applyQuickTemplate(item)}
+                        className="min-w-[180px] rounded-2xl border border-border bg-surface px-3 py-3 text-left transition-colors hover:bg-primary-pale"
+                      >
+                        <p className="truncate text-sm font-bold text-text">{item.desc}</p>
+                        <p className="mt-1 text-[11px] font-semibold text-muted">{item.cat}{item.subCat ? ` • ${item.subCat}` : ''}</p>
+                        <p className="mt-2 text-xs font-black text-income">{fmtShort(item.amount)}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {favoriteCategories.length > 0 && (
+                <div>
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted">Kategori favorit</p>
+                  <div className="flex flex-wrap gap-2">
+                    {favoriteCategories.map((item) => (
+                      <button
+                        key={`${item.cat}-${item.subCat}`}
+                        type="button"
+                        onClick={() => applyFavoriteCategory(item)}
+                        className="rounded-full border border-border bg-surface px-3 py-2 text-xs font-bold text-text transition-colors hover:bg-primary-pale"
+                      >
+                        {item.cat}{item.subCat ? ` • ${item.subCat}` : ''}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="Keterangan / Tempat">
@@ -425,6 +569,17 @@ export default function Transaksi() {
             </Field>
           </div>
 
+          {formWarnings.length > 0 && (
+            <div className="rounded-[20px] border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-widest">Perlu dicek</p>
+              <div className="space-y-1.5">
+                {formWarnings.map((warning) => (
+                  <p key={warning} className="text-xs font-medium leading-relaxed">{warning}</p>
+                ))}
+              </div>
+            </div>
+          )}
+
           {err && <div className="text-xs text-expense bg-expense-light border border-expense/20 rounded-xl px-4 py-3 font-medium">{err}</div>}
 
           <button onClick={handleAdd} disabled={busy || isAddBalanceInsufficient}
@@ -446,10 +601,10 @@ export default function Transaksi() {
                 <div className="w-11 h-11 rounded-2xl bg-income-light text-income flex items-center justify-center shadow-inner"><ArrowDownLeft size={22} strokeWidth={2.5} /></div>
                 <div className="flex flex-col">
                   <span className="text-sm font-bold text-text">Pemasukan</span>
-                  <span className="text-[10px] font-bold text-muted2 uppercase tracking-wider">Murni</span>
+                  <span className="text-[10px] font-bold text-muted2 uppercase tracking-wider">Riil</span>
                 </div>
               </div>
-              <span className="text-income font-black text-lg md:text-xl tracking-tight">{fmt(monthlySummary.inMonth)}</span>
+              <span className="text-income font-black text-lg md:text-xl tracking-tight">{fmt(monthlySummary.realIncome)}</span>
             </div>
 
             <div className="bg-gold/5 border border-gold/10 rounded-[20px] p-4 flex justify-between items-center transition-all hover:bg-gold/10 hover:border-gold/20">
@@ -457,21 +612,32 @@ export default function Transaksi() {
                 <div className="w-11 h-11 rounded-2xl bg-gold-light text-gold flex items-center justify-center shadow-inner"><ArrowUpRight size={22} strokeWidth={2.5} /></div>
                 <div className="flex flex-col">
                   <span className="text-sm font-bold text-text">Pengeluaran</span>
-                  <span className="text-[10px] font-bold text-muted2 uppercase tracking-wider">Murni</span>
+                  <span className="text-[10px] font-bold text-muted2 uppercase tracking-wider">Bersih</span>
                 </div>
               </div>
-              <span className="text-gold font-black text-lg md:text-xl tracking-tight">{fmt(monthlySummary.outMonth)}</span>
+              <span className="text-gold font-black text-lg md:text-xl tracking-tight">{fmt(monthlySummary.expense)}</span>
             </div>
 
             <div className="bg-invest/5 border border-invest/10 rounded-[20px] p-4 flex justify-between items-center transition-all hover:bg-invest/10 hover:border-invest/20">
               <div className="flex items-center gap-3.5">
                 <div className="w-11 h-11 rounded-2xl bg-invest-light text-invest flex items-center justify-center shadow-inner"><BriefcaseBusiness size={22} strokeWidth={2.5} /></div>
                 <div className="flex flex-col">
-                  <span className="text-sm font-bold text-text">Investasi</span>
-                  <span className="text-[10px] font-bold text-muted2 uppercase tracking-wider">Total</span>
+                  <span className="text-sm font-bold text-text">Pencairan Investasi</span>
+                  <span className="text-[10px] font-bold text-muted2 uppercase tracking-wider">Uang masuk</span>
                 </div>
               </div>
-              <span className="text-invest font-black text-lg md:text-xl tracking-tight">{fmt(Math.max(0, totals.invNet))}</span>
+              <span className="text-invest font-black text-lg md:text-xl tracking-tight">{fmt(monthlySummary.investmentLiquidation)}</span>
+            </div>
+
+            <div className="bg-income/5 border border-income/10 rounded-[20px] p-4 flex justify-between items-center transition-all hover:bg-income/10 hover:border-income/20">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-income-light text-income flex items-center justify-center shadow-inner"><Sparkles size={22} strokeWidth={2.5} /></div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-bold text-text">Profit Investasi</span>
+                  <span className="text-[10px] font-bold text-muted2 uppercase tracking-wider">Keuntungan</span>
+                </div>
+              </div>
+              <span className="text-income font-black text-lg md:text-xl tracking-tight">{fmt(monthlySummary.investmentProfit)}</span>
             </div>
 
             <div className="mt-6 flex flex-col items-center justify-center bg-bg/50 border border-border2 rounded-[24px] p-6 shadow-inner relative overflow-hidden">
@@ -483,6 +649,24 @@ export default function Transaksi() {
                 {fmt(totals.saldo)}
               </span>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setShowCalcDetails((prev) => !prev)}
+              className="inline-flex items-center justify-center gap-1.5 rounded-full border border-border bg-bg px-4 py-2 text-xs font-bold text-text transition-colors hover:bg-primary-pale"
+              aria-expanded={showCalcDetails}
+            >
+              Lihat perhitungan
+              <ChevronDown size={14} className={`transition-transform ${showCalcDetails ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showCalcDetails && (
+              <BreakdownPanel
+                title={selectedMonth ? `Cara hitung ${selectedMonth}` : 'Cara hitung semua waktu'}
+                note="Pemasukan riil dipisah dari pencairan dan profit investasi, jadi angka operasional harian lebih mudah dibaca."
+                summary={monthlySummary}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -490,6 +674,23 @@ export default function Transaksi() {
       {/* ── LIST RIWAYAT ────── */}
       <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm transition-colors">
         <PanelHeader title="Riwayat Transaksi" sub="Histori" badge={`${filtered.length} transaksi`} />
+
+        <div className="mb-4 flex gap-2 overflow-x-auto custom-scrollbar pb-1">
+          {QUICK_FILTERS.map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              onClick={() => setQuickFilter(item.value)}
+              className={`rounded-full px-4 py-2 text-xs font-bold whitespace-nowrap transition-colors ${
+                quickFilter === item.value
+                  ? 'bg-text text-white'
+                  : 'border border-border bg-surface text-text hover:bg-bg'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
 
         <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <Tabs value={filter} onChange={setFilter} options={[
@@ -564,6 +765,8 @@ export default function Transaksi() {
       </div>
 
       <RecurringWidget />
+
+      <FinancialDefinitionsModal open={showDefinitions} onClose={() => setShowDefinitions(false)} />
 
       <CategoryManager
         open={showCatManager}
