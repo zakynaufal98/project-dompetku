@@ -160,6 +160,12 @@ export function DataProvider({ children }) {
     return error
   }
 
+  const updateCustomCat = async (id, sub_cats) => {
+    const { error } = await supabase.from('user_categories').update({ sub_cats }).eq('id', id).eq('user_id', user.id)
+    if (!error) setUserCustomCats(prev => prev.map(c => c.id === id ? { ...c, sub_cats } : c))
+    return error
+  }
+
   const toggleHideDefaultCat = async (type, main_cat) => {
     const existing = userHiddenCats.find(h => h.type === type && h.main_cat === main_cat)
     if (existing) {
@@ -861,7 +867,7 @@ export function DataProvider({ children }) {
       budgetData, saveBudget, deleteBudget,
       recurringData, addRecurring, updateRecurring, deleteRecurring,
       userCustomCats, userHiddenCats, effectiveCategoryTree,
-      addCustomCat, deleteCustomCat, toggleHideDefaultCat,
+      addCustomCat, deleteCustomCat, updateCustomCat, toggleHideDefaultCat,
       totals, getProjectedWalletBalance,
       // Shared Account
       sharedOwners, activeOwnerId, switchAccount, isViewingShared, activeSharedRole

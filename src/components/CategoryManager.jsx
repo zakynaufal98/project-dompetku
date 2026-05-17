@@ -2,17 +2,24 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useData } from '../context/DataContext'
 import { CATEGORY_TREE } from '../lib/utils'
-import { X, Plus, Trash2, Eye, EyeOff, Loader2, Tag } from 'lucide-react'
+import { X, Plus, Trash2, Eye, EyeOff, Loader2, Tag, Pencil, Check } from 'lucide-react'
 
 export default function CategoryManager({ open, onClose, type: initType = 'out' }) {
-  const { userCustomCats, userHiddenCats, addCustomCat, deleteCustomCat, toggleHideDefaultCat } = useData()
+  const { userCustomCats, userHiddenCats, addCustomCat, deleteCustomCat, updateCustomCat, toggleHideDefaultCat } = useData()
   const [activeType, setActiveType] = useState(initType)
   const [newMain, setNewMain] = useState('')
   const [newSubs, setNewSubs] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
+  // Edit mode state
+  const [editingId, setEditingId] = useState(null)
+  const [editSubs, setEditSubs] = useState([])
+  const [editNewSub, setEditNewSub] = useState('')
+  const [editBusy, setEditBusy] = useState(false)
+
   useEffect(() => { if (open) setActiveType(initType) }, [open, initType])
+  useEffect(() => { if (!open) { setEditingId(null); setEditNewSub('') } }, [open])
 
   const defaultCats = Object.keys(CATEGORY_TREE[activeType] || {})
   const customCats = userCustomCats.filter(c => c.type === activeType)
@@ -28,6 +35,35 @@ export default function CategoryManager({ open, onClose, type: initType = 'out' 
     setBusy(false)
     if (error) { setErr(error.message || 'Gagal menyimpan'); return }
     setNewMain(''); setNewSubs('')
+  }
+
+  const startEdit = (cat) => {
+    setEditingId(cat.id)
+    setEditSubs([...(cat.sub_cats || [])])
+    setEditNewSub('')
+  }
+
+  const cancelEdit = () => {
+    setEditingId(null)
+    setEditNewSub('')
+  }
+
+  const addEditSub = () => {
+    const trimmed = editNewSub.trim()
+    if (!trimmed || editSubs.includes(trimmed)) return
+    setEditSubs(prev => [...prev, trimmed])
+    setEditNewSub('')
+  }
+
+  const removeEditSub = (sub) => {
+    setEditSubs(prev => prev.filter(s => s !== sub))
+  }
+
+  const saveEdit = async (id) => {
+    setEditBusy(true)
+    const error = await updateCustomCat(id, editSubs)
+    setEditBusy(false)
+    if (!error) { setEditingId(null); setEditNewSub('') }
   }
 
   if (!open) return null
@@ -58,7 +94,7 @@ export default function CategoryManager({ open, onClose, type: initType = 'out' 
         {/* Type tabs */}
         <div className="flex gap-2 px-6 pt-4 shrink-0">
           <button
-            onClick={() => setActiveType('out')}
+            onClick={() => { setActiveType('out'); setEditingId(null) }}
             className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all ${
               activeType === 'out'
                 ? 'bg-gold-light text-gold border-gold/30'
@@ -68,7 +104,7 @@ export default function CategoryManager({ open, onClose, type: initType = 'out' 
             Pengeluaran
           </button>
           <button
-            onClick={() => setActiveType('in')}
+            onClick={() => { setActiveType('in'); setEditingId(null) }}
             className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all ${
               activeType === 'in'
                 ? 'bg-income-light text-income border-income/30'
@@ -124,35 +160,113 @@ export default function CategoryManager({ open, onClose, type: initType = 'out' 
                 Kategori Custom
               </p>
               <div className="space-y-2">
-                {customCats.map(cat => (
-                  <div
-                    key={cat.id}
-                    className="flex items-start justify-between px-4 py-3 bg-teal-50 dark:bg-teal-900/20 rounded-xl border border-teal-200 dark:border-teal-700/30"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <span className="text-sm font-bold text-teal-700 dark:text-teal-300">{cat.main_cat}</span>
-                      {cat.sub_cats?.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1.5">
-                          {cat.sub_cats.map(s => (
-                            <span
-                              key={s}
-                              className="text-[10px] font-semibold bg-teal-100 dark:bg-teal-800/40 text-teal-600 dark:text-teal-300 px-2 py-0.5 rounded-md"
+                {customCats.map(cat => {
+                  const isEditing = editingId === cat.id
+                  return (
+                    <div
+                      key={cat.id}
+                      className="px-4 py-3 bg-teal-50 dark:bg-teal-900/20 rounded-xl border border-teal-200 dark:border-teal-700/30"
+                    >
+                      {/* Header row */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-bold text-teal-700 dark:text-teal-300">{cat.main_cat}</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => isEditing ? cancelEdit() : startEdit(cat)}
+                            title={isEditing ? 'Batal' : 'Edit sub kategori'}
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                              isEditing
+                                ? 'bg-teal-100 dark:bg-teal-800/40 text-teal-600 dark:text-teal-300'
+                                : 'bg-bg text-muted2 hover:bg-teal-100 hover:text-teal-600 dark:hover:bg-teal-800/40 dark:hover:text-teal-300'
+                            }`}
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            onClick={() => deleteCustomCat(cat.id)}
+                            title="Hapus kategori"
+                            className="w-8 h-8 rounded-lg bg-bg text-muted2 hover:bg-expense-light hover:text-expense flex items-center justify-center transition-colors"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* View mode: sub chips */}
+                      {!isEditing && (
+                        <div className="mt-1.5">
+                          {cat.sub_cats?.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {cat.sub_cats.map(s => (
+                                <span
+                                  key={s}
+                                  className="text-[10px] font-semibold bg-teal-100 dark:bg-teal-800/40 text-teal-600 dark:text-teal-300 px-2 py-0.5 rounded-md"
+                                >
+                                  {s}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[11px] text-muted italic">Belum ada sub kategori — klik pensil untuk tambah</p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Edit mode */}
+                      {isEditing && (
+                        <div className="mt-3 space-y-2">
+                          {/* Existing subs with remove button */}
+                          <div className="flex flex-wrap gap-1.5">
+                            {editSubs.length > 0 ? editSubs.map(s => (
+                              <span
+                                key={s}
+                                className="inline-flex items-center gap-1 text-[11px] font-semibold bg-teal-100 dark:bg-teal-800/40 text-teal-700 dark:text-teal-300 pl-2 pr-1 py-0.5 rounded-md"
+                              >
+                                {s}
+                                <button
+                                  onClick={() => removeEditSub(s)}
+                                  className="hover:text-expense transition-colors"
+                                >
+                                  <X size={11} />
+                                </button>
+                              </span>
+                            )) : (
+                              <p className="text-[11px] text-muted italic">Belum ada sub kategori</p>
+                            )}
+                          </div>
+
+                          {/* Input tambah sub baru */}
+                          <div className="flex gap-2">
+                            <input
+                              className="form-input py-2 text-sm flex-1"
+                              placeholder="Tambah sub kategori..."
+                              value={editNewSub}
+                              onChange={e => setEditNewSub(e.target.value)}
+                              onKeyDown={e => e.key === 'Enter' && addEditSub()}
+                              autoFocus
+                            />
+                            <button
+                              onClick={addEditSub}
+                              className="w-9 h-9 rounded-xl bg-teal-100 dark:bg-teal-800/40 text-teal-600 dark:text-teal-300 hover:bg-teal-200 dark:hover:bg-teal-700/40 flex items-center justify-center transition-colors shrink-0"
                             >
-                              {s}
-                            </span>
-                          ))}
+                              <Plus size={16} />
+                            </button>
+                          </div>
+
+                          {/* Save button */}
+                          <button
+                            onClick={() => saveEdit(cat.id)}
+                            disabled={editBusy}
+                            className="w-full py-2 rounded-xl text-xs font-bold text-white bg-teal-500 hover:bg-teal-600 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+                          >
+                            {editBusy ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                            Simpan Perubahan
+                          </button>
                         </div>
                       )}
                     </div>
-                    <button
-                      onClick={() => deleteCustomCat(cat.id)}
-                      title="Hapus kategori"
-                      className="w-8 h-8 rounded-lg bg-bg text-muted2 hover:bg-expense-light hover:text-expense flex items-center justify-center transition-colors shrink-0 ml-2 mt-0.5"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )}
