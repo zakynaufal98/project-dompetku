@@ -17,6 +17,7 @@ export default function CategoryManager({ open, onClose, type: initType = 'out' 
   const [editSubs, setEditSubs] = useState([])
   const [editNewSub, setEditNewSub] = useState('')
   const [editBusy, setEditBusy] = useState(false)
+  const [editErr, setEditErr] = useState('')
 
   useEffect(() => { if (open) setActiveType(initType) }, [open, initType])
   useEffect(() => { if (!open) { setEditingId(null); setEditNewSub('') } }, [open])
@@ -41,17 +42,21 @@ export default function CategoryManager({ open, onClose, type: initType = 'out' 
     setEditingId(cat.id)
     setEditSubs([...(cat.sub_cats || [])])
     setEditNewSub('')
+    setEditErr('')
   }
 
   const cancelEdit = () => {
     setEditingId(null)
     setEditNewSub('')
+    setEditErr('')
   }
 
   const addEditSub = () => {
-    const trimmed = editNewSub.trim()
-    if (!trimmed || editSubs.includes(trimmed)) return
-    setEditSubs(prev => [...prev, trimmed])
+    const parts = editNewSub.split(',').map(s => s.trim()).filter(Boolean)
+    if (parts.length === 0) return
+    const toAdd = parts.filter(p => !editSubs.includes(p))
+    if (toAdd.length === 0) return
+    setEditSubs(prev => [...prev, ...toAdd])
     setEditNewSub('')
   }
 
@@ -60,10 +65,19 @@ export default function CategoryManager({ open, onClose, type: initType = 'out' 
   }
 
   const saveEdit = async (id) => {
+    // Include any text still in input that user forgot to click +
+    let finalSubs = [...editSubs]
+    if (editNewSub.trim()) {
+      const extra = editNewSub.split(',').map(s => s.trim()).filter(s => s && !finalSubs.includes(s))
+      finalSubs = [...finalSubs, ...extra]
+    }
     setEditBusy(true)
-    const error = await updateCustomCat(id, editSubs)
+    setEditErr('')
+    const error = await updateCustomCat(id, finalSubs)
     setEditBusy(false)
-    if (!error) { setEditingId(null); setEditNewSub('') }
+    if (error) { setEditErr(error.message || 'Gagal menyimpan — pastikan RLS policy UPDATE sudah ditambahkan di Supabase'); return }
+    setEditingId(null)
+    setEditNewSub('')
   }
 
   if (!open) return null
@@ -239,7 +253,7 @@ export default function CategoryManager({ open, onClose, type: initType = 'out' 
                           <div className="flex gap-2">
                             <input
                               className="form-input py-2 text-sm flex-1"
-                              placeholder="Tambah sub kategori..."
+                              placeholder="Tambah sub (pisah koma untuk banyak)"
                               value={editNewSub}
                               onChange={e => setEditNewSub(e.target.value)}
                               onKeyDown={e => e.key === 'Enter' && addEditSub()}
@@ -252,6 +266,9 @@ export default function CategoryManager({ open, onClose, type: initType = 'out' 
                               <Plus size={16} />
                             </button>
                           </div>
+
+                          {/* Error */}
+                          {editErr && <p className="text-xs text-expense font-medium">{editErr}</p>}
 
                           {/* Save button */}
                           <button
