@@ -115,9 +115,9 @@ export default function Bulanan({ quickFilter = 'semua' }) {
           <p className="text-muted text-[10px] font-bold uppercase tracking-wider mb-1">Profit Investasi</p>
           <p className="tabular-nums font-bold text-base sm:text-xl text-income tracking-tight truncate">{fmtShort(monthSummary.investmentProfit)}</p>
         </div>
-        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-4 shadow-sm text-white col-span-1">
-          <p className="text-white/70 text-[10px] font-bold uppercase tracking-wider mb-1">Savings Rate</p>
-          <p className="tabular-nums font-black text-xl tracking-tight">{txIn > 0 ? (((nettoBulanIni > 0 ? nettoBulanIni : 0)) / txIn * 100).toFixed(1) : 0}%</p>
+        <div className="bg-[#0e0f0c] rounded-2xl p-4 shadow-sm col-span-1">
+          <p className="text-primary/60 text-[10px] font-bold uppercase tracking-wider mb-1">Savings Rate</p>
+          <p className="tabular-nums font-black text-xl tracking-tight text-primary">{txIn > 0 ? (((nettoBulanIni > 0 ? nettoBulanIni : 0)) / txIn * 100).toFixed(1) : 0}%</p>
         </div>
       </div>
 

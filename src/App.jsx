@@ -9,6 +9,7 @@ import Sidebar from './components/Sidebar'
 import BottomNav from './components/BottomNav'
 import Navbar from './components/Navbar'
 import RecoveryModal from './components/RecoveryModal'
+import { getAppPlatform } from './lib/platform'
 
 // 🚀 PERFORMANCE: Lazy load semua halaman → code splitting otomatis
 // Setiap halaman akan dimuat hanya saat pertama kali dikunjungi
@@ -34,10 +35,21 @@ function AppLayout() {
   const [collapsed, setCollapsed] = useState(false)
   const { pathname } = useLocation()
   const mainRef = useRef(null)
+  const appPlatform = getAppPlatform()
+  const isAndroidApp = appPlatform === 'android'
 
   useEffect(() => {
     if (mainRef.current) mainRef.current.scrollTo(0, 0)
   }, [pathname])
+
+  useEffect(() => {
+    document.documentElement.dataset.appPlatform = appPlatform
+    document.body.dataset.appPlatform = appPlatform
+    return () => {
+      delete document.documentElement.dataset.appPlatform
+      delete document.body.dataset.appPlatform
+    }
+  }, [appPlatform])
 
   if (loading) {
     return (
@@ -65,7 +77,7 @@ function AppLayout() {
 
   return (
     <DataProvider>
-      <div className="flex min-h-[100dvh] overflow-hidden transition-colors duration-300 bg-bg">
+      <div className={`flex min-h-[100dvh] overflow-hidden transition-colors duration-300 bg-bg ${isAndroidApp ? 'android-shell' : ''}`}>
 
         <div className="hidden lg:block" aria-hidden="true">
           <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
@@ -75,11 +87,19 @@ function AppLayout() {
           ref={mainRef}
           id="main-content"
           aria-label="Konten utama"
-          className="flex-1 min-h-[100dvh] overflow-y-auto w-full relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0 scroll-smooth"
+          className={`flex-1 min-h-[100dvh] overflow-y-auto w-full relative scroll-smooth ${
+            isAndroidApp
+              ? 'pb-[calc(7.5rem+env(safe-area-inset-bottom))] lg:pb-0'
+              : 'pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0'
+          }`}
         >
-          <Navbar />
+          <Navbar platform={appPlatform} />
 
-          <div className="px-4 py-5 md:px-6 md:py-6 lg:px-8 lg:py-8 max-w-[1320px] mx-auto">
+          <div className={`max-w-[1320px] mx-auto ${
+            isAndroidApp
+              ? 'px-3 py-4 md:px-5 md:py-5 lg:px-8 lg:py-8'
+              : 'px-4 py-5 md:px-6 md:py-6 lg:px-8 lg:py-8'
+          }`}>
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/"              element={<Dashboard />} />
@@ -99,8 +119,7 @@ function AppLayout() {
           </div>
         </main>
 
-        {/* Bottom nav mobile - aria-label untuk screen reader */}
-        <BottomNav />
+        <BottomNav platform={appPlatform} />
       </div>
     </DataProvider>
   )

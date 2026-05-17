@@ -131,9 +131,9 @@ export default function Grafik({ quickFilter = 'semua' }) {
     });
 
     return [
-      { name: 'Pemasukan Riil',  value: summary.realIncome,  fill: '#4F46E5' },
-      { name: 'Pengeluaran Bersih', value: summary.expense, fill: '#FF8A00' },
-      { name: 'Investasi',   value: invM, fill: '#10B981' },
+      { name: 'Pemasukan Riil',  value: summary.realIncome,  fill: '#9fe870' },
+      { name: 'Pengeluaran Bersih', value: summary.expense, fill: '#d03238' },
+      { name: 'Investasi',   value: invM, fill: '#38c8ff' },
     ].filter(d => d.value > 0);
   }, [filteredTxData, filteredInvData, currentMonthPrefix]);
 
@@ -235,7 +235,7 @@ export default function Grafik({ quickFilter = 'semua' }) {
                   }}
                 >
                   {dailyExpense.data.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry["Pengeluaran Bersih"] === dailyExpense.maxDay.value && entry["Pengeluaran Bersih"] > 0 ? '#E11D48' : '#FF8A00'} />
+                    <Cell key={`cell-${index}`} fill={entry["Pengeluaran Bersih"] === dailyExpense.maxDay.value && entry["Pengeluaran Bersih"] > 0 ? '#a72027' : '#d03238'} />
                   ))}
                 </Bar>
               </BarChart>
@@ -253,14 +253,14 @@ export default function Grafik({ quickFilter = 'semua' }) {
                   <AreaChart data={saldoLine} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="saldoGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.2} /><stop offset="95%" stopColor="#4F46E5" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#9fe870" stopOpacity={0.25} /><stop offset="95%" stopColor="#9fe870" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
                     <XAxis dataKey="date" tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} dy={10} minTickGap={30} />
                     <YAxis width={60} tickFormatter={fmtChartAxis} tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
                     <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--chart-tick)', strokeWidth: 1, strokeDasharray: '4 4' }} />
-                    <Area type="monotone" dataKey="saldo" name="Pertumbuhan Saldo" stroke="#4F46E5" strokeWidth={3} fill="url(#saldoGrad)" activeDot={{ r: 6, fill: '#4F46E5', stroke: '#fff', strokeWidth: 2 }} />
+                    <Area type="monotone" dataKey="saldo" name="Pertumbuhan Saldo" stroke="#9fe870" strokeWidth={3} fill="url(#saldoGrad)" activeDot={{ r: 6, fill: '#9fe870', stroke: '#fff', strokeWidth: 2 }} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -298,8 +298,8 @@ export default function Grafik({ quickFilter = 'semua' }) {
                   <XAxis dataKey="name" tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} dy={10} />
                   <YAxis width={60} tickFormatter={fmtChartAxis} tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
                   <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgb(var(--color-bg) / 0.8)'}} />
-                  <Bar dataKey="Pemasukan" fill="#4F46E5" radius={[4,4,0,0]} maxBarSize={24} />
-                  <Bar dataKey="Pengeluaran" fill="#FF8A00" radius={[4,4,0,0]} maxBarSize={24} />
+                  <Bar dataKey="Pemasukan" fill="#9fe870" radius={[4,4,0,0]} maxBarSize={24} />
+                  <Bar dataKey="Pengeluaran" fill="#d03238" radius={[4,4,0,0]} maxBarSize={24} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -348,8 +348,8 @@ export default function Grafik({ quickFilter = 'semua' }) {
                 <XAxis dataKey="name" tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} dy={10} />
                 <YAxis width={60} tickFormatter={fmtChartAxis} tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgb(var(--color-bg) / 0.8)'}} />
-                <Bar dataKey="Beli" fill="#10B981" radius={[4,4,0,0]} maxBarSize={24} />
-                <Bar dataKey="Jual" fill="#FF8A00" radius={[4,4,0,0]} maxBarSize={24} />
+                <Bar dataKey="Beli" fill="#38c8ff" radius={[4,4,0,0]} maxBarSize={24} />
+                <Bar dataKey="Jual" fill="#2ead4b" radius={[4,4,0,0]} maxBarSize={24} />
               </BarChart>
             </ResponsiveContainer>
           </div>

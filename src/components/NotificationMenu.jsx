@@ -7,7 +7,7 @@ export default function NotificationMenu() {
   const { billData, txData } = useData()
   const [isOpen, setIsOpen] = useState(false)
   const [dismissedNotifs, setDismissedNotifs] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('dompetku_dismissed_notifs')) || [] } catch { return [] }
+    try { return JSON.parse(localStorage.getItem('cashflowku_dismissed_notifs')) || [] } catch { return [] }
   })
   const menuRef = useRef(null)
 
@@ -15,7 +15,7 @@ export default function NotificationMenu() {
     e.stopPropagation()
     const newDismissed = [...dismissedNotifs, id]
     setDismissedNotifs(newDismissed)
-    localStorage.setItem('dompetku_dismissed_notifs', JSON.stringify(newDismissed))
+    localStorage.setItem('cashflowku_dismissed_notifs', JSON.stringify(newDismissed))
   }
 
   useEffect(() => {

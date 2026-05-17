@@ -1,0 +1,28 @@
+{
+  "name": "dompetku-capacitor-clone",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "sync:web": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\sync-web.ps1",
+    "cap:sync": "npm run sync:web && npx cap sync android",
+    "cap:copy": "npm run sync:web && npx cap copy android",
+    "cap:open": "npx cap open android",
+    "cap:run": "npm run sync:web && npx cap run android",
+    "cap:sync:live": "set CAP_DEV_SERVER_URL=http://10.0.2.2:5173&& npx cap sync android",
+    "cap:run:live": "set CAP_DEV_SERVER_URL=http://10.0.2.2:5173&& npx cap run android",
+    "cap:open:live": "set CAP_DEV_SERVER_URL=http://10.0.2.2:5173&& npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/app": "^7.0.2",
+    "@capacitor/browser": "^7.0.2",
+    "@capacitor/core": "^7.4.3",
+    "@capacitor/splash-screen": "^7.0.2",
+    "@capacitor/status-bar": "^7.0.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.3",
+    "typescript": "^5.9.3"
+  }
+}

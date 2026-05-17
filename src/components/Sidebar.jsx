@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, ReceiptText, BriefcaseBusiness, BarChart3, ChevronLeft, ChevronRight, CreditCard, Target, Sparkles, Wallet } from 'lucide-react'
+import { LayoutDashboard, ReceiptText, BriefcaseBusiness, BarChart3, ChevronLeft, ChevronRight, CreditCard, Target, Sparkles } from 'lucide-react'
 import PanduanModal from './PanduanModal'
+import CashFlowKuLogo from './CashFlowKuLogo'
 
 const NAV_LINKS = [
   { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -24,12 +25,10 @@ export default function Sidebar({ collapsed, setCollapsed }) {
       >
         <div className={`flex h-[88px] items-center border-b border-border ${collapsed ? 'justify-center px-4' : 'px-6'}`}>
           <div className="flex min-w-0 items-center gap-3 overflow-hidden">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-text shadow-sm">
-              <Wallet size={20} strokeWidth={2.2} />
-            </div>
+            <CashFlowKuLogo size={48} rounded={24} className="shrink-0 shadow-sm" />
             {!collapsed && (
               <div>
-                <p className="text-xl font-black leading-none text-text">DompetKu Pro</p>
+                <p className="text-xl font-black leading-none text-text">CashFlowKu</p>
                 <p className="mt-1 text-xs font-medium text-muted">Keuangan pribadi</p>
               </div>
             )}

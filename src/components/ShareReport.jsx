@@ -103,17 +103,17 @@ export default function ShareReport() {
         backgroundColor: '#f7f8f5',
       })
       const blob = await (await fetch(dataUrl)).blob()
-      const file = new File([blob], `dompetku-wrapped-${mode}-${activeSlide + 1}.png`, { type: 'image/png' })
+      const file = new File([blob], `cashflowku-wrapped-${mode}-${activeSlide + 1}.png`, { type: 'image/png' })
 
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: `DompetKu Wrapped ${stats.periodLabel}`,
+          title: `CashFlowKu Wrapped ${stats.periodLabel}`,
           text: `Ringkasan ${stats.periodLabel}`,
         })
       } else {
         const link = document.createElement('a')
-        link.download = `dompetku-wrapped-${mode}-${activeSlide + 1}.png`
+        link.download = `cashflowku-wrapped-${mode}-${activeSlide + 1}.png`
         link.href = dataUrl
         link.click()
       }
@@ -129,7 +129,7 @@ export default function ShareReport() {
       <div>
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#7c847c]">DompetKu Wrapped</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#7c847c]">CashFlowKu Wrapped</p>
             <h3 className="mt-2 text-3xl font-black tracking-tight">{stats.periodLabel}</h3>
           </div>
           <div className="rounded-full bg-[#dff3c8] px-3 py-1 text-[11px] font-bold text-[#1d2d17]">
@@ -280,7 +280,7 @@ export default function ShareReport() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 id="wrapped-title" className="text-2xl font-black tracking-tight text-text">
-              DompetKu Wrapped
+              CashFlowKu Wrapped
             </h2>
             <p className="mt-2 max-w-xl text-sm text-muted">
               Ringkasan shareable untuk periode pilihanmu. Dari web, tombol bagikan akan membuka share sheet perangkat jika browser mendukungnya.

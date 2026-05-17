@@ -84,7 +84,7 @@ export const TxItem = ({ t, onDelete, onEdit, isInv, walletName, inputterName })
           {IconElement}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="font-bold text-sm text-text leading-tight break-words">{t.desc}</p>
+          <p className="font-bold text-sm text-text leading-tight break-words">{t.desc?.replace(/#[HP]ID-[a-z0-9]{6}/gi, '').trim()}</p>
 
           <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
             {dateDisplay && (

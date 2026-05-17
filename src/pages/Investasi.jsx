@@ -202,7 +202,7 @@ export default function Investasi() {
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         
-        <div className={`bg-surface border ${editId ? 'border-indigo-300 border-income/50 ring-4 ring-indigo-50 ring-income-light' : 'border-border'} rounded-[24px] p-6 md:p-8 shadow-sm lg:col-span-3 space-y-5 transition-all`}>
+        <div className={`bg-surface border ${editId ? 'border-primary/50 ring-4 ring-primary/10' : 'border-border'} rounded-[24px] p-6 md:p-8 shadow-sm lg:col-span-3 space-y-5 transition-all`}>
           <PanelHeader title={editId ? `Edit Transaksi ${invType}` : `Catat Transaksi ${invType}`} badge={editId ? 'Mode Edit' : ''} />
 
           <div className="grid grid-cols-2 gap-3 mb-2">

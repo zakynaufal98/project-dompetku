@@ -3,8 +3,10 @@ import { Plus, X, ArrowDownLeft, ArrowUpRight, Loader2, CheckCircle2, SlidersHor
 import { useData } from '../context/DataContext'
 import { today } from '../lib/utils'
 import CategoryManager from './CategoryManager'
+import { isAndroidShell } from '../lib/platform'
 
 export default function QuickAdd() {
+  const androidShell = isAndroidShell()
   const { addTx, walletData, effectiveCategoryTree, addCustomCat } = useData()
 
   const [open, setOpen]                     = useState(false)
@@ -69,6 +71,8 @@ export default function QuickAdd() {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [])
+
+  if (androidShell) return null
 
   return (
     <>

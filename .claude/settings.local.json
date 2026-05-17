@@ -8,7 +8,9 @@
       "Bash(Find \"d:\\\\Pindah X550JX\\\\Projek Portofolio\\\\dompetku-react\\\\sql\" -type f -name \"*.sql\")",
       "Bash(Get-ChildItem -Path \"d:\\\\Pindah X550JX\\\\Projek Portofolio\\\\dompetku-react\" -Recurse -Force)",
       "Bash(Select-Object -First 50)",
-      "Bash(Format-Table Name, FullName)"
+      "Bash(Format-Table Name, FullName)",
+      "PowerShell(Get-ChildItem \"D:\\\\Pindah X550JX\\\\Projek Portofolio\\\\dompetku-react\" -Name | Where-Object { $_ -match \"design|theme|DESIGN|THEME\" })",
+      "mcp__gemini-mcp__generate_svg"
     ]
   }
 }

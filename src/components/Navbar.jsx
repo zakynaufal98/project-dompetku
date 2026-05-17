@@ -25,12 +25,13 @@ const AVATAR_OPTIONS = [
   { id: 'alien', emoji: '👾', bg: '#38c8ff' },
 ]
 
-export default function Navbar() {
+export default function Navbar({ platform = 'web' }) {
   const { user, logout } = useAuth()
   const [isDark, setIsDark] = useState(false)
   const [dropOpen, setDropOpen] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const dropRef = useRef(null)
+  const isAndroidApp = platform === 'android'
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme')
@@ -77,14 +78,30 @@ export default function Navbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-border bg-bg/95 backdrop-blur-xl">
-        <nav className="mx-auto flex h-[72px] max-w-[1320px] items-center justify-between px-4 md:px-6 lg:px-8" aria-label="Navigasi Utama">
-          <div className="hidden md:block" aria-hidden="true" />
+      <header
+        className={`sticky top-0 z-40 border-b border-border backdrop-blur-xl ${
+          isAndroidApp ? 'bg-bg/98' : 'bg-bg/95'
+        }`}
+        style={isAndroidApp ? { paddingTop: 'max(env(safe-area-inset-top), 0.35rem)' } : undefined}
+      >
+        <nav className={`mx-auto flex max-w-[1320px] items-center justify-between px-4 md:px-6 lg:px-8 ${
+          isAndroidApp ? 'min-h-[64px] py-2' : 'h-[72px]'
+        }`} aria-label="Navigasi Utama">
+          {isAndroidApp ? (
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted">CashFlowKu</p>
+              <p className="truncate text-sm font-black text-text">Ringkasan keuangan</p>
+            </div>
+          ) : (
+            <div className="hidden md:block" aria-hidden="true" />
+          )}
 
           <div className="ml-auto flex items-center gap-2 md:gap-3">
             <button
               onClick={toggleTheme}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-bg text-text transition-colors hover:bg-primary-pale"
+              className={`flex items-center justify-center rounded-full border border-border text-text transition-colors hover:bg-primary-pale ${
+                isAndroidApp ? 'h-10 w-10 bg-surface' : 'h-11 w-11 bg-bg'
+              }`}
               aria-label={isDark ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'}
             >
               {isDark ? <Sun size={18} strokeWidth={2} /> : <Moon size={18} strokeWidth={2} />}
@@ -98,19 +115,23 @@ export default function Navbar() {
                 aria-expanded={dropOpen}
                 aria-haspopup="true"
                 aria-label="Menu akun"
-                className="flex items-center gap-3 rounded-full border border-border bg-surface px-2 py-1.5 transition-colors hover:border-border-2 hover:bg-surface md:px-3"
+                className={`flex items-center rounded-full border border-border bg-surface transition-colors hover:border-border-2 hover:bg-surface ${
+                  isAndroidApp ? 'gap-2 px-2 py-1.5' : 'gap-3 px-2 py-1.5 md:px-3'
+                }`}
               >
                 <div
-                  className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-black text-white shadow-sm"
+                  className={`flex items-center justify-center rounded-full text-sm font-black text-white shadow-sm ${
+                    isAndroidApp ? 'h-9 w-9' : 'h-10 w-10'
+                  }`}
                   style={{ backgroundColor: avatarBg }}
                 >
                   {avatarObj ? avatarObj.emoji : initials}
                 </div>
-                <div className="hidden text-left lg:block">
+                <div className={`text-left ${isAndroidApp ? 'hidden' : 'hidden lg:block'}`}>
                   <p className="max-w-[140px] truncate text-sm font-black text-text">{displayName}</p>
                   <p className="text-[11px] font-medium text-muted">Kelola profil</p>
                 </div>
-                <ChevronDown size={14} className={`hidden text-muted transition-transform lg:block ${dropOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown size={14} className={`text-muted transition-transform ${isAndroidApp ? 'block' : 'hidden lg:block'} ${dropOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {dropOpen && (

@@ -4,8 +4,10 @@ import { useData } from '../context/DataContext'
 import { fmtShort, fmt } from '../lib/utils'
 import { BankLogo } from './UI'
 import { BellRing, Plus, Calendar, CheckCircle2, Trash2, X, Save, Wallet, AlertTriangle, CreditCard, ChevronDown } from 'lucide-react'
+import { isAndroidShell } from '../lib/platform'
 
 export default function BillTracker() {
+  const androidShell = isAndroidShell()
   const { billData, addBill, toggleBill, deleteBill, walletData, totals } = useData()
   const [showForm, setShowForm] = useState(false)
   const [showPayModal, setShowPayModal] = useState(null) // bill object or null
@@ -90,8 +92,48 @@ export default function BillTracker() {
 
   const selectedWalletBalance = totals?.walletBalances?.find(w => w.id === payWalletId)?.calculatedBalance || 0
 
+  const billFormBody = (
+    <>
+      <div className="space-y-3 mb-4">
+        <label htmlFor="bill-name" className="sr-only">Nama tagihan</label>
+        <input 
+          id="bill-name"
+          type="text" placeholder="Nama Tagihan" 
+          value={name} onChange={e => setName(e.target.value)}
+          className="form-input rounded-xl"
+        />
+        <div className="flex gap-3">
+          <label htmlFor="bill-amount" className="sr-only">Nominal tagihan</label>
+          <input 
+            id="bill-amount"
+            type="text" placeholder="Nominal" 
+            value={amount ? Number(amount).toLocaleString('id-ID') : ''} 
+            onChange={e => setAmount(e.target.value.replace(/\D/g, ''))}
+            className="w-1/2 form-input rounded-xl tabular-nums"
+          />
+          <label htmlFor="bill-date" className="sr-only">Tanggal jatuh tempo</label>
+          <input 
+            id="bill-date"
+            type="date" 
+            value={date} onChange={e => setDate(e.target.value)}
+            className="w-1/2 form-input rounded-xl cursor-pointer"
+          />
+        </div>
+      </div>
+      {actionError && (
+        <div className="mb-3 text-xs text-expense bg-expense-light border border-expense/20 rounded-xl px-4 py-3 font-medium">
+          {actionError}
+        </div>
+      )}
+      <button onClick={handleAdd} disabled={busy || !name || !amount || !date} className="btn-income w-full py-3 shadow-lg shadow-income/20">
+        <Save size={16} />
+        {busy ? 'Menyimpan...' : 'Simpan Tagihan'}
+      </button>
+    </>
+  )
+
   return (
-    <div className="bg-surface border border-border rounded-[24px] p-6 shadow-sm flex flex-col h-full transition-colors">
+    <div className={`bg-surface border border-border rounded-[24px] shadow-sm flex flex-col h-full transition-colors ${androidShell ? 'p-4' : 'p-6'}`}>
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
@@ -145,52 +187,14 @@ export default function BillTracker() {
       )}
 
       {/* FORM TAMBAH TAGIHAN */}
-      {showForm && (
+      {showForm && !androidShell && (
         <div className="bg-bg/50 rounded-2xl p-4 mb-5 border border-border animate-fade-up">
-          <div className="space-y-3 mb-4">
-            <label htmlFor="bill-name" className="sr-only">Nama tagihan</label>
-            <input 
-              id="bill-name"
-              type="text" placeholder="Nama Tagihan (Mis: Netflix)" 
-              value={name} onChange={e => setName(e.target.value)}
-              className="form-input rounded-xl"
-            />
-            <div className="flex gap-3">
-              <label htmlFor="bill-amount" className="sr-only">Nominal tagihan</label>
-              <input 
-                id="bill-amount"
-                type="text" placeholder="Nominal (Rp)" 
-                value={amount ? Number(amount).toLocaleString('id-ID') : ''} 
-                onChange={e => setAmount(e.target.value.replace(/\D/g, ''))}
-                className="w-1/2 form-input rounded-xl tabular-nums"
-              />
-              <label htmlFor="bill-date" className="sr-only">Tanggal jatuh tempo</label>
-              <input 
-                id="bill-date"
-                type="date" 
-                value={date} onChange={e => setDate(e.target.value)}
-                className="w-1/2 form-input rounded-xl cursor-pointer"
-              />
-            </div>
-          </div>
-          {actionError && (
-            <div className="mb-3 text-xs text-expense bg-expense-light border border-expense/20 rounded-xl px-4 py-3 font-medium">
-              {actionError}
-            </div>
-          )}
-          <button 
-            onClick={handleAdd}
-            disabled={busy || !name || !amount || !date}
-            className="btn-income w-full py-3 shadow-lg shadow-income/20"
-          >
-            <Save size={16} />
-            {busy ? 'Menyimpan...' : 'Simpan Tagihan'}
-          </button>
+          {billFormBody}
         </div>
       )}
 
       {/* DAFTAR TAGIHAN */}
-      <div className="flex-1 overflow-y-auto pr-1 space-y-2.5 custom-scrollbar max-h-[350px]">
+      <div className={`flex-1 overflow-y-auto pr-1 space-y-2.5 custom-scrollbar ${androidShell ? 'max-h-none' : 'max-h-[350px]'}`}>
         {pendingBills.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 text-muted2 opacity-60">
             <CheckCircle2 size={40} className="mb-3 text-invest" />
@@ -255,6 +259,28 @@ export default function BillTracker() {
           })
         )}
       </div>
+
+      {/* MODAL KONFIRMASI HAPUS */}
+      {androidShell && showForm && createPortal(
+        <div
+          className="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-sm flex items-end justify-center p-3 cursor-pointer animate-fade-in"
+          onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) setShowForm(false) }}
+        >
+          <div
+            className="bg-surface rounded-t-[28px] p-5 w-full shadow-2xl animate-fade-up cursor-default max-h-[calc(100dvh-1rem)] overflow-y-auto"
+            style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+          >
+            <div className="mb-5 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-text">Tambah Tagihan</h3>
+              <button onClick={() => !busy && setShowForm(false)} className="w-8 h-8 flex items-center justify-center rounded-full text-muted2 hover:bg-border hover:text-text-2 transition-colors">
+                <X size={20} strokeWidth={2.5} />
+              </button>
+            </div>
+            {billFormBody}
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* MODAL KONFIRMASI HAPUS */}
       {deleteConfirm && createPortal(

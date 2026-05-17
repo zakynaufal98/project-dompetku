@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useData } from '../context/DataContext'
 import { fmt, fmtShort, today, summarizeFinancialTx, QUICK_FILTERS, matchesQuickFilterPreset, isDateQuickFilterPreset } from '../lib/utils'
 import { TxItem, Empty, Tabs, Field, PanelHeader, BreakdownPanel } from '../components/UI'
@@ -7,14 +8,35 @@ import DescInput from '../components/DescInput'
 import RecurringWidget from '../components/RecurringWidget'
 import CategoryManager from '../components/CategoryManager'
 import FinancialDefinitionsModal from '../components/FinancialDefinitionsModal'
+import { isAndroidShell } from '../lib/platform'
 import {
   ArrowDownLeft, ArrowUpRight, Banknote,
   Calendar, PlusCircle, ReceiptText, Loader2, Search,
-  Wallet, ChevronDown, Sparkles, BriefcaseBusiness, ArrowUpDown, X, Check, SlidersHorizontal, BookOpen
+  Wallet, ChevronDown, Sparkles, BriefcaseBusiness, ArrowUpDown, X, Check, SlidersHorizontal, BookOpen, ArrowLeft, ArrowRight
 } from 'lucide-react'
 
+function SectionToggle({ title, desc, open, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center justify-between rounded-[20px] border border-border bg-surface px-4 py-3 text-left transition-colors hover:bg-bg"
+      aria-expanded={open}
+    >
+      <div>
+        <p className="text-sm font-black text-text">{title}</p>
+        <p className="mt-0.5 text-xs font-medium text-muted">{desc}</p>
+      </div>
+      <ChevronDown size={16} className={`text-muted transition-transform ${open ? 'rotate-180' : ''}`} />
+    </button>
+  )
+}
+
 export default function Transaksi() {
-  const { txData, addTx, updateTx, deleteTx, totals, walletData, effectiveCategoryTree, addCustomCat } = useData()
+  const androidShell = isAndroidShell()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { txData, addTx, updateTx, deleteTx, totals, walletData, effectiveCategoryTree, addCustomCat, getProjectedWalletBalance } = useData()
 
   // ── Add form state ──────────────────────────────────────
   const [type, setType] = useState('out')
@@ -61,10 +83,43 @@ export default function Transaksi() {
   const [showCalcDetails, setShowCalcDetails] = useState(false)
   const [quickFilter, setQuickFilter] = useState('semua')
   const [showDefinitions, setShowDefinitions] = useState(false)
+  const [showRecurringPanel, setShowRecurringPanel] = useState(false)
+  const [activeDateKey, setActiveDateKey] = useState('')
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [composeStep, setComposeStep] = useState(1)
+
+  const openAndroidComposer = () => {
+    setComposeStep(1)
+    if (!androidShell) {
+      setShowAddModal(true)
+      return
+    }
+    const params = new URLSearchParams(location.search)
+    params.set('compose', '1')
+    navigate({ pathname: location.pathname, search: params.toString() }, { replace: false })
+  }
+
+  const closeAndroidComposer = () => {
+    setComposeStep(1)
+    if (!androidShell) {
+      setShowAddModal(false)
+      return
+    }
+    const params = new URLSearchParams(location.search)
+    params.delete('compose')
+    const search = params.toString()
+    navigate({ pathname: location.pathname, search }, { replace: true })
+  }
 
   useEffect(() => {
     if (walletData?.length > 0 && !walletId) setWalletId(walletData[0].id)
   }, [walletData, walletId])
+
+  useEffect(() => {
+    if (!androidShell) return
+    const params = new URLSearchParams(location.search)
+    setShowAddModal(params.get('compose') === '1')
+  }, [androidShell, location.search])
 
   // ── Auto-categorization (add form) ──────────────────────
   const handleDescChange = (val) => {
@@ -189,7 +244,11 @@ export default function Transaksi() {
     const e = await addTx(payload)
     setBusy(false)
     if (e) setErr(e.message)
-    else { setDesc(''); setAmount(''); setMainCat(''); setSubCat(''); setType('out') }
+    else {
+      setDesc(''); setAmount(''); setMainCat(''); setSubCat(''); setType('out')
+      setComposeStep(1)
+      if (androidShell) closeAndroidComposer()
+    }
   }
 
   const handleSaveEdit = async () => {
@@ -260,6 +319,26 @@ export default function Transaksi() {
     return groups
   }, [filtered])
 
+  const visibleDateKeys = useMemo(() => Object.keys(groupedTx), [groupedTx])
+  const sliderDateKeys = useMemo(() => [...visibleDateKeys].sort((a, b) => a.localeCompare(b)), [visibleDateKeys])
+  const renderedDateKeys = useMemo(() => {
+    if (!androidShell) return visibleDateKeys
+    return activeDateKey && groupedTx[activeDateKey] ? [activeDateKey] : []
+  }, [androidShell, visibleDateKeys, activeDateKey, groupedTx])
+
+  useEffect(() => {
+    if (!sliderDateKeys.length) {
+      setActiveDateKey('')
+      return
+    }
+    const todayKey = today()
+    setActiveDateKey((prev) => {
+      if (prev && sliderDateKeys.includes(prev)) return prev
+      if (sliderDateKeys.includes(todayKey)) return todayKey
+      return sliderDateKeys[sliderDateKeys.length - 1]
+    })
+  }, [sliderDateKeys])
+
   const monthlySummary = useMemo(() => {
     const monthTx = txData.filter((t) => {
       const matchMonth = isDateQuickFilterPreset(quickFilter) ? true : (!selectedMonth || t.date.startsWith(selectedMonth))
@@ -282,31 +361,15 @@ export default function Transaksi() {
   const editActiveWallet = totals?.walletBalances?.find(w => w.id === editWalletId)
   const editedTx = txData.find(t => t.id === editId)
 
-  const getProjectedWalletBalance = ({ targetWalletId, nextType, nextAmount, originalTx = null }) => {
-    if (!targetWalletId) return Infinity
-    const wallet = totals?.walletBalances?.find(w => w.id === targetWalletId)
-    if (!wallet) return Infinity
-
-    let projected = Number(wallet.calculatedBalance) || 0
-    if (originalTx?.wallet_id === targetWalletId) {
-      if (originalTx.type === 'out') projected += Number(originalTx.amount) || 0
-      if (originalTx.type === 'in') projected -= Number(originalTx.amount) || 0
-    }
-
-    if (nextType === 'out') projected -= Number(nextAmount) || 0
-    if (nextType === 'in') projected += Number(nextAmount) || 0
-    return projected
-  }
-
   const addProjectedBalance = getProjectedWalletBalance({
-    targetWalletId: walletId,
-    nextType: type,
-    nextAmount: +amount || 0
+    wallet_id: walletId,
+    type,
+    amount: +amount || 0
   })
   const editProjectedBalance = getProjectedWalletBalance({
-    targetWalletId: editWalletId,
-    nextType: editType,
-    nextAmount: +editAmount || 0,
+    wallet_id: editWalletId,
+    type: editType,
+    amount: +editAmount || 0,
     originalTx: editedTx
   })
   const isAddBalanceInsufficient = type === 'out' && walletId && amount && addProjectedBalance < 0
@@ -336,15 +399,501 @@ export default function Transaksi() {
     if (mainCat === 'Lainnya' && lowerDesc.length >= 4) {
       warnings.push('Kategori masih "Lainnya". Kalau memungkinkan, pilih kategori yang lebih spesifik agar insight lebih akurat.')
     }
-    if (type === 'out' && activeWallet?.calculatedBalance > 0 && amountNum >= activeWallet.calculatedBalance * 0.5) {
+    if (type === 'out' && activeWallet?.calculatedBalance > 0 && amountNum >= activeWallet.calculatedBalance * 0.8) {
       warnings.push('Nominal ini cukup besar dibanding saldo dompet aktif. Cek lagi dompet, kategori, dan tujuan transaksi.')
     }
 
     return [...new Set(warnings)]
   }, [type, desc, amount, mainCat, activeWallet])
 
+  const canProceedComposeStepOne = Boolean(desc.trim()) && Boolean(amount) && Number(amount) > 0
+
+  const addFormBody = (
+    <>
+      {androidShell ? (
+        <>
+          <div className="mb-1 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted">
+                Langkah {composeStep} dari 2
+              </p>
+              <h4 className="mt-1 text-base font-black tracking-tight text-text">
+                {composeStep === 1 ? 'Detail utama' : 'Kategori & sumber dana'}
+              </h4>
+            </div>
+            <div className="flex gap-2">
+              <span className={`h-2.5 w-10 rounded-full ${composeStep === 1 ? 'bg-text' : 'bg-border'}`} />
+              <span className={`h-2.5 w-10 rounded-full ${composeStep === 2 ? 'bg-text' : 'bg-border'}`} />
+            </div>
+          </div>
+
+          {composeStep === 1 && (
+            <>
+              <div className="grid grid-cols-2 gap-3 mb-2">
+                <button onClick={() => handleTypeChange('in')}
+                  className={`flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-sm font-bold border transition-all cursor-pointer ${
+                    type === 'in' ? 'bg-income-light text-income border-income/30' : 'bg-bg text-muted border-transparent hover:border-border2'
+                  }`}>
+                  <ArrowDownLeft size={18} strokeWidth={2.5} /> Pemasukan
+                </button>
+                <button onClick={() => handleTypeChange('out')}
+                  className={`flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-sm font-bold border transition-all cursor-pointer ${
+                    type === 'out' ? 'bg-gold-light text-gold border-gold/30' : 'bg-bg text-muted border-transparent hover:border-border2'
+                  }`}>
+                  <ArrowUpRight size={18} strokeWidth={2.5} /> Pengeluaran
+                </button>
+              </div>
+
+              {quickTemplates.length > 0 && (
+                <div>
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted">Template cepat</p>
+                  <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                    {quickTemplates.map((item) => (
+                      <button
+                        key={`${item.desc}-${item.cat}-${item.subCat}`}
+                        type="button"
+                        onClick={() => applyQuickTemplate(item)}
+                        className="min-w-[180px] rounded-2xl border border-border bg-surface px-3 py-3 text-left transition-colors hover:bg-primary-pale"
+                      >
+                        <p className="truncate text-sm font-bold text-text">{item.desc}</p>
+                        <p className="mt-1 text-[11px] font-semibold text-muted">{item.cat}{item.subCat ? ` • ${item.subCat}` : ''}</p>
+                        <p className="mt-2 text-xs font-black text-income">{fmtShort(item.amount)}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <Field label="Keterangan / Tempat">
+                  <DescInput value={desc} onChange={handleDescChange} txData={txData} onEnter={() => canProceedComposeStepOne && setComposeStep(2)} />
+                </Field>
+
+                <Field label="Jumlah (Rp)">
+                  <div className="relative">
+                    <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-bg text-muted rounded-xl flex items-center justify-center pointer-events-none z-10">
+                      <Banknote size={16} strokeWidth={2.5} />
+                    </div>
+                    <input
+                      className="form-input pl-14 py-3 relative z-0"
+                      type="text" inputMode="numeric"
+                      value={amount ? Number(amount).toLocaleString('id-ID') : ''}
+                      onChange={e => setAmount(e.target.value.replace(/\D/g, ''))}
+                      placeholder="0"
+                      onKeyDown={e => e.key === 'Enter' && canProceedComposeStepOne && setComposeStep(2)}
+                    />
+                  </div>
+                  {suggestedAmounts.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2.5 animate-fade-in">
+                      {suggestedAmounts.map((nominal, idx) => (
+                        <button key={idx} type="button" onClick={() => setAmount(nominal.toString())}
+                          className="px-2.5 py-1 bg-income-light text-income text-xs font-bold rounded-lg border border-income/20 hover:opacity-80 transition-opacity cursor-pointer shadow-sm active:scale-95">
+                          {nominal.toLocaleString('id-ID')}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </Field>
+
+                {err && <div className="text-xs text-expense bg-expense-light border border-expense/20 rounded-xl px-4 py-3 font-medium">{err}</div>}
+
+                <button
+                  type="button"
+                  onClick={() => setComposeStep(2)}
+                  disabled={!canProceedComposeStepOne}
+                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-text py-4 text-sm font-bold text-white transition-all disabled:opacity-40"
+                >
+                  Lanjut
+                  <ArrowRight size={18} />
+                </button>
+              </div>
+            </>
+          )}
+
+          {composeStep === 2 && (
+            <div className="space-y-4">
+              {favoriteCategories.length > 0 && (
+                <div>
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted">Kategori favorit</p>
+                  <div className="flex flex-wrap gap-2">
+                    {favoriteCategories.map((item) => (
+                      <button
+                        key={`${item.cat}-${item.subCat}`}
+                        type="button"
+                        onClick={() => applyFavoriteCategory(item)}
+                        className="rounded-full border border-border bg-surface px-3 py-2 text-xs font-bold text-text transition-colors hover:bg-primary-pale"
+                      >
+                        {item.cat}{item.subCat ? ` • ${item.subCat}` : ''}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between ml-1">
+                  <label className="text-xs font-bold text-muted">Kategori Induk</label>
+                  <button
+                    type="button"
+                    onClick={() => { setCatManagerType(type); setShowCatManager(true) }}
+                    className="flex items-center gap-1 text-[10px] font-bold text-teal-500 hover:text-teal-400 transition-colors"
+                  >
+                    <SlidersHorizontal size={11} /> Kelola
+                  </button>
+                </div>
+                <div className="relative">
+                  <select className="form-input py-3 pl-4 pr-10 cursor-pointer appearance-none font-semibold text-text-2 text-sm w-full"
+                    value={mainCat}
+                    onChange={e => {
+                      if (e.target.value === '__add__') { setShowAddCatForm(true); return }
+                      setMainCat(e.target.value); setSubCat(''); setShowAddCatForm(false)
+                    }}>
+                    <option value="" disabled>Pilih Kategori...</option>
+                    {availableMainCats.map(c => <option key={c} value={c}>{c}</option>)}
+                    <option disabled>──────────────</option>
+                    <option value="__add__">+ Tambah Kategori Baru</option>
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><ChevronDown size={18} strokeWidth={2.5} /></div>
+                </div>
+                {showAddCatForm && (
+                  <div className="flex gap-2 animate-fade-in">
+                    <input
+                      className="form-input py-2 flex-1 text-sm"
+                      placeholder="Nama kategori baru..."
+                      value={newCatInput}
+                      onChange={e => setNewCatInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleSaveNewCat(); if (e.key === 'Escape') { setShowAddCatForm(false); setNewCatInput('') } }}
+                      autoFocus
+                    />
+                    <button onClick={handleSaveNewCat} disabled={newCatBusy}
+                      className="px-3 rounded-xl bg-teal-500 text-white hover:bg-teal-600 disabled:opacity-50 transition-colors">
+                      {newCatBusy ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                    </button>
+                    <button onClick={() => { setShowAddCatForm(false); setNewCatInput('') }}
+                      className="px-3 rounded-xl bg-bg text-muted hover:text-text transition-colors">
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <Field label="Sub Kategori">
+                <div className="relative">
+                  <select className="form-input py-3 pl-4 pr-10 cursor-pointer appearance-none font-semibold text-text-2 text-sm w-full disabled:opacity-50"
+                    value={subCat} onChange={e => setSubCat(e.target.value)}
+                    disabled={!mainCat || availableSubCats.length === 0}>
+                    <option value="" disabled>Pilih Detail...</option>
+                    {availableSubCats.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><ChevronDown size={18} strokeWidth={2.5} /></div>
+                </div>
+              </Field>
+
+              <Field label="Pilih Dompet / Rekening">
+                {totals?.walletBalances?.length > 0 ? (
+                  <div className="relative">
+                    <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl flex items-center justify-center pointer-events-none z-10 text-white"
+                      style={{ backgroundColor: activeWallet?.color || '#94a3b8' }}>
+                      <Wallet size={16} strokeWidth={2.5} />
+                    </div>
+                    <select className="form-input pl-14 pr-10 py-3 cursor-pointer appearance-none font-semibold text-text-2 w-full"
+                      value={walletId} onChange={e => setWalletId(e.target.value)}>
+                      <option value="" disabled>Pilih Sumber Dana...</option>
+                      {totals.walletBalances.map(w => (
+                        <option key={w.id} value={w.id}>
+                          {w.name} — {w.calculatedBalance < 0 ? '-' : ''}Rp {Math.abs(w.calculatedBalance).toLocaleString('id-ID')}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><ChevronDown size={18} strokeWidth={2.5} /></div>
+                  </div>
+                ) : (
+                  <div className="bg-bg border border-border rounded-xl px-4 py-3 text-sm text-muted flex items-center gap-2">
+                    <Wallet size={16} className="text-slate-400" /> Belum ada dompet. Buat di Dashboard!
+                  </div>
+                )}
+                {isAddBalanceInsufficient && (
+                  <p className="mt-2 text-[11px] font-bold text-expense">
+                    Saldo kurang. Maksimal pengeluaran dari dompet ini {fmt(activeWallet?.calculatedBalance || 0)}.
+                  </p>
+                )}
+              </Field>
+
+              <Field label="Tanggal">
+                <div className="relative">
+                  <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-bg text-muted rounded-xl flex items-center justify-center pointer-events-none z-10">
+                    <Calendar size={16} strokeWidth={2.5} />
+                  </div>
+                  <input className="form-input pl-14 py-3 cursor-pointer text-sm relative z-0"
+                    type="date" value={date} onChange={e => setDate(e.target.value)} />
+                </div>
+              </Field>
+
+              {formWarnings.length > 0 && (
+                <div className="rounded-[20px] border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest">Perlu dicek</p>
+                  <div className="space-y-1.5">
+                    {formWarnings.map((warning) => (
+                      <p key={warning} className="text-xs font-medium leading-relaxed">{warning}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {err && <div className="text-xs text-expense bg-expense-light border border-expense/20 rounded-xl px-4 py-3 font-medium">{err}</div>}
+
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setComposeStep(1)}
+                  className="flex items-center justify-center gap-2 rounded-xl border border-border bg-bg py-4 text-sm font-bold text-text transition-colors hover:bg-border/70"
+                >
+                  <ArrowLeft size={18} />
+                  Kembali
+                </button>
+                <button onClick={handleAdd} disabled={busy || isAddBalanceInsufficient}
+                  className={`flex items-center justify-center gap-2 rounded-xl py-4 text-sm font-bold text-white transition-all disabled:opacity-50 ${
+                    type === 'in' ? 'bg-income hover:opacity-90' : 'bg-expense hover:opacity-90'
+                  }`}>
+                  {busy ? <Loader2 size={18} className="animate-spin" /> : <PlusCircle size={18} />}
+                  Simpan
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="flex items-center gap-3 border-b border-border pb-4 mb-2">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, #2ead4b, #054d28)' }}>
+              <ReceiptText size={16} className="text-white" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-0.5">Form</p>
+              <h3 className="font-black text-text text-base tracking-tight">Tambah Transaksi</h3>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 mb-2">
+            <button onClick={() => handleTypeChange('in')}
+              className={`flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-sm font-bold border transition-all cursor-pointer ${
+                type === 'in' ? 'bg-income-light text-income border-income/30' : 'bg-bg text-muted border-transparent hover:border-border2'
+              }`}>
+              <ArrowDownLeft size={18} strokeWidth={2.5} /> Pemasukan
+            </button>
+            <button onClick={() => handleTypeChange('out')}
+              className={`flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-sm font-bold border transition-all cursor-pointer ${
+                type === 'out' ? 'bg-gold-light text-gold border-gold/30' : 'bg-bg text-muted border-transparent hover:border-border2'
+              }`}>
+              <ArrowUpRight size={18} strokeWidth={2.5} /> Pengeluaran
+            </button>
+          </div>
+
+          {(quickTemplates.length > 0 || favoriteCategories.length > 0) && (
+            <div className="space-y-3 rounded-[20px] border border-border bg-bg/60 p-4">
+              {quickTemplates.length > 0 && (
+                <div>
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted">Template cepat</p>
+                  <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                    {quickTemplates.map((item) => (
+                      <button
+                        key={`${item.desc}-${item.cat}-${item.subCat}`}
+                        type="button"
+                        onClick={() => applyQuickTemplate(item)}
+                        className="min-w-[180px] rounded-2xl border border-border bg-surface px-3 py-3 text-left transition-colors hover:bg-primary-pale"
+                      >
+                        <p className="truncate text-sm font-bold text-text">{item.desc}</p>
+                        <p className="mt-1 text-[11px] font-semibold text-muted">{item.cat}{item.subCat ? ` • ${item.subCat}` : ''}</p>
+                        <p className="mt-2 text-xs font-black text-income">{fmtShort(item.amount)}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {favoriteCategories.length > 0 && (
+                <div>
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted">Kategori favorit</p>
+                  <div className="flex flex-wrap gap-2">
+                    {favoriteCategories.map((item) => (
+                      <button
+                        key={`${item.cat}-${item.subCat}`}
+                        type="button"
+                        onClick={() => applyFavoriteCategory(item)}
+                        className="rounded-full border border-border bg-surface px-3 py-2 text-xs font-bold text-text transition-colors hover:bg-primary-pale"
+                      >
+                        {item.cat}{item.subCat ? ` • ${item.subCat}` : ''}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Field label="Keterangan / Tempat">
+          <DescInput value={desc} onChange={handleDescChange} txData={txData} onEnter={handleAdd} />
+          <p className="text-[9px] text-income font-bold flex items-center mt-1.5 uppercase tracking-widest opacity-80">
+            <Sparkles size={10} className="mr-1" /> Auto-Kategori Aktif
+          </p>
+        </Field>
+
+        <Field label="Jumlah (Rp)">
+          <div className="relative">
+            <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-bg text-muted rounded-xl flex items-center justify-center pointer-events-none z-10">
+              <Banknote size={16} strokeWidth={2.5} />
+            </div>
+            <input
+              className="form-input pl-14 py-3 relative z-0"
+              type="text" inputMode="numeric"
+              value={amount ? Number(amount).toLocaleString('id-ID') : ''}
+              onChange={e => setAmount(e.target.value.replace(/\D/g, ''))}
+              placeholder="0"
+              onKeyDown={e => e.key === 'Enter' && handleAdd()}
+            />
+          </div>
+          {suggestedAmounts.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2.5 animate-fade-in">
+              <span className="text-[10px] font-bold text-muted2 uppercase tracking-wider flex items-center mr-1">Terakhir:</span>
+              {suggestedAmounts.map((nominal, idx) => (
+                <button key={idx} type="button" onClick={() => setAmount(nominal.toString())}
+                  className="px-2.5 py-1 bg-income-light text-income text-xs font-bold rounded-lg border border-income/20 hover:opacity-80 transition-opacity cursor-pointer shadow-sm active:scale-95">
+                  {nominal.toLocaleString('id-ID')}
+                </button>
+              ))}
+            </div>
+          )}
+        </Field>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between ml-1">
+            <label className="text-xs font-bold text-muted">Kategori Induk</label>
+            <button
+              type="button"
+              onClick={() => { setCatManagerType(type); setShowCatManager(true) }}
+              className="flex items-center gap-1 text-[10px] font-bold text-teal-500 hover:text-teal-400 transition-colors"
+            >
+              <SlidersHorizontal size={11} /> Kelola
+            </button>
+          </div>
+          <div className="relative">
+            <select className="form-input py-3 pl-4 pr-10 cursor-pointer appearance-none font-semibold text-text-2 text-sm w-full"
+              value={mainCat}
+              onChange={e => {
+                if (e.target.value === '__add__') { setShowAddCatForm(true); return }
+                setMainCat(e.target.value); setSubCat(''); setShowAddCatForm(false)
+              }}>
+              <option value="" disabled>Pilih Kategori...</option>
+              {availableMainCats.map(c => <option key={c} value={c}>{c}</option>)}
+              <option disabled>──────────────</option>
+              <option value="__add__">+ Tambah Kategori Baru</option>
+            </select>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><ChevronDown size={18} strokeWidth={2.5} /></div>
+          </div>
+          {showAddCatForm && (
+            <div className="flex gap-2 animate-fade-in">
+              <input
+                className="form-input py-2 flex-1 text-sm"
+                placeholder="Nama kategori baru..."
+                value={newCatInput}
+                onChange={e => setNewCatInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleSaveNewCat(); if (e.key === 'Escape') { setShowAddCatForm(false); setNewCatInput('') } }}
+                autoFocus
+              />
+              <button onClick={handleSaveNewCat} disabled={newCatBusy}
+                className="px-3 rounded-xl bg-teal-500 text-white hover:bg-teal-600 disabled:opacity-50 transition-colors">
+                {newCatBusy ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+              </button>
+              <button onClick={() => { setShowAddCatForm(false); setNewCatInput('') }}
+                className="px-3 rounded-xl bg-bg text-muted hover:text-text transition-colors">
+                <X size={14} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        <Field label="Sub Kategori">
+          <div className="relative">
+            <select className="form-input py-3 pl-4 pr-10 cursor-pointer appearance-none font-semibold text-text-2 text-sm w-full disabled:opacity-50"
+              value={subCat} onChange={e => setSubCat(e.target.value)}
+              disabled={!mainCat || availableSubCats.length === 0}>
+              <option value="" disabled>Pilih Detail...</option>
+              {availableSubCats.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><ChevronDown size={18} strokeWidth={2.5} /></div>
+          </div>
+        </Field>
+
+        <Field label="Pilih Dompet / Rekening">
+          {totals?.walletBalances?.length > 0 ? (
+            <div className="relative">
+              <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl flex items-center justify-center pointer-events-none z-10 text-white"
+                style={{ backgroundColor: activeWallet?.color || '#94a3b8' }}>
+                <Wallet size={16} strokeWidth={2.5} />
+              </div>
+              <select className="form-input pl-14 pr-10 py-3 cursor-pointer appearance-none font-semibold text-text-2 w-full"
+                value={walletId} onChange={e => setWalletId(e.target.value)}>
+                <option value="" disabled>Pilih Sumber Dana...</option>
+                {totals.walletBalances.map(w => (
+                  <option key={w.id} value={w.id}>
+                    {w.name} — {w.calculatedBalance < 0 ? '-' : ''}Rp {Math.abs(w.calculatedBalance).toLocaleString('id-ID')}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><ChevronDown size={18} strokeWidth={2.5} /></div>
+            </div>
+          ) : (
+            <div className="bg-bg border border-border rounded-xl px-4 py-3 text-sm text-muted flex items-center gap-2">
+              <Wallet size={16} className="text-slate-400" /> Belum ada dompet. Buat di Dashboard!
+            </div>
+          )}
+          {isAddBalanceInsufficient && (
+            <p className="mt-2 text-[11px] font-bold text-expense">
+              Saldo kurang. Maksimal pengeluaran dari dompet ini {fmt(activeWallet?.calculatedBalance || 0)}.
+            </p>
+          )}
+        </Field>
+
+        <Field label="Tanggal">
+          <div className="relative">
+            <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-bg text-muted rounded-xl flex items-center justify-center pointer-events-none z-10">
+              <Calendar size={16} strokeWidth={2.5} />
+            </div>
+            <input className="form-input pl-14 py-3 cursor-pointer text-sm relative z-0"
+              type="date" value={date} onChange={e => setDate(e.target.value)} />
+          </div>
+        </Field>
+      </div>
+
+      {formWarnings.length > 0 && (
+        <div className="rounded-[20px] border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-widest">Perlu dicek</p>
+          <div className="space-y-1.5">
+            {formWarnings.map((warning) => (
+              <p key={warning} className="text-xs font-medium leading-relaxed">{warning}</p>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {err && <div className="text-xs text-expense bg-expense-light border border-expense/20 rounded-xl px-4 py-3 font-medium">{err}</div>}
+
+      <button onClick={handleAdd} disabled={busy || isAddBalanceInsufficient}
+        className={`w-full py-4 rounded-xl text-sm font-bold text-white transition-all cursor-pointer flex items-center justify-center gap-2.5 active:scale-95 disabled:opacity-50 mt-2 ${
+          type === 'in' ? 'bg-income hover:opacity-90' : 'bg-expense hover:opacity-90'
+        }`}>
+        {busy ? <Loader2 size={18} className="animate-spin" /> : <PlusCircle size={18} />}
+        Simpan Transaksi
+      </button>
+        </>
+      )}
+    </>
+  )
+
   return (
-    <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
+    <div className={`animate-fade-up max-w-7xl mx-auto pb-10 ${androidShell ? 'space-y-4' : 'space-y-6'}`}>
 
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
@@ -362,13 +911,30 @@ export default function Transaksi() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      {androidShell && (
+        <div className="rounded-[24px] border border-border bg-surface p-4">
+          <button
+            type="button"
+            onClick={openAndroidComposer}
+            className="flex w-full items-center justify-between gap-3 rounded-[20px] bg-text px-4 py-4 text-left text-white transition-colors hover:bg-text/90"
+          >
+            <div>
+              <p className="text-sm font-black tracking-tight">Tambah Transaksi</p>
+            </div>
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/12">
+              <PlusCircle size={20} />
+            </div>
+          </button>
+        </div>
+      )}
+
+      <div className={androidShell ? 'space-y-4' : 'grid grid-cols-1 lg:grid-cols-5 gap-6'}>
 
         {/* ── ADD FORM PANEL ───────────────────────────────── */}
-        <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 lg:col-span-3 space-y-5">
+        <div className={`${androidShell ? 'hidden' : 'bg-surface border border-border rounded-[24px] lg:col-span-3 space-y-5 p-6 md:p-8'}`}>
           <div className="flex items-center gap-3 border-b border-border pb-4 mb-2">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, #14B8A6, #0d9488)' }}>
+              style={{ background: 'linear-gradient(135deg, #2ead4b, #054d28)' }}>
               <ReceiptText size={16} className="text-white" />
             </div>
             <div>
@@ -592,7 +1158,8 @@ export default function Transaksi() {
         </div>
 
         {/* ── QUICK STATS ──────────────────────────────── */}
-        <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm lg:col-span-2 flex flex-col">
+        <div className="lg:col-span-2 flex flex-col gap-4">
+        <div className={`bg-surface border border-border rounded-[24px] shadow-sm flex flex-col ${androidShell ? 'p-4 md:p-6' : 'p-6 md:p-8'}`}>
           <PanelHeader title={selectedMonth ? "Ringkasan Bulan Ini" : "Ringkasan Semua Waktu"} sub="Statistik" />
 
           <div className="mt-2 space-y-3.5">
@@ -669,12 +1236,36 @@ export default function Transaksi() {
             )}
           </div>
         </div>
+        </div>
       </div>
 
       {/* ── LIST RIWAYAT ────── */}
-      <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm transition-colors">
+      <div className={`bg-surface border border-border rounded-[24px] shadow-sm transition-colors ${androidShell ? 'p-4 md:p-6' : 'p-6 md:p-8'}`}>
         <PanelHeader title="Riwayat Transaksi" sub="Histori" badge={`${filtered.length} transaksi`} />
 
+        {androidShell && sliderDateKeys.length > 1 && (
+          <div className="mb-4">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted">Tanggal</p>
+            <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+              {sliderDateKeys.map((dateKey) => (
+                <button
+                  key={`jump-${dateKey}`}
+                  type="button"
+                  onClick={() => setActiveDateKey(dateKey)}
+                  className={`shrink-0 rounded-full px-3 py-2 text-xs font-bold transition-colors ${
+                    activeDateKey === dateKey
+                      ? 'bg-text text-white'
+                      : 'border border-border bg-surface text-text hover:bg-bg'
+                  }`}
+                >
+                  {getDayLabel(dateKey)}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!androidShell && (
         <div className="mb-4 flex gap-2 overflow-x-auto custom-scrollbar pb-1">
           {QUICK_FILTERS.map((item) => (
             <button
@@ -691,6 +1282,7 @@ export default function Transaksi() {
             </button>
           ))}
         </div>
+        )}
 
         <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <Tabs value={filter} onChange={setFilter} options={[
@@ -728,12 +1320,12 @@ export default function Transaksi() {
           <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted2 z-10"><Search size={18} /></div>
           <input type="text" placeholder="Cari transaksi berdasarkan nama atau kategori..."
             value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-            className="w-full bg-field border border-border2 text-text placeholder:text-muted2 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:border-indigo-500 focus:bg-surface outline-none transition-all" />
+            className="w-full bg-field border border-border2 text-text placeholder:text-muted2 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:border-text focus:bg-surface outline-none transition-all" />
         </div>
 
         <div className="lg:max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
           {Object.keys(groupedTx).length > 0 ? (
-            Object.keys(groupedTx).map(dateKey => {
+            renderedDateKeys.map(dateKey => {
               const group = groupedTx[dateKey]
               const isToday = getDayLabel(dateKey) === "Hari Ini"
               return (
@@ -764,7 +1356,45 @@ export default function Transaksi() {
         </div>
       </div>
 
-      <RecurringWidget />
+      {androidShell ? (
+        <div className="space-y-3">
+          <SectionToggle
+            title="Transaksi berulang"
+            desc="Buka saat perlu supaya halaman Android tetap terasa ringkas."
+            open={showRecurringPanel}
+            onClick={() => setShowRecurringPanel((prev) => !prev)}
+          />
+          {showRecurringPanel && <RecurringWidget />}
+        </div>
+      ) : (
+        <RecurringWidget />
+      )}
+
+      {androidShell && showAddModal && createPortal(
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-end justify-center animate-fade-in"
+          onClick={closeAndroidComposer}
+        >
+          <div
+            className="bg-surface w-full rounded-t-[32px] border border-border shadow-2xl flex flex-col max-h-[92dvh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
+              <div>
+                <h3 className="font-bold text-text text-base">Tambah Transaksi</h3>
+              </div>
+              <button onClick={closeAndroidComposer} className="w-8 h-8 flex items-center justify-center rounded-xl bg-bg text-muted2 hover:text-expense transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-5 overflow-y-auto custom-scrollbar flex-1">
+              {addFormBody}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       <FinancialDefinitionsModal open={showDefinitions} onClose={() => setShowDefinitions(false)} />
 

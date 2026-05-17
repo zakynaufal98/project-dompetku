@@ -157,7 +157,7 @@ export default function PanduanModal({ onClose }) {
       className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6"
       role="dialog"
       aria-modal="true"
-      aria-label="Panduan Fitur DompetKu Pro"
+      aria-label="Panduan Fitur CashFlowKu"
     >
       {/* Backdrop */}
       <div
@@ -178,7 +178,7 @@ export default function PanduanModal({ onClose }) {
             </div>
             <div>
               <p className="text-[10px] font-bold text-muted uppercase tracking-widest">Dokumentasi</p>
-              <h2 className="font-black text-base text-text leading-tight">Panduan Fitur DompetKu Pro</h2>
+              <h2 className="font-black text-base text-text leading-tight">Panduan Fitur CashFlowKu</h2>
             </div>
           </div>
           <button

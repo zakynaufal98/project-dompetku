@@ -194,19 +194,9 @@ export function DataProvider({ children }) {
     return error
   }
 
-  const isMissingBillIdColumn = (error) => (
+  const isMissingColumn = (error, field) => (
     error?.code === 'PGRST204' &&
-    String(error?.message || '').toLowerCase().includes('bill_id')
-  )
-
-  const isMissingSourceBillIdColumn = (error) => (
-    error?.code === 'PGRST204' &&
-    String(error?.message || '').toLowerCase().includes('source_bill_id')
-  )
-
-  const isMissingInvestmentIdColumn = (error) => (
-    error?.code === 'PGRST204' &&
-    String(error?.message || '').toLowerCase().includes('investment_id')
+    String(error?.message || '').toLowerCase().includes(field)
   )
 
   const withoutField = (obj, field) => {
@@ -224,7 +214,7 @@ export function DataProvider({ children }) {
   }
 
   const getProjectedWalletBalance = ({ wallet_id = null, type, amount, originalTx = null }) => {
-    if (!wallet_id || type !== 'out') return Infinity
+    if (!wallet_id) return Infinity
     let projected = getWalletCalculatedBalance(wallet_id)
 
     if (originalTx?.wallet_id === wallet_id) {
@@ -232,7 +222,8 @@ export function DataProvider({ children }) {
       if (originalTx.type === 'in') projected -= Number(originalTx.amount) || 0
     }
 
-    projected -= Number(amount) || 0
+    if (type === 'out') projected -= Number(amount) || 0
+    if (type === 'in') projected += Number(amount) || 0
     return projected
   }
 
@@ -262,11 +253,11 @@ export function DataProvider({ children }) {
         setTxData(prev => [mapped, ...prev])
         return { data: mapped, error: null }
       }
-      if (payload.bill_id && isMissingBillIdColumn(error)) {
+      if (payload.bill_id && isMissingColumn(error, 'bill_id')) {
         payload = withoutField(payload, 'bill_id')
         continue
       }
-      if (payload.investment_id && isMissingInvestmentIdColumn(error)) {
+      if (payload.investment_id && isMissingColumn(error, 'investment_id')) {
         payload = withoutField(payload, 'investment_id')
         continue
       }
@@ -413,7 +404,7 @@ export function DataProvider({ children }) {
         setBillData(prev => [...prev, data].sort((a, b) => new Date(a.jatuh_tempo) - new Date(b.jatuh_tempo)))
         return { data, error: null }
       }
-      if (payload.source_bill_id && isMissingSourceBillIdColumn(error)) {
+      if (payload.source_bill_id && isMissingColumn(error, 'source_bill_id')) {
         payload = withoutField(payload, 'source_bill_id')
         continue
       }
@@ -871,7 +862,7 @@ export function DataProvider({ children }) {
       recurringData, addRecurring, updateRecurring, deleteRecurring,
       userCustomCats, userHiddenCats, effectiveCategoryTree,
       addCustomCat, deleteCustomCat, toggleHideDefaultCat,
-      totals,
+      totals, getProjectedWalletBalance,
       // Shared Account
       sharedOwners, activeOwnerId, switchAccount, isViewingShared, activeSharedRole
     }}>

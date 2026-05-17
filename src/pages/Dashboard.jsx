@@ -23,6 +23,7 @@ import WalletWidget from '../components/WalletWidget'
 import SharedAccount from '../components/SharedAccount'
 import ShareReport from '../components/ShareReport'
 import QuickAdd from '../components/QuickAdd'
+import { isAndroidShell } from '../lib/platform'
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null
@@ -39,6 +40,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 }
 
 export default function Dashboard() {
+  const androidShell = isAndroidShell()
   const {
     txData,
     invData,
@@ -181,23 +183,23 @@ export default function Dashboard() {
   if (loading) return <div className="flex h-64 items-center justify-center"><Spinner size="lg" /></div>
 
   return (
-    <div className="mx-auto max-w-7xl animate-fade-up space-y-6 pb-10">
+    <div className={`mx-auto max-w-7xl animate-fade-up pb-10 ${androidShell ? 'space-y-4' : 'space-y-6'}`}>
       {isViewingShared && (
-        <div className="animate-fade-in flex items-center justify-between rounded-2xl border border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-800 dark:bg-indigo-950/50">
+        <div className="animate-fade-in flex items-center justify-between rounded-2xl border border-primary/30 bg-primary-pale p-4 dark:border-primary/20 dark:bg-primary-pale">
           <div className="flex items-center gap-3">
-            <Users size={20} className="text-indigo-500" />
+            <Users size={20} className="text-[#054d28] dark:text-primary" />
             <div>
-              <p className="text-sm font-bold text-indigo-700 dark:text-indigo-300">
+              <p className="text-sm font-bold text-[#054d28] dark:text-primary">
                 Melihat data milik: <span className="underline">{sharedOwners.find((s) => s.owner_id === activeOwnerId)?.owner_email}</span>
               </p>
-              <p className="text-[10px] font-bold text-indigo-400">
+              <p className="text-[10px] font-bold text-[#054d28]/60 dark:text-primary/60">
                 Mode: {activeSharedRole === 'editor' ? 'Editor (bisa edit)' : 'Viewer (hanya lihat)'}
               </p>
             </div>
           </div>
           <button
             onClick={() => switchAccount(null)}
-            className="flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-white px-4 py-2 text-sm font-bold text-indigo-600 transition-colors hover:bg-indigo-100 dark:border-indigo-700 dark:bg-slate-800 dark:text-indigo-300 dark:hover:bg-indigo-900"
+            className="flex items-center gap-1.5 rounded-xl border border-border bg-surface px-4 py-2 text-sm font-bold text-text-2 transition-colors hover:bg-bg"
           >
             <ArrowLeft size={14} /> Kembali ke akun saya
           </button>
@@ -222,9 +224,9 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="page-band flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className={`page-band flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between ${androidShell ? 'rounded-[24px] px-4 py-4' : ''}`}>
         <div>
-          <h1 className="text-3xl font-black leading-tight tracking-tight text-text md:text-4xl">
+          <h1 className={`${androidShell ? 'text-[28px]' : 'text-3xl md:text-4xl'} font-black leading-tight tracking-tight text-text`}>
             {greeting}, {displayName}
           </h1>
           <div className="mt-1.5 flex items-center gap-1.5">
@@ -257,8 +259,8 @@ export default function Dashboard() {
         />
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <div className="flex flex-col gap-4 rounded-[22px] border border-border bg-surface p-5 transition-colors duration-200 hover:-translate-y-0.5 hover:shadow-card-md">
+      <div className={androidShell ? 'custom-scrollbar flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory' : 'grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4'}>
+        <div className={`flex flex-col gap-4 rounded-[22px] border border-border bg-surface p-5 transition-colors duration-200 hover:-translate-y-0.5 hover:shadow-card-md ${androidShell ? 'min-w-[248px] shrink-0 snap-start' : ''}`}>
           <div className="flex items-center justify-between">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-pale text-text">
               <Wallet size={18} />
@@ -277,7 +279,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="relative overflow-hidden rounded-[24px] border border-border bg-primary-pale p-5 text-text transition-transform duration-200 hover:-translate-y-0.5">
+        <div className={`relative overflow-hidden rounded-[24px] border border-border bg-primary-pale p-5 text-text transition-transform duration-200 hover:-translate-y-0.5 ${androidShell ? 'min-w-[248px] shrink-0 snap-start' : ''}`}>
           <div className="flex items-center justify-between">
             <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface">
               <CalendarDays size={18} className="text-text" />
@@ -294,7 +296,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-4 rounded-[22px] border border-border bg-surface p-5 transition-colors duration-200 hover:-translate-y-0.5 hover:shadow-card-md">
+        <div className={`flex flex-col gap-4 rounded-[22px] border border-border bg-surface p-5 transition-colors duration-200 hover:-translate-y-0.5 hover:shadow-card-md ${androidShell ? 'min-w-[248px] shrink-0 snap-start' : ''}`}>
           <div className="flex items-center justify-between">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-expense-light text-expense">
               <ArrowDownCircle size={18} />
@@ -319,7 +321,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-4 rounded-[22px] border border-border bg-surface p-5 transition-colors duration-200 hover:-translate-y-0.5 hover:shadow-card-md">
+        <div className={`flex flex-col gap-4 rounded-[22px] border border-border bg-surface p-5 transition-colors duration-200 hover:-translate-y-0.5 hover:shadow-card-md ${androidShell ? 'min-w-[248px] shrink-0 snap-start' : ''}`}>
           <div className="flex items-center justify-between">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-income-light text-income">
               <ArrowUpCircle size={18} />

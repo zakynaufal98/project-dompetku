@@ -152,7 +152,7 @@ export default function ExportData({ isYearly = false }) {
     .replaceAll('"', '&quot;').replaceAll("'", '&#039;')
 
   // ─────────────────────────────────────────────────────────────────────────
-  // EXCEL EXPORT — Office XML dengan palette DompetKu Pro
+  // EXCEL EXPORT — Office XML dengan palette CashFlowKu
   // ─────────────────────────────────────────────────────────────────────────
   const handleExportExcel = () => {
     setIsOpen(false)
@@ -335,7 +335,7 @@ export default function ExportData({ isYearly = false }) {
   <Table>
    <Column ss:Width="200"/><Column ss:Width="160"/><Column ss:Width="130"/><Column ss:Width="130"/>
 
-   ${row([cell('DompetKu Pro — Laporan Keuangan', 'Title', 'String', 3)], 32)}
+   ${row([cell('CashFlowKu — Laporan Keuangan', 'Title', 'String', 3)], 32)}
    ${row([cell(`Periode: ${reportData.periodeText}`, 'SubTitle', 'String', 1), cell(`Dibuat: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`, 'SubTitle', 'String', 1)], 18)}
    ${row([cell('', 'Empty', 'String', 3)], 8)}
    ${row([cell(`💡  ${reportData.insightText}`, 'InsightCell', 'String', 3)], 36)}
@@ -474,13 +474,13 @@ export default function ExportData({ isYearly = false }) {
     const blob = new Blob([workbook], { type: 'application/vnd.ms-excel;charset=utf-8' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
-    link.download = `DompetKu_${isYearly ? 'Tahunan' : 'Bulanan'}_${reportData.periodeText.replace(/\s+/g, '_')}.xls`
+    link.download = `CashFlowKu_${isYearly ? 'Tahunan' : 'Bulanan'}_${reportData.periodeText.replace(/\s+/g, '_')}.xls`
     link.click()
     URL.revokeObjectURL(link.href)
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // PDF EXPORT — Desain premium bertema DompetKu Pro
+  // PDF EXPORT — Desain premium bertema CashFlowKu
   // ─────────────────────────────────────────────────────────────────────────
   const handleExportPDF = async () => {
     setIsOpen(false)
@@ -533,7 +533,7 @@ export default function ExportData({ isYearly = false }) {
         pdf.setLineWidth(0.25)
         pdf.line(M, H - 11, W - M, H - 11)
         setFont(6.5, 'normal', C.muted)
-        pdf.text('DompetKu Pro  —  Laporan Keuangan Pribadi', M, H - 6)
+        pdf.text('CashFlowKu  —  Laporan Keuangan Pribadi', M, H - 6)
         pdf.text(
           `Halaman ${pageNum}  •  Dibuat ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`,
           W - M, H - 6, { align: 'right' }
@@ -619,7 +619,7 @@ export default function ExportData({ isYearly = false }) {
 
       // App name & subtitle
       setFont(18, 'bold', C.white)
-      pdf.text('DompetKu Pro', M + 26, y + 17)
+      pdf.text('CashFlowKu', M + 26, y + 17)
       setFont(8, 'normal', [148, 163, 184])
       pdf.text('Laporan Keuangan Pribadi', M + 26, y + 26)
 
@@ -847,7 +847,7 @@ export default function ExportData({ isYearly = false }) {
       })
 
       addFooter()
-      pdf.save(`DompetKu_${isYearly ? 'Tahunan' : 'Bulanan'}_${reportData.periodeText.replace(/\s+/g, '_')}.pdf`)
+      pdf.save(`CashFlowKu_${isYearly ? 'Tahunan' : 'Bulanan'}_${reportData.periodeText.replace(/\s+/g, '_')}.pdf`)
     } catch (error) {
       console.error(error)
       alert('Gagal mengekspor PDF. Coba lagi.')

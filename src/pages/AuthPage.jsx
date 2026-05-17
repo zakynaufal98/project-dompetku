@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { BarChart3, PieChart, ShieldCheck, Mail, Lock, Eye, EyeOff, Loader2, User, ArrowLeft } from 'lucide-react'
-import LandingPage from './LandingPage'
-
 import { useNavigate, Link } from 'react-router-dom'
+import { isAndroidShell } from '../lib/platform'
+import CashFlowKuLogo from '../components/CashFlowKuLogo'
 
 const FEATURES = [
   { icon: <BarChart3 size={22} />, title: 'Pantau keuangan', sub: 'dengan mudah' },
@@ -14,6 +14,7 @@ const FEATURES = [
 export default function AuthPage({ defaultMode = 'login' }) {
   const { login, register, loginWithGoogle, resetPassword } = useAuth()
   const navigate = useNavigate()
+  const androidShell = isAndroidShell()
   
   const [mode, setMode] = useState(defaultMode)
   
@@ -153,21 +154,21 @@ export default function AuthPage({ defaultMode = 'login' }) {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-bg p-6 lg:p-8 animate-fade-in">
-      
-      {/* Floating Back Button */}
-      <Link 
-        to="/"
-        className="group absolute left-6 top-6 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-text bg-surface text-text transition-all hover:bg-primary-pale lg:left-8 lg:top-8"
-        title="Kembali ke Beranda"
-      >
-        <ArrowLeft size={20} className="group-hover:-translate-x-0.5 transition-transform" />
-      </Link>
+    <div className={`relative flex min-h-screen items-center justify-center bg-bg p-6 lg:p-8 animate-fade-in ${androidShell ? 'android-auth-shell px-4 pb-8 pt-20' : ''}`}>
+      {!androidShell && (
+        <Link 
+          to="/"
+          className="group absolute left-6 top-6 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-text bg-surface text-text transition-all hover:bg-primary-pale lg:left-8 lg:top-8"
+          title="Kembali"
+        >
+          <ArrowLeft size={20} className="group-hover:-translate-x-0.5 transition-transform" />
+        </Link>
+      )}
 
-      <div className="w-full max-w-[1120px] overflow-hidden rounded-[32px] border border-border bg-surface shadow-2xl shadow-black/5 lg:flex">
+      <div className={`w-full overflow-hidden ${androidShell ? 'max-w-[420px] bg-transparent shadow-none' : 'max-w-[1120px] rounded-[32px] border border-border bg-surface shadow-2xl shadow-black/5 lg:flex'}`}>
         
         {/* ── LEFT PANEL ─────────────────────────────────── */}
-        <div className="relative flex flex-col justify-between overflow-hidden bg-bg p-10 lg:w-1/2 lg:p-14">
+        {!androidShell && <div className="relative flex flex-col justify-between overflow-hidden bg-bg p-10 lg:w-1/2 lg:p-14">
           <div className="absolute inset-0 -z-10 bg-bg" />
           
           <div className="absolute top-12 left-12 grid grid-cols-5 gap-2.5 opacity-40">
@@ -177,11 +178,9 @@ export default function AuthPage({ defaultMode = 'login' }) {
           </div>
 
           <div className="mb-14 lg:mb-0 relative z-10 text-center lg:text-left flex flex-col items-center lg:items-start">
-            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-primary text-[40px] font-black leading-none text-text">
-              D
-            </div>
+            <CashFlowKuLogo size={80} rounded={40} className="mb-6" />
             <h1 className="display-heavy mb-2 text-4xl tracking-tight text-text lg:text-5xl">
-              DompetKu Pro
+              CashFlowKu
             </h1>
             <p className="max-w-sm text-lg text-text-2">Kelola uang dengan tampilan yang lebih tenang, jelas, dan fokus pada keputusan penting.</p>
           </div>
@@ -199,27 +198,45 @@ export default function AuthPage({ defaultMode = 'login' }) {
               </div>
             ))}
           </div>
-        </div>
+        </div>}
 
         {/* ── RIGHT PANEL ────────────────────────────────── */}
-        <div className="flex flex-1 items-center justify-center border-t border-border bg-surface p-10 lg:border-l lg:border-t-0 lg:p-14">
+        <div className={`flex flex-1 items-center justify-center ${androidShell ? 'rounded-[32px] border border-border bg-surface p-5 shadow-[0_18px_40px_rgba(14,15,12,0.08)]' : 'border-t border-border bg-surface p-10 lg:border-l lg:border-t-0 lg:p-14'}`}>
           <div className="w-full max-w-md">
+            {androidShell && (
+              <div className="mb-6">
+                <div className="mb-5 flex items-center justify-between">
+                  <Link
+                    to="/"
+                    className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-bg text-text transition-colors hover:bg-primary-pale"
+                    title="Kembali"
+                  >
+                    <ArrowLeft size={20} />
+                  </Link>
+                  <div className="w-11" aria-hidden="true" />
+                </div>
+                <div className="text-center">
+                  <CashFlowKuLogo size={56} rounded={28} className="mx-auto mb-4" />
+                  <h1 className="text-[26px] font-black tracking-tight text-text">CashFlowKu</h1>
+                </div>
+              </div>
+            )}
 
-            <div className="mb-10 flex justify-center border-b border-border">
+            <div className={`${androidShell ? 'mb-8 flex rounded-full border border-border bg-bg p-1.5' : 'mb-10 flex justify-center border-b border-border'}`}>
               {['login','register'].map(m => (
                 <button key={m} onClick={() => { switchMode(m); navigate(`/${m}`); }}
-                  className={`pb-3.5 px-6 text-sm font-semibold transition-all border-b-2 -mb-px bg-transparent cursor-pointer ${
+                  className={`${androidShell ? 'min-w-0 flex-1 rounded-full px-4 py-3 text-center text-sm font-bold' : 'pb-3.5 px-6 text-sm font-semibold border-b-2 -mb-px'} transition-all bg-transparent cursor-pointer ${
                     mode === m
-                      ? 'border-text text-text'
-                      : 'border-transparent text-muted hover:text-text'
+                      ? (androidShell ? 'bg-surface text-text shadow-sm' : 'border-text text-text')
+                      : (androidShell ? 'text-muted hover:text-text' : 'border-transparent text-muted hover:text-text')
                   }`}>
                   {m === 'login' ? 'Masuk' : 'Daftar'}
                 </button>
               ))}
             </div>
 
-            <h2 className="mb-10 text-center text-3xl font-black text-text">
-              {mode === 'login' ? 'Masuk ke Akun Anda' : 'Buat Akun Baru'}
+            <h2 className={`text-center font-black text-text ${androidShell ? 'mb-7 text-[28px]' : 'mb-10 text-3xl'}`}>
+              {mode === 'login' ? 'Masuk' : 'Buat Akun'}
             </h2>
 
             <div className="space-y-5">
@@ -277,7 +294,7 @@ export default function AuthPage({ defaultMode = 'login' }) {
               </div>
             </div>
 
-            <div className="flex items-center justify-between mb-8 mt-5">
+            <div className={`flex items-center justify-between mt-5 ${androidShell ? 'mb-6' : 'mb-8'}`}>
               <label className="flex items-center gap-2 cursor-pointer select-none group">
                 <div
                   onClick={() => setRemember(!remember)}
@@ -313,11 +330,7 @@ export default function AuthPage({ defaultMode = 'login' }) {
               </div>
             )}
 
-            <button
-              onClick={handle}
-              disabled={busy}
-              className="btn-primary w-full py-3.5 rounded-full text-base mb-8"
-            >
+            <button onClick={handle} disabled={busy} className="btn-primary mb-7 w-full rounded-full py-3.5 text-base">
               {busy ? (
                 <Loader2 className="animate-spin" size={20} />
               ) : (
@@ -325,17 +338,13 @@ export default function AuthPage({ defaultMode = 'login' }) {
               )}
             </button>
 
-            <div className="flex items-center gap-5 mb-8">
+            <div className={`flex items-center gap-5 ${androidShell ? 'mb-6' : 'mb-8'}`}>
               <div className="flex-1 h-px bg-border2" />
               <span className="text-xs font-medium text-muted">atau</span>
               <div className="flex-1 h-px bg-border2" />
             </div>
 
-            <button 
-              onClick={handleGoogleLogin}
-              disabled={busy}
-              className="btn-secondary w-full py-3.5 rounded-full mb-10 disabled:opacity-50"
-            >
+            <button onClick={handleGoogleLogin} disabled={busy} className="btn-secondary mb-8 w-full rounded-full py-3.5 disabled:opacity-50">
               {busy ? (
                 <Loader2 className="animate-spin text-muted" size={20} />
               ) : (

@@ -65,9 +65,6 @@ export default function Hutang() {
     (t.type === 'out' && (t.cat === 'Bayar Cicilan' || t.cat === 'Kewajiban')) ||
     (t.type === 'out' && t.cat === 'Transfer' && t.sub_cat === 'Bayar Pinjaman')
   ), [txData])
-  const totalDibayar = cicilanKeluar.reduce((s, t) => s + t.amount, 0)
-  const sisaHutang   = Math.max(0, totalHutang - totalDibayar)
-  const progressHutang = totalHutang === 0 ? 0 : Math.min(100, (totalDibayar / totalHutang) * 100)
 
   const sisaPerHutang = useMemo(() => hutangMasuk.map(h => {
     const tag = makeHutangTag(h.id)
@@ -82,7 +79,10 @@ export default function Hutang() {
     }
     return { ...h, sisa: Math.max(0, h.amount - terbayar) }
   }), [hutangMasuk, cicilanKeluar])
-  const activeHutang = sisaPerHutang.filter(h => h.sisa > 0)
+  const activeHutang   = sisaPerHutang.filter(h => h.sisa > 0)
+  const sisaHutang     = sisaPerHutang.reduce((s, h) => s + h.sisa, 0)
+  const totalDibayar   = totalHutang - sisaHutang
+  const progressHutang = totalHutang === 0 ? 0 : Math.min(100, (totalDibayar / totalHutang) * 100)
 
   const hutangGrouped = useMemo(() => {
     const groups = {}
@@ -110,9 +110,6 @@ export default function Hutang() {
   const pelunasanMasuk = useMemo(() => txData.filter(t =>
     t.type === 'in' && t.cat === 'Piutang' && t.sub_cat === 'Terima Pelunasan'
   ), [txData])
-  const totalDiterima  = pelunasanMasuk.reduce((s, t) => s + t.amount, 0)
-  const sisaPiutang    = Math.max(0, totalPiutang - totalDiterima)
-  const progressPiutang = totalPiutang === 0 ? 0 : Math.min(100, (totalDiterima / totalPiutang) * 100)
 
   const sisaPerPiutang = useMemo(() => piutangKeluar.map(p => {
     const tag = makePiutangTag(p.id)
@@ -127,7 +124,10 @@ export default function Hutang() {
     }
     return { ...p, sisa: Math.max(0, p.amount - diterima) }
   }), [piutangKeluar, pelunasanMasuk])
-  const activePiutang = sisaPerPiutang.filter(p => p.sisa > 0)
+  const activePiutang    = sisaPerPiutang.filter(p => p.sisa > 0)
+  const sisaPiutang      = sisaPerPiutang.reduce((s, p) => s + p.sisa, 0)
+  const totalDiterima    = totalPiutang - sisaPiutang
+  const progressPiutang  = totalPiutang === 0 ? 0 : Math.min(100, (totalDiterima / totalPiutang) * 100)
 
   const piutangGrouped = useMemo(() => {
     const groups = {}

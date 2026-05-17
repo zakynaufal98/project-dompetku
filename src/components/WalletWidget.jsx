@@ -4,8 +4,10 @@ import { useData } from '../context/DataContext'
 import { fmt } from '../lib/utils'
 import { BankLogo } from './UI' 
 import { Plus, Trash2, ArrowRightLeft, X } from 'lucide-react'
+import { isAndroidShell } from '../lib/platform'
 
 export default function WalletWidget({ totals, addWallet, updateWallet, deleteWallet }) {
+  const androidShell = isAndroidShell()
   const { transferWallet } = useData(); 
 
   const [showModal, setShowModal] = useState(false)
@@ -139,26 +141,26 @@ export default function WalletWidget({ totals, addWallet, updateWallet, deleteWa
 
   return (
     <div className="animate-fade-up">
-      <div className="flex items-center justify-between mb-4">
+      <div className={`mb-4 flex items-center justify-between ${androidShell ? 'gap-3' : ''}`}>
         <div>
           <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-0.5">Aset</p>
           <h2 className="font-black text-base text-text tracking-tight">Dompet & Rekening</h2>
         </div>
         {totals?.walletBalances?.length > 1 && (
-          <button onClick={handleOpenTransfer} className="text-sm font-bold text-muted bg-bg border border-border hover:text-text hover:border-border2 px-4 py-2 rounded-xl flex items-center gap-2 transition-colors">
+          <button onClick={handleOpenTransfer} className={`text-sm font-bold text-muted bg-bg border border-border hover:text-text hover:border-border2 rounded-xl flex items-center gap-2 transition-colors ${androidShell ? 'px-3 py-2.5' : 'px-4 py-2'}`}>
             <ArrowRightLeft size={15} strokeWidth={2.5} /> Transfer
           </button>
         )}
       </div>
 
-      <div className="flex gap-4 overflow-x-auto pb-3 custom-scrollbar">
+      <div className={`flex overflow-x-auto custom-scrollbar ${androidShell ? 'gap-3 pb-2 snap-x snap-mandatory' : 'gap-4 pb-3'}`}>
         {totals?.walletBalances?.map(w => {
           const c = w.color || '#4F46E5'
           return (
             <div
               key={w.id}
               onClick={() => handleOpenEdit(w)}
-              className="relative flex-shrink-0 w-56 h-[136px] rounded-2xl cursor-pointer overflow-hidden select-none group transition-all duration-200 hover:-translate-y-1"
+              className={`relative flex-shrink-0 cursor-pointer overflow-hidden select-none group transition-all duration-200 hover:-translate-y-1 ${androidShell ? 'w-[210px] h-[124px] rounded-[22px] snap-start' : 'w-56 h-[136px] rounded-2xl'}`}
               style={{
                 background: `linear-gradient(140deg, ${c} 0%, ${c}99 100%)`,
                 boxShadow: `0 8px 28px ${c}50`,
@@ -207,7 +209,7 @@ export default function WalletWidget({ totals, addWallet, updateWallet, deleteWa
                 <div className="flex items-end justify-between">
                   <div>
                     <p className="text-white/50 text-[9px] font-semibold uppercase tracking-widest mb-1">Saldo</p>
-                    <p className="text-white font-black text-[19px] tabular-nums tracking-tight leading-none drop-shadow-sm">
+                    <p className={`text-white font-black tabular-nums tracking-tight leading-none drop-shadow-sm ${androidShell ? 'text-[17px]' : 'text-[19px]'}`}>
                       {fmt(w.calculatedBalance)}
                     </p>
                   </div>
@@ -228,7 +230,7 @@ export default function WalletWidget({ totals, addWallet, updateWallet, deleteWa
         {/* Tombol tambah */}
         <button
           onClick={handleOpenNew}
-          className="flex-shrink-0 w-36 h-[136px] rounded-2xl flex flex-col items-center justify-center gap-3 transition-all duration-200 hover:-translate-y-1 group"
+          className={`flex-shrink-0 flex flex-col items-center justify-center gap-3 transition-all duration-200 hover:-translate-y-1 group ${androidShell ? 'w-[132px] h-[124px] rounded-[22px] snap-start' : 'w-36 h-[136px] rounded-2xl'}`}
           style={{ border: '2px dashed var(--color-border)', background: 'var(--color-bg)' }}
         >
           <div className="w-10 h-10 rounded-xl bg-surface border border-border flex items-center justify-center text-muted group-hover:border-primary/30 group-hover:text-primary transition-colors shadow-sm">

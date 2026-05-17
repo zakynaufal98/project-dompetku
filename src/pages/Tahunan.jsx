@@ -167,10 +167,10 @@ export default function Tahunan({ quickFilter = 'semua' }) {
           <p className="text-muted text-[10px] font-bold uppercase tracking-wider mb-1">Profit Investasi</p>
           <p className="tabular-nums font-bold text-base sm:text-lg text-income tracking-tight truncate">{fmtShort(yearSummary.investmentProfit)}</p>
         </div>
-        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-4 shadow-sm text-white">
-          <p className="text-white/70 text-[10px] font-bold uppercase tracking-wider mb-1">Savings Rate</p>
-          <p className="tabular-nums font-black text-2xl tracking-tight">{savingsRate}%</p>
-          <p className="text-[9px] text-white/50 font-medium mt-1">diamankan</p>
+        <div className="bg-[#0e0f0c] rounded-2xl p-4 shadow-sm">
+          <p className="text-primary/60 text-[10px] font-bold uppercase tracking-wider mb-1">Savings Rate</p>
+          <p className="tabular-nums font-black text-2xl tracking-tight text-primary">{savingsRate}%</p>
+          <p className="text-[9px] text-primary/40 font-medium mt-1">diamankan</p>
         </div>
       </div>
 
@@ -220,8 +220,8 @@ export default function Tahunan({ quickFilter = 'semua' }) {
               <XAxis dataKey="name" tick={{fontSize:12, fill:'#94a3b8'}} axisLine={false} tickLine={false} dy={10} />
               <YAxis width={45} tickFormatter={fmtChartAxis} tick={{fontSize:12, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgb(var(--color-bg) / 0.8)'}} />
-              <Bar dataKey="masuk" name="Pemasukan Riil" fill="#4F46E5" radius={[6,6,0,0]} maxBarSize={24} />
-              <Bar dataKey="keluar" name="Pengeluaran Bersih" fill="#FF8A00" radius={[6,6,0,0]} maxBarSize={24} />
+              <Bar dataKey="masuk" name="Pemasukan Riil" fill="#9fe870" radius={[6,6,0,0]} maxBarSize={24} />
+              <Bar dataKey="keluar" name="Pengeluaran Bersih" fill="#d03238" radius={[6,6,0,0]} maxBarSize={24} />
             </BarChart>
           </ResponsiveContainer>
         </div>

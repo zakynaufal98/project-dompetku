@@ -1,0 +1,31 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <title>CashFlowKu Icon</title>
+  <desc>Modern fintech app icon with a growth trend line and currency bars on a lime green background.</desc>
+  <style>
+    .bg { fill: #9fe870; }
+    .icon-mark { 
+      fill: none; 
+      stroke: #0e0f0c; 
+      stroke-width: 16; 
+      stroke-linecap: round; 
+      stroke-linejoin: round; 
+    }
+    .bar { fill: #0e0f0c; stroke: none; }
+  </style>
+  
+  <!-- App Icon Background -->
+  <rect class="bg" width="200" height="200" rx="54" />
+
+  <!-- Icon Symbol -->
+  <g transform="translate(5, 5)">
+    <!-- Stacked horizontal lines representing currency/cash -->
+    <rect class="bar" x="45" y="118" width="35" height="16" rx="8" />
+    <rect class="bar" x="45" y="144" width="65" height="16" rx="8" />
+    
+    <!-- Upward trending line chart -->
+    <path class="icon-mark" d="M 95 115 L 130 65 L 155 65" />
+    
+    <!-- Arrow tip for the trend line -->
+    <path class="icon-mark" d="M 142 52 L 157 65 L 142 78" />
+  </g>
+</svg>

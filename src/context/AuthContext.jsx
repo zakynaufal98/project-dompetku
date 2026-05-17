@@ -1,12 +1,13 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { getAppUrl, getAuthRedirectBase } from '../lib/appEnv'
 
 const AuthContext = createContext(null)
 
 // WAKTU AUTO LOGOUT: 15 Menit = 900000 ms
 const AUTO_LOGOUT_TIME = 900000;
 
-const REMEMBER_KEY = 'dompetku_remember'
+const REMEMBER_KEY = 'cashflowku_remember'
 
 export function AuthProvider({ children }) {
   const [user, setUser]       = useState(null)
@@ -46,7 +47,7 @@ export function AuthProvider({ children }) {
           console.log("Sesi berakhir karena tidak ada aktivitas.");
           localStorage.removeItem(REMEMBER_KEY)
           await supabase.auth.signOut();
-          window.location.href = '/login';
+          window.location.href = getAppUrl('/login');
         }
       }, AUTO_LOGOUT_TIME);
     };
@@ -86,13 +87,13 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     localStorage.removeItem(REMEMBER_KEY)
     await supabase.auth.signOut()
-    window.location.href = '/login'
+    window.location.href = getAppUrl('/login')
   }
 
   const loginWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin }
+      options: { redirectTo: getAuthRedirectBase() }
     })
     return error
   }
@@ -101,7 +102,7 @@ export function AuthProvider({ children }) {
   
   const resetPassword = async (email) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin, 
+      redirectTo: getAuthRedirectBase(),
     })
     return error
   }

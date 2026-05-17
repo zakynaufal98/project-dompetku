@@ -63,7 +63,7 @@ export default function SharedAccount() {
     if (lookupErr || !lookupData) {
       // Fallback: insert tanpa member_id check (perlu adjust DB)
       // Atau tampilkan error
-      setErr('User dengan email tersebut belum terdaftar di DompetKu. Pastikan mereka sudah mendaftar terlebih dahulu.')
+      setErr('User dengan email tersebut belum terdaftar di CashFlowKu. Pastikan mereka sudah mendaftar terlebih dahulu.')
       setBusy(false)
       return
     }
