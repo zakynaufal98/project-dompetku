@@ -60,7 +60,7 @@ export default function NetWorthWidget() {
   const stats = [
     { icon: <Wallet size={14} />, label: 'Saldo Dompet', value: fmtShort(d.kasAset), color: '#10B981', bg: 'bg-emerald-500/10 border-emerald-500/20' },
     { icon: <BriefcaseBusiness size={14} />, label: 'Investasi', value: fmtShort(d.invAset), color: '#4F46E5', bg: 'bg-indigo-500/10 border-indigo-500/20' },
-    { icon: <AlertTriangle size={14} />, label: 'Tagihan Overdue', value: fmtShort(d.overdueAmt), color: d.overdueAmt > 0 ? '#EF4444' : '#10B981', bg: d.overdueAmt > 0 ? 'bg-red-500/10 border-red-500/20' : 'bg-emerald-500/10 border-emerald-500/20' },
+    { icon: <AlertTriangle size={14} />, label: 'Tagihan Lewat Tempo', value: fmtShort(d.overdueAmt), color: d.overdueAmt > 0 ? '#EF4444' : '#10B981', bg: d.overdueAmt > 0 ? 'bg-red-500/10 border-red-500/20' : 'bg-emerald-500/10 border-emerald-500/20' },
   ]
 
   return (
@@ -92,7 +92,7 @@ export default function NetWorthWidget() {
             {fmtShort(d.netWorth)}
           </p>
           <p className="text-xs text-slate-500 mt-1.5">
-            Dompet + Investasi{d.overdueAmt > 0 ? ' − Tagihan overdue' : ''}
+            Dompet + Investasi{d.overdueAmt > 0 ? ' - Tagihan lewat tempo' : ''}
           </p>
         </div>
 

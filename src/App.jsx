@@ -9,6 +9,7 @@ import Sidebar from './components/Sidebar'
 import BottomNav from './components/BottomNav'
 import Navbar from './components/Navbar'
 import RecoveryModal from './components/RecoveryModal'
+import GlobalTransactionComposer from './components/GlobalTransactionComposer'
 import { getAppPlatform } from './lib/platform'
 
 // 🚀 PERFORMANCE: Lazy load semua halaman → code splitting otomatis
@@ -87,13 +88,14 @@ function AppLayout() {
           ref={mainRef}
           id="main-content"
           aria-label="Konten utama"
-          className={`flex-1 min-h-[100dvh] overflow-y-auto w-full relative scroll-smooth ${
+          className={`flex-1 min-h-[100dvh] overflow-y-auto w-full relative scroll-smooth bg-bg ${
             isAndroidApp
               ? 'pb-[calc(7.5rem+env(safe-area-inset-bottom))] lg:pb-0'
               : 'pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0'
           }`}
         >
-          <Navbar platform={appPlatform} />
+          <div className="pointer-events-none absolute inset-y-0 left-0 hidden w-px bg-border/80 lg:block" aria-hidden="true" />
+          <Navbar platform={appPlatform} sidebarCollapsed={collapsed} />
 
           <div className={`max-w-[1320px] mx-auto ${
             isAndroidApp
@@ -119,6 +121,7 @@ function AppLayout() {
           </div>
         </main>
 
+        <GlobalTransactionComposer />
         <BottomNav platform={appPlatform} />
       </div>
     </DataProvider>

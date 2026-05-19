@@ -190,8 +190,8 @@ export default function Grafik({ quickFilter = 'semua' }) {
     <>
       <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10 relative">
         <div>
-          <h1 className="tabular-nums font-bold text-2xl text-text tracking-tight">Grafik & Analisis</h1>
-          <p className="text-muted text-sm font-medium mt-1">Visualisasi mendalam arus kas murnimu</p>
+          <h1 className="tabular-nums font-bold text-2xl text-text tracking-tight">Grafik Keuangan</h1>
+          <p className="text-muted text-sm font-medium mt-1">Lihat pola pemasukan, pengeluaran, saldo, dan investasi.</p>
         </div>
 
         {filteredTxData.length === 0 && (
@@ -200,7 +200,7 @@ export default function Grafik({ quickFilter = 'semua' }) {
               <BarChart2 size={28} strokeWidth={1.5} />
             </div>
             <p className="font-bold text-text text-base mb-1">Belum ada data untuk ditampilkan</p>
-            <p className="text-sm text-muted mb-5">Mulai catat transaksi agar grafik dan analisis muncul di sini.</p>
+            <p className="text-sm text-muted mb-5">Mulai catat transaksi agar grafik muncul di sini.</p>
             <Link to="/transaksi" className="inline-flex items-center gap-2 bg-primary text-white text-sm font-bold px-5 py-2.5 rounded-xl hover:opacity-90 transition-opacity">
               Tambah Transaksi
             </Link>
@@ -277,7 +277,7 @@ export default function Grafik({ quickFilter = 'semua' }) {
                     <XAxis type="number" tickFormatter={fmtChartAxis} tick={{fontSize:11, fill:'#94a3b8'}} axisLine={false} tickLine={false} />
                     <YAxis type="category" dataKey="name" tick={{fontSize:11, fill:'#64748b', fontWeight: 600}} width={110} axisLine={false} tickLine={false} />
                     <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgb(var(--color-bg) / 0.8)'}} />
-                    <Bar dataKey="value" name="Pengeluaran Operasional" radius={[0,6,6,0]} maxBarSize={16}>
+                    <Bar dataKey="value" name="Pengeluaran" radius={[0,6,6,0]} maxBarSize={16}>
                       {catData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                     </Bar>
                   </BarChart>
@@ -306,7 +306,7 @@ export default function Grafik({ quickFilter = 'semua' }) {
           </div>
 
           <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm order-1 lg:order-2">
-            <PanelHeader title={`Rasio Keuangan (${MONTHS[now.getMonth()]})`} />
+            <PanelHeader title={`Komposisi Arus Kas (${MONTHS[now.getMonth()]})`} />
             {ratioData.length > 0 ? (
               <div className="flex flex-col sm:flex-row items-center gap-8 mt-6">
                 <div className="w-[160px] h-[160px]">

@@ -3,10 +3,10 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { useData } from '../context/DataContext'
 import { fmt, fmtShort, fmtUnit, today, INV_TYPES, CHART_COLORS } from '../lib/utils'
 import { TxItem, Empty, Field, PanelHeader, BankLogo } from '../components/UI' 
-import { 
-  TrendingUp, TrendingDown, Pencil, Banknote, CalendarDays, 
-  PlusCircle, Loader2, BriefcaseBusiness, Hash, Boxes, 
-  PieChart as PieChartIcon, Search, Wallet, ChevronDown 
+import {
+  TrendingUp, TrendingDown, Pencil, Banknote, CalendarDays,
+  PlusCircle, Loader2, BriefcaseBusiness, Hash, Boxes,
+  PieChart as PieChartIcon, Search, Wallet, ChevronDown, Sparkles
 } from 'lucide-react'
 
 const INV_KEYS = Object.keys(INV_TYPES)
@@ -163,11 +163,30 @@ export default function Investasi() {
   return (
     <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
       
-      <div>
-        <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1">Aset</p>
-        <h1 className="font-black text-2xl text-text tracking-tight">Portofolio Investasi</h1>
-        <p className="text-muted text-sm font-medium mt-1">Kelola dan pantau aset kekayaanmu.</p>
-      </div>
+      <header className="relative flex flex-col gap-5 rounded-[28px] bg-text p-7 text-white md:flex-row md:items-center md:justify-between md:p-9">
+        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[28px]" aria-hidden="true">
+          <div className="absolute right-0 top-0 h-72 w-72 rounded-full blur-3xl" style={{ background: 'rgba(56,200,255,0.35)' }} />
+          <div className="absolute bottom-0 left-0 h-48 w-48 rounded-full blur-3xl" style={{ background: 'rgba(255,209,26,0.25)' }} />
+        </div>
+
+        <div className="relative z-10 flex items-start gap-4">
+          <div className="hidden h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-white/15 md:flex">
+            <TrendingUp size={22} className="text-white" />
+          </div>
+          <div>
+            <div
+              className="mb-3 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest"
+              style={{ backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.15)' }}
+            >
+              <Sparkles size={10} /> Portofolio Aset
+            </div>
+            <h1 className="text-2xl font-black tracking-tight md:text-3xl">Portofolio Investasi</h1>
+            <p className="mt-1.5 max-w-md text-sm font-medium" style={{ color: 'rgba(255,255,255,0.6)' }}>
+              Catat pembelian, penjualan, dan posisi asetmu.
+            </p>
+          </div>
+        </div>
+      </header>
 
       <div className="bg-surface border border-border rounded-[24px] p-6 lg:p-8 shadow-sm transition-colors">
         <p className="text-muted text-xs font-bold uppercase tracking-widest mb-1">Total Aset</p>

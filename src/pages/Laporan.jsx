@@ -43,11 +43,11 @@ export default function Laporan() {
               className="mb-3 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest"
               style={{ backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.15)' }}
             >
-              <Sparkles size={10} /> Pusat Analisis
+              <Sparkles size={10} /> Laporan
             </div>
             <h1 className="text-2xl font-black tracking-tight md:text-3xl">Laporan Keuangan</h1>
             <p className="mt-1.5 max-w-md text-sm font-medium" style={{ color: 'rgba(255,255,255,0.6)' }}>
-              Evaluasi riwayat transaksimu secara menyeluruh. Simpan dan cetak kapan saja.
+              Lihat ringkasan bulanan, tahunan, dan grafik dari transaksi yang sudah dicatat.
             </p>
           </div>
         </div>
@@ -81,7 +81,7 @@ export default function Laporan() {
           className="inline-flex items-center gap-2 self-start rounded-full border border-border bg-surface px-4 py-2 text-xs font-bold text-text transition-colors hover:bg-bg"
         >
           <BookOpen size={14} />
-          Pusat definisi keuangan
+          Cara hitung angka
         </button>
       </div>
 

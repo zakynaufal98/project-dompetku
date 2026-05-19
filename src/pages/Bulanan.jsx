@@ -78,7 +78,7 @@ export default function Bulanan({ quickFilter = 'semua' }) {
       <div className="flex flex-col gap-3">
         <div>
           <h1 className="font-bold text-xl text-text tracking-tight">Ringkasan Bulanan</h1>
-          <p className="text-muted text-sm font-medium mt-0.5">Analisis arus kas per bulan</p>
+          <p className="text-muted text-sm font-medium mt-0.5">Ringkasan uang masuk dan keluar per bulan</p>
         </div>
         {/* Date Picker — full width on mobile */}
         <div className="flex items-center gap-2 bg-surface border border-border rounded-full p-1.5 shadow-sm px-4 w-full sm:w-auto self-start">
@@ -124,14 +124,14 @@ export default function Bulanan({ quickFilter = 'semua' }) {
       {/* Donut + Progress — stacked on mobile, side by side on lg */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <div className="bg-surface border border-border rounded-2xl p-4 sm:p-6 shadow-sm lg:col-span-2 flex flex-col">
-          <PanelHeader title="Distribusi Pengeluaran Bersih" sub="Selain transfer internal" />
+          <PanelHeader title="Komposisi Pengeluaran" sub="Tanpa transfer antar dompet" />
           <p className="mb-2 text-xs font-medium leading-relaxed text-muted">
-            Grafik ini disesuaikan ke pengeluaran bersih. Jika ada pinjaman masuk atau arus masuk non-pendapatan lain, total kategori akan ikut ditekan secara proporsional.
+            Menunjukkan kategori yang paling banyak memakai uang bulan ini. Transfer antar dompet tidak dihitung.
           </p>
           <InteractiveDonut data={txBlnOut} centerLabel="Peng. Bersih" netAdjustment={monthSummary.excludedIn} />
         </div>
         <div className="bg-surface border border-border rounded-2xl p-4 sm:p-6 shadow-sm lg:col-span-3">
-          <PanelHeader title="Progress Pengeluaran" />
+          <PanelHeader title="Peringkat Pengeluaran" />
           {sorted.length > 0 ? (
             <div className="space-y-4 mt-4 max-h-[340px] overflow-y-auto pr-1 custom-scrollbar">
               {sorted.map(([cat,val],i)=>(

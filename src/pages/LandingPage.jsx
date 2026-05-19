@@ -189,7 +189,7 @@ function DashboardPreview() {
       <div className="hidden sm:block absolute -left-10 bottom-20 bg-surface border border-border rounded-2xl shadow-xl p-3.5 w-40">
         <p className="text-[10px] font-bold text-text-2 mb-2">🎯 Dana Darurat</p>
         <div className="flex justify-between mb-1.5">
-          <span className="text-[10px] text-muted">Progress</span>
+          <span className="text-[10px] text-muted">Progres</span>
           <span className="text-[10px] font-bold" style={{ color: '#2ead4b' }}>78%</span>
         </div>
         <div className="h-1.5 bg-bg rounded-full overflow-hidden border border-border">
@@ -388,7 +388,7 @@ export default function LandingPage() {
               </h1>
 
               <p className="text-base sm:text-xl text-muted font-medium leading-relaxed mb-7 sm:mb-9 max-w-lg animate-fade-up" style={{ animationDelay: '160ms' }}>
-                Catat, analisis, dan kelola keuangan pribadi dengan cara yang paling mudah. Platform finansial #1 untuk milenial Indonesia.
+                Catat pemasukan, pengeluaran, tagihan, investasi, dan target dalam satu tempat yang rapi.
               </p>
 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-7 sm:mb-10 animate-fade-up" style={{ animationDelay: '240ms' }}>
@@ -480,7 +480,7 @@ export default function LandingPage() {
                   Pencatatan <span style={{ color: '#2ead4b' }}>Instan</span>
                 </h3>
                 <p className="text-muted leading-relaxed mb-6">
-                  Tambah transaksi hanya dalam 3 detik. Kategorisasi otomatis dan rekap harian yang selalu akurat.
+                  Tambah transaksi dengan cepat. Riwayat kategori membantu pencatatan berikutnya lebih ringkas.
                 </p>
                 <div className="bg-bg rounded-2xl p-4 border border-border space-y-2.5">
                   {[
@@ -555,16 +555,16 @@ export default function LandingPage() {
                 </div>
               </article>
 
-              {/* 5. Target Cerdas */}
+              {/* 5. Target */}
               <article className="md:col-span-2 bg-surface border border-border rounded-3xl p-7 hover:shadow-card-md hover:-translate-y-0.5 transition-all duration-300">
                 <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-5 shadow-lg"
                   style={{ background: 'linear-gradient(135deg, #9fe870, #2ead4b)' }}>
                   <Target size={20} className="text-[#0e0f0c]" aria-hidden="true" />
                 </div>
                 <h3 className="text-xl font-black mb-2">
-                  Target <span className="text-primary">Cerdas</span>
+                  Target <span className="text-primary">Keuangan</span>
                 </h3>
-                <p className="text-muted text-sm leading-relaxed mb-4">Buat target finansial dan pantau progres secara real-time.</p>
+                <p className="text-muted text-sm leading-relaxed mb-4">Buat target dan lihat sisa dana yang perlu dikumpulkan.</p>
                 <div>
                   <div className="flex justify-between mb-1.5">
                     <span className="text-xs text-muted">Dana Darurat</span>
@@ -583,7 +583,7 @@ export default function LandingPage() {
                   <CreditCard size={20} className="text-white" aria-hidden="true" />
                 </div>
                 <h3 className="text-xl font-black mb-2">Kelola <span style={{ color: '#d03238' }}>Hutang & Cicilan</span></h3>
-                <p className="text-muted text-sm leading-relaxed">Pantau cicilan KPR, kartu kredit, dan pinjaman. Notifikasi otomatis sebelum jatuh tempo agar tidak pernah terlambat bayar.</p>
+                <p className="text-muted text-sm leading-relaxed">Catat cicilan KPR, kartu kredit, dan pinjaman. Tanggal bayar jadi lebih mudah dicek.</p>
               </article>
 
               {/* 7. AI Insights — dark */}
@@ -592,8 +592,8 @@ export default function LandingPage() {
                 <div className="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center mb-5">
                   <Sparkles size={20} className="text-primary" aria-hidden="true" />
                 </div>
-                <h3 className="text-xl font-black mb-2 text-white">AI <span className="text-primary">Insights</span></h3>
-                <p className="text-white/55 text-sm leading-relaxed">Saran keuangan personal berdasarkan pola pengeluaran kamu. Ditenagai AI untuk keputusan yang lebih cerdas setiap hari.</p>
+                <h3 className="text-xl font-black mb-2 text-white">Kondisi <span className="text-primary">Keuangan</span></h3>
+                <p className="text-white/55 text-sm leading-relaxed">Lihat catatan bulan ini dari pemasukan, pengeluaran, tagihan, dan anggaran.</p>
               </article>
 
             </div>
@@ -629,14 +629,14 @@ export default function LandingPage() {
                 },
                 {
                   num: '02', title: 'Catat Setiap Hari',
-                  desc: 'Masukkan pemasukan dan pengeluaran kamu. AI kami mengkategorikan secara otomatis untuk hemat waktu.',
+                  desc: 'Masukkan pemasukan dan pengeluaran kamu. Riwayat kategori membantu pencatatan berikutnya lebih cepat.',
                   grad: 'linear-gradient(135deg, #38c8ff, #0891b2)',
                   glow: 'rgba(56,200,255,0.25)',
                   badge: { bg: 'rgba(56,200,255,0.1)', border: 'rgba(56,200,255,0.25)', color: '#0891b2' },
                 },
                 {
                   num: '03', title: 'Raih Kebebasan Finansial',
-                  desc: 'Baca insight personal, ikuti saran cerdas, dan wujudkan target finansimu satu per satu.',
+                  desc: 'Baca catatan bulan ini dan wujudkan target finansimu satu per satu.',
                   grad: 'linear-gradient(135deg, #ffd11a, #b86700)',
                   glow: 'rgba(255,209,26,0.25)',
                   badge: { bg: 'rgba(255,209,26,0.1)', border: 'rgba(255,209,26,0.3)', color: '#b86700' },

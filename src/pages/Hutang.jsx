@@ -5,7 +5,7 @@ import { fmt, fmtShort, today } from '../lib/utils'
 import { TxItem, PanelHeader, Empty, Field } from '../components/UI'
 import {
   Landmark, CheckCircle2, ReceiptText, PlusCircle, Loader2,
-  Wallet, ChevronDown, ListChecks, HandCoins, ChevronRight, X, Pencil
+  Wallet, ChevronDown, ListChecks, HandCoins, ChevronRight, X, Pencil, Sparkles
 } from 'lucide-react'
 
 const makeHutangTag  = (id) => `#HID-${String(id).slice(-6)}`
@@ -242,11 +242,30 @@ export default function Hutang() {
   // ─── RENDER ──────────────────────────────────────────────
   return (
     <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
-      <div>
-        <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1">Keuangan</p>
-        <h1 className="font-black text-2xl text-text tracking-tight">Hutang & Piutang</h1>
-        <p className="text-muted text-sm font-medium mt-1">Pantau kewajiban dan tagihan piutangmu.</p>
-      </div>
+      <header className="relative flex flex-col gap-5 rounded-[28px] bg-text p-7 text-white md:flex-row md:items-center md:justify-between md:p-9">
+        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[28px]" aria-hidden="true">
+          <div className="absolute right-0 top-0 h-72 w-72 rounded-full blur-3xl" style={{ background: 'rgba(208,50,56,0.35)' }} />
+          <div className="absolute bottom-0 left-0 h-48 w-48 rounded-full blur-3xl" style={{ background: 'rgba(255,209,26,0.2)' }} />
+        </div>
+
+        <div className="relative z-10 flex items-start gap-4">
+          <div className="hidden h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-white/15 md:flex">
+            <Landmark size={22} className="text-white" />
+          </div>
+          <div>
+            <div
+              className="mb-3 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest"
+              style={{ backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.15)' }}
+            >
+              <Sparkles size={10} /> Manajemen Hutang
+            </div>
+            <h1 className="text-2xl font-black tracking-tight md:text-3xl">Hutang & Piutang</h1>
+            <p className="mt-1.5 max-w-md text-sm font-medium" style={{ color: 'rgba(255,255,255,0.6)' }}>
+              Pantau kewajiban dan tagihan piutangmu.
+            </p>
+          </div>
+        </div>
+      </header>
 
       {/* Page-level tabs */}
       <div className="flex gap-2 bg-surface border border-border rounded-2xl p-1.5 w-fit">

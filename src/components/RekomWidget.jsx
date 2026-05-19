@@ -73,7 +73,7 @@ function buildRecommendations(txData, billData, budgetData) {
       level: 'warning',
       icon: <Wallet size={18} />,
       title: 'Belum ada pemasukan riil bulan ini',
-      desc: `Sudah ada pengeluaran bersih ${fmtShort(summary.expense)}. Pastikan pemasukan utama atau pemasukan lain tercatat agar insight tidak menyesatkan.`,
+      desc: `Sudah ada pengeluaran ${fmtShort(summary.expense)}. Catat pemasukan utama kalau memang sudah masuk, supaya ringkasan bulan ini lebih pas.`,
       action: 'Cek transaksi',
       link: '/transaksi',
     })
@@ -90,7 +90,7 @@ function buildRecommendations(txData, billData, budgetData) {
     items.push({
       level: 'warning',
       icon: <TrendingDown size={18} />,
-      title: 'Ruang finansial bulan ini tipis',
+      title: 'Sisa uang bulan ini tipis',
       desc: topCat
         ? `Sisa dari pemasukan riil kurang dari 10%. Pengeluaran terbesar masih di "${topCat[0]}" sebesar ${fmtShort(topCat[1])}.`
         : 'Sisa dari pemasukan riil kurang dari 10%. Coba tahan pengeluaran yang bisa ditunda.',
@@ -115,7 +115,7 @@ function buildRecommendations(txData, billData, budgetData) {
       level: 'info',
       icon: <Landmark size={18} />,
       title: 'Ada pencairan investasi bulan ini',
-      desc: `${fmtShort(summary.investmentLiquidation)} masuk ke dompet, tapi tetap dipisahkan dari pemasukan riil agar laporan tidak bias.`,
+      desc: `${fmtShort(summary.investmentLiquidation)} masuk ke dompet, tapi dipisahkan dari pemasukan rutin.`,
       action: 'Lihat investasi',
       link: '/investasi',
     })
@@ -125,8 +125,8 @@ function buildRecommendations(txData, billData, budgetData) {
     items.push({
       level: 'success',
       icon: <TrendingUp size={18} />,
-      title: 'Investasi memberi hasil positif',
-      desc: `Profit investasi ${fmtShort(summary.investmentProfit)} sudah terbaca sebagai hasil tambahan bulan ini.`,
+      title: 'Investasi sedang untung',
+      desc: `Profit investasi ${fmtShort(summary.investmentProfit)} tercatat sebagai hasil tambahan bulan ini.`,
       action: 'Buka investasi',
       link: '/investasi',
     })
@@ -136,8 +136,8 @@ function buildRecommendations(txData, billData, budgetData) {
     items.push({
       level: 'info',
       icon: <BookOpen size={18} />,
-      title: 'Data historis masih tipis',
-      desc: `Baru ada aktivitas di ${bulanAktif} dari 3 bulan terakhir. Semakin lengkap pencatatan, semakin enak insight dibaca.`,
+      title: 'Data bulan sebelumnya masih sedikit',
+      desc: `Baru ada aktivitas di ${bulanAktif} dari 3 bulan terakhir. Ringkasan akan lebih berguna kalau pencatatannya makin rutin.`,
       action: 'Tambah transaksi',
       link: '/transaksi',
     })
@@ -158,7 +158,7 @@ function buildRecommendations(txData, billData, budgetData) {
     items.push({
       level: 'success',
       icon: <CheckCircle2 size={18} />,
-      title: 'Insight bulan ini terlihat rapi',
+      title: 'Bulan ini terlihat aman',
       desc: summary.realIncome > 0
         ? `Pemasukan riil masih lebih besar ${fmtShort(roomAmount)} dari pengeluaran bersih. Pertahankan ritmenya.`
         : 'Belum ada sinyal yang perlu dikhawatirkan dari data bulan ini.',
@@ -170,7 +170,7 @@ function buildRecommendations(txData, billData, budgetData) {
     items.push({
       level: 'success',
       icon: <Sparkles size={18} />,
-      title: `Ruang finansial ${Math.round(roomRate * 100)}% masih aman`,
+      title: `Sisa uang ${Math.round(roomRate * 100)}% masih aman`,
       desc: 'Kondisi ini cukup sehat untuk menabung atau menambah alokasi investasi secara bertahap.',
       action: 'Cek investasi',
       link: '/investasi',
@@ -225,8 +225,8 @@ export default function RekomWidget() {
           <Lightbulb size={18} />
         </div>
         <div>
-          <h2 className="font-bold text-sm text-text">Rekomendasi Untukmu</h2>
-          <p className="text-[10px] text-muted font-medium">Berbasis pemasukan riil, pengeluaran bersih, tagihan, dan anggaran bulan ini</p>
+          <h2 className="font-bold text-sm text-text">Catatan Untukmu</h2>
+          <p className="text-[10px] text-muted font-medium">Dari pemasukan, pengeluaran, tagihan, dan anggaran bulan ini</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
           {dangerCount > 0 && (

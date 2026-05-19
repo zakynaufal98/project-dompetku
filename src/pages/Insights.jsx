@@ -3,7 +3,7 @@ import HealthScoreWidget from '../components/HealthScoreWidget'
 import NetWorthWidget from '../components/NetWorthWidget'
 import RekomWidget from '../components/RekomWidget'
 import FinancialDefinitionsModal from '../components/FinancialDefinitionsModal'
-import { Sparkles, Brain, BookOpen } from 'lucide-react'
+import { Activity, Brain, BookOpen } from 'lucide-react'
 
 export default function Insights() {
   const [showDefinitions, setShowDefinitions] = useState(false)
@@ -26,11 +26,11 @@ export default function Insights() {
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest mb-3 border"
                 style={{ backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.15)' }}
               >
-                <Sparkles size={10} /> Analisis Keuangan
-              </div>
-              <h1 className="text-2xl md:text-3xl font-black tracking-tight">Insights Keuangan</h1>
+              <Activity size={10} /> Kondisi Bulan Ini
+            </div>
+              <h1 className="text-2xl md:text-3xl font-black tracking-tight">Kondisi Keuangan</h1>
               <p className="text-sm font-medium mt-1.5 max-w-xl" style={{ color: 'rgba(255,255,255,0.68)' }}>
-                Dibaca dari pemasukan riil, pengeluaran bersih, tagihan, dan anggaran agar lebih nyambung dengan dashboard dan laporan.
+                Ringkasan singkat dari pemasukan, pengeluaran, tagihan, dan anggaran bulan ini.
               </p>
             </div>
           </div>
@@ -41,12 +41,12 @@ export default function Insights() {
             className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-white/14"
           >
             <BookOpen size={14} />
-            Pusat definisi keuangan
+            Cara hitung angka
           </button>
         </div>
 
         <div className="relative z-10 mt-5 flex flex-wrap gap-2">
-          {['Pemasukan Riil', 'Pengeluaran Bersih', 'Transfer Internal diabaikan'].map((item) => (
+          {['Pemasukan riil', 'Pengeluaran bersih', 'Transfer antar dompet dipisahkan'].map((item) => (
             <span
               key={item}
               className="rounded-full border border-white/12 bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-white/80"

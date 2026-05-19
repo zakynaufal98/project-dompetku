@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   ArrowRightLeft,
@@ -12,12 +12,12 @@ import {
   X,
   Plus,
 } from 'lucide-react'
+import { openGlobalTransactionComposer } from './GlobalTransactionComposer'
 
 const WEB_MAIN_MENU = [
   { path: '/', icon: LayoutDashboard, label: 'Home' },
   { path: '/transaksi', icon: ArrowRightLeft, label: 'Transaksi' },
   { path: '/laporan', icon: BarChart3, label: 'Laporan' },
-  { path: '/insights', icon: Sparkles, label: 'Insights' },
 ]
 
 const BASE_MORE_MENU = [
@@ -28,12 +28,9 @@ const BASE_MORE_MENU = [
 
 export default function BottomNav({ platform = 'web' }) {
   const loc = useLocation()
-  const navigate = useNavigate()
   const [showMore, setShowMore] = useState(false)
   const isAndroidApp = platform === 'android'
-  const moreMenu = isAndroidApp
-    ? [{ path: '/insights', icon: Sparkles, label: 'Insights', desc: 'Kesehatan finansial' }, ...BASE_MORE_MENU]
-    : BASE_MORE_MENU
+  const moreMenu = [{ path: '/insights', icon: Sparkles, label: 'Kondisi', desc: 'Ringkasan bulan ini' }, ...BASE_MORE_MENU]
   const mainMenu = isAndroidApp
     ? [
         { path: '/', icon: LayoutDashboard, label: 'Home' },
@@ -128,7 +125,7 @@ export default function BottomNav({ platform = 'web' }) {
         aria-label="Navigasi bawah"
         style={{ paddingBottom: isAndroidApp ? 'max(10px, env(safe-area-inset-bottom))' : 'env(safe-area-inset-bottom)' }}
       >
-        {isAndroidApp ? (
+        {(
           <div className="relative mx-auto flex h-[80px] max-w-[640px] items-end px-2 pb-1.5 pt-2">
             <div className="flex flex-1 items-stretch">
               {mainMenu.slice(0, 2).map(renderNavLink)}
@@ -154,28 +151,11 @@ export default function BottomNav({ platform = 'web' }) {
 
             <button
               type="button"
-              onClick={() => navigate('/transaksi?compose=1')}
+              onClick={openGlobalTransactionComposer}
               aria-label="Tambah transaksi"
               className="absolute left-1/2 top-0 flex h-16 w-16 -translate-x-1/2 -translate-y-4 items-center justify-center rounded-[24px] border-4 border-bg bg-primary text-text shadow-[0_18px_32px_rgba(176,236,96,0.32)] transition-transform hover:scale-[1.02]"
             >
               <Plus size={24} strokeWidth={2.5} />
-            </button>
-          </div>
-        ) : (
-          <div className="mx-auto flex h-[76px] max-w-[640px] items-stretch">
-            {mainMenu.map(renderNavLink)}
-
-            <button
-              onClick={() => setShowMore((prev) => !prev)}
-              aria-label={showMore ? 'Tutup menu lainnya' : 'Buka menu lainnya'}
-              aria-expanded={showMore}
-              aria-haspopup="dialog"
-              className="flex flex-1 flex-col items-center justify-center gap-1"
-            >
-              <div className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors ${(showMore || moreActive) ? 'bg-primary text-text shadow-sm' : 'text-muted'}`}>
-                <MoreHorizontal size={18} />
-              </div>
-              <span className={`text-[10px] font-bold ${(showMore || moreActive) ? 'text-text' : 'text-muted'}`}>Lainnya</span>
             </button>
           </div>
         )}

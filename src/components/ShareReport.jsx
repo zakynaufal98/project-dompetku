@@ -137,7 +137,7 @@ export default function ShareReport() {
           </div>
         </div>
         <div className="rounded-[28px] border border-[#d9ddd6] bg-white p-5 shadow-sm">
-          <p className="text-sm font-bold text-[#7c847c]">Insight utama</p>
+          <p className="text-sm font-bold text-[#7c847c]">Catatan utama</p>
           <p className="mt-2 text-2xl font-black leading-tight text-[#101211]">{stats.title}</p>
         </div>
       </div>

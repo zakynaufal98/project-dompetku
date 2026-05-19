@@ -248,22 +248,39 @@ export default function TargetCerdas() {
   const riskLabel = prediction.expenseTrend > 0.12 ? 'Pengeluaran naik' : prediction.predictedMonthly <= 0 ? 'Cashflow ketat' : 'Terkendali'
   const achievedLabel = prediction.predictedDate
     ? prediction.predictedDate.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })
-    : 'Belum terprediksi'
+    : 'Belum bisa dihitung'
 
   return (
     <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1">Perencanaan</p>
-          <h1 className="font-black text-2xl text-text tracking-tight">Target Cerdas</h1>
-          <p className="text-muted text-sm font-medium mt-1">Kelola target finansial dengan prediksi arus kas.</p>
+      <header className="relative flex flex-col gap-5 rounded-[28px] bg-text p-7 text-white md:flex-row md:items-center md:justify-between md:p-9">
+        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[28px]" aria-hidden="true">
+          <div className="absolute right-0 top-0 h-72 w-72 rounded-full blur-3xl" style={{ background: 'rgba(59,130,246,0.35)' }} />
+          <div className="absolute bottom-0 left-0 h-48 w-48 rounded-full blur-3xl" style={{ background: 'rgba(159,232,112,0.25)' }} />
         </div>
-        <button onClick={handleAddTarget} disabled={busy} className="btn-primary w-fit">
+
+        <div className="relative z-10 flex items-start gap-4">
+          <div className="hidden h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-white/15 md:flex">
+            <PiggyBank size={22} className="text-white" />
+          </div>
+          <div>
+            <div
+              className="mb-3 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest"
+              style={{ backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.15)' }}
+            >
+              <Sparkles size={10} /> Rencana Tabungan
+            </div>
+            <h1 className="text-2xl font-black tracking-tight md:text-3xl">Target Keuangan</h1>
+            <p className="mt-1.5 max-w-md text-sm font-medium" style={{ color: 'rgba(255,255,255,0.6)' }}>
+              Buat target, isi dana terkumpul, lalu lihat sisa yang perlu dikejar.
+            </p>
+          </div>
+        </div>
+
+        <button onClick={handleAddTarget} disabled={busy} className="relative z-10 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-white/20">
           <Plus size={16} strokeWidth={2.5} /> Target Baru
         </button>
-      </div>
+      </header>
 
       {/* Target Cards — full width, responsive grid */}
       <div className="bg-surface border border-border rounded-[24px] p-5 shadow-sm">
@@ -308,7 +325,7 @@ export default function TargetCerdas() {
                 </div>
                 <ProgressBar value={item.saved} max={item.amount || 1} color="#2196F3" />
                 <p className="text-[11px] font-semibold text-muted mt-2">
-                  {Number.isFinite(item.monthsNeeded) ? `${item.monthsNeeded} bulan lagi` : 'Belum bisa diprediksi'}
+                  {Number.isFinite(item.monthsNeeded) ? `${item.monthsNeeded} bulan lagi` : 'Belum bisa dihitung'}
                 </p>
               </button>
             ))}
@@ -318,9 +335,9 @@ export default function TargetCerdas() {
 
       {/* Metric Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <MetricCard icon={<PiggyBank size={18} />} label="Potensi Nabung" value={fmtShort(prediction.predictedMonthly)} tone="income" />
+        <MetricCard icon={<PiggyBank size={18} />} label="Rata-rata Sisa" value={fmtShort(prediction.predictedMonthly)} tone="income" />
         <MetricCard icon={<CalendarClock size={18} />} label="Durasi" value={Number.isFinite(prediction.monthsNeeded) ? `${prediction.monthsNeeded} bln` : '-'} tone="gold" />
-        <MetricCard icon={<Gauge size={18} />} label="Keyakinan" value={`${Math.round(prediction.confidence)}%`} tone="invest" />
+        <MetricCard icon={<Gauge size={18} />} label="Kelengkapan Data" value={`${Math.round(prediction.confidence)}%`} tone="invest" />
         <MetricCard icon={<TrendingUp size={18} />} label="Status" value={riskLabel} tone={riskLabel === 'Terkendali' ? 'invest' : 'expense'} />
       </div>
 
@@ -329,7 +346,7 @@ export default function TargetCerdas() {
         <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm xl:col-span-3 transition-colors">
           <div className="flex items-center justify-between mb-6">
             <h2 className="font-bold text-text tracking-tight">Proyeksi 12 Bulan</h2>
-            <span className="text-[11px] font-bold text-muted bg-bg px-2 py-1 rounded-md uppercase tracking-wider">Dinamis</span>
+            <span className="text-[11px] font-bold text-muted bg-bg px-2 py-1 rounded-md uppercase tracking-wider">12 Bulan</span>
           </div>
           <div className="h-[260px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -356,13 +373,13 @@ export default function TargetCerdas() {
               <Sparkles size={20} strokeWidth={2.5} />
             </div>
             <div>
-              <h2 className="font-bold text-text tracking-tight">Saran Cerdas</h2>
-              <p className="text-xs font-medium text-muted">Berbasis histori terakhir</p>
+              <h2 className="font-bold text-text tracking-tight">Catatan Target</h2>
+              <p className="text-xs font-medium text-muted">Dihitung dari riwayat terakhir</p>
             </div>
           </div>
           <div className="space-y-4">
             <Insight icon={<BadgeCheck size={16} />} title="Setoran ideal" text={`Agar tercapai dalam 12 bulan, siapkan sekitar ${fmtShort(prediction.idealMonthly)} per bulan.`} />
-            <Insight icon={<TrendingUp size={16} />} title="Ruang cashflow" text={`Rata-rata pemasukan ${fmtShort(prediction.avgIncome)} dan pengeluaran ${fmtShort(prediction.avgExpense)} per bulan.`} />
+            <Insight icon={<TrendingUp size={16} />} title="Sisa bulanan" text={`Rata-rata pemasukan ${fmtShort(prediction.avgIncome)} dan pengeluaran ${fmtShort(prediction.avgExpense)} per bulan.`} />
             <Insight icon={<PiggyBank size={16} />} title="Saldo tersedia" text={`Saldo dompet saat ini ${fmtShort(totals?.saldo || 0)}. Gunakan sebagai batas aman.`} />
           </div>
         </div>
@@ -370,7 +387,7 @@ export default function TargetCerdas() {
 
       <div className="bg-surface border border-border rounded-[24px] p-6 md:p-8 shadow-sm transition-colors">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="font-bold text-text tracking-tight">Perilaku Cashflow</h2>
+          <h2 className="font-bold text-text tracking-tight">Pola Masuk dan Keluar</h2>
           <span className="text-[11px] font-bold text-muted bg-bg px-2 py-1 rounded-md uppercase tracking-wider">9 Bulan</span>
         </div>
         <div className="h-[240px]">
@@ -452,7 +469,7 @@ export default function TargetCerdas() {
                   </div>
                 </div>
                 <div className="flex justify-between text-xs font-bold mb-1.5">
-                  <span className="text-muted">Progress</span>
+                  <span className="text-muted">Progres</span>
                   <span className="text-text">{targetProgress.toFixed(1).replace('.', ',')}%</span>
                 </div>
                 <ProgressBar value={saved} max={target || 1} color="#2196F3" />

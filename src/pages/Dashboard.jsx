@@ -104,6 +104,13 @@ export default function Dashboard() {
     return txData.filter((t) => t.type === 'out' && t.date === todayStr && !isInternalTransferTx(t)).reduce((s, t) => s + t.amount, 0)
   }, [txData, now])
 
+  const yesterdayOut = useMemo(() => {
+    const d = new Date(now)
+    d.setDate(d.getDate() - 1)
+    const str = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    return txData.filter((t) => t.type === 'out' && t.date === str && !isInternalTransferTx(t)).reduce((s, t) => s + t.amount, 0)
+  }, [txData, now])
+
   const tren6 = useMemo(
     () =>
       Array.from({ length: 6 }, (_, i) => {
@@ -253,8 +260,8 @@ export default function Dashboard() {
 
       {showCalcDetails && (
         <BreakdownPanel
-          title="Cara dashboard menghitung bulan ini"
-          note="Pemasukan riil dipisah dari pencairan dan profit investasi. Transfer antar dompet tetap diabaikan."
+          title="Cara angka bulan ini dihitung"
+          note="Pencairan investasi dan transfer antar dompet dipisahkan, supaya pemasukan harian tidak terlihat lebih besar dari kondisi sebenarnya."
           summary={currentMonthSummary}
         />
       )}
@@ -269,9 +276,6 @@ export default function Dashboard() {
           <div>
             <p className="mb-1 text-xs font-semibold text-muted">Saldo Saat Ini</p>
             <p className="text-[22px] font-black leading-none tracking-tight text-text tabular-nums">{fmt(totals.saldo)}</p>
-            <p className="mt-2 text-[11px] font-medium text-muted">
-              Termasuk saldo awal {fmtShort(openingBalance)}
-            </p>
             <div className="mt-2.5 flex items-center gap-2">
               {renderTrendBadge(trends.saldo)}
               <span className="text-xs font-medium text-muted">vs bln lalu</span>
@@ -279,7 +283,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className={`relative overflow-hidden rounded-[24px] border border-border bg-primary-pale p-5 text-text transition-transform duration-200 hover:-translate-y-0.5 ${androidShell ? 'min-w-[248px] shrink-0 snap-start' : ''}`}>
+        <div className={`relative overflow-hidden rounded-[22px] border border-border bg-primary-pale p-5 text-text transition-transform duration-200 hover:-translate-y-0.5 ${androidShell ? 'min-w-[248px] shrink-0 snap-start' : ''}`}>
           <div className="flex items-center justify-between">
             <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface">
               <CalendarDays size={18} className="text-text" />
@@ -290,9 +294,10 @@ export default function Dashboard() {
             <p className="text-[22px] font-black leading-none tracking-tight text-text tabular-nums">
               {todayOut > 0 ? `-${fmt(todayOut)}` : 'Rp 0'}
             </p>
-            <p className="mt-2.5 text-[11px] font-semibold text-text-2">
-              {todayOut === 0 ? 'Belum ada pengeluaran' : 'Pantau arus kas harianmu'}
-            </p>
+            <div className="mt-2.5 flex items-center gap-2">
+              {renderTrendBadge(yesterdayOut === 0 ? (todayOut > 0 ? 100 : 0) : ((todayOut - yesterdayOut) / yesterdayOut) * 100, true)}
+              <span className="text-xs font-medium text-text-2">vs kemarin</span>
+            </div>
           </div>
         </div>
 
@@ -307,13 +312,6 @@ export default function Dashboard() {
             <p className="text-[22px] font-black leading-none tracking-tight text-expense tabular-nums">
               {currOut > 0 ? `-${fmt(currOut)}` : fmt(currOut)}
             </p>
-            {(extraMonthlyMovement.extraOut > 0 || currentMonthSummary.investmentLiquidation > 0) && (
-              <p className="mt-2 text-[11px] font-medium text-muted">
-                {currentMonthSummary.investmentLiquidation > 0
-                  ? `Pencairan investasi ${fmtShort(currentMonthSummary.investmentLiquidation)} ikut menekan pengeluaran bersih.`
-                  : `Termasuk kewajiban atau alokasi ${fmtShort(extraMonthlyMovement.extraOut)}.`}
-              </p>
-            )}
             <div className="mt-2.5 flex items-center gap-2">
               {renderTrendBadge(trends.keluar, true)}
               <span className="text-xs font-medium text-muted">vs bln lalu</span>
@@ -332,13 +330,6 @@ export default function Dashboard() {
             <p className="text-[22px] font-black leading-none tracking-tight text-income tabular-nums">
               {currIn > 0 ? `+${fmt(currIn)}` : fmt(currIn)}
             </p>
-            {(currentMonthSummary.investmentProfit > 0 || extraMonthlyMovement.extraIn > 0) && (
-              <p className="mt-2 text-[11px] font-medium text-muted">
-                {currentMonthSummary.investmentProfit > 0
-                  ? `Profit investasi ${fmtShort(currentMonthSummary.investmentProfit)} ditampilkan terpisah dari pemasukan riil.`
-                  : `Pinjaman atau pencairan ${fmtShort(extraMonthlyMovement.extraIn)} tidak dihitung sebagai pemasukan.`}
-              </p>
-            )}
             <div className="mt-2.5 flex items-center gap-2">
               {renderTrendBadge(trends.masuk)}
               <span className="text-xs font-medium text-muted">vs bln lalu</span>
@@ -350,11 +341,10 @@ export default function Dashboard() {
       <WalletWidget totals={totals} addWallet={addWallet} updateWallet={updateWallet} deleteWallet={deleteWallet} />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <div className="flex flex-col rounded-2xl border border-border bg-surface p-5 transition-colors lg:col-span-2">
+        <div className="flex flex-col rounded-[22px] border border-border bg-surface p-5 transition-colors lg:col-span-2">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-base font-black tracking-tight text-text">Tren Keuangan</h2>
-              <p className="mt-1 text-xs font-medium text-muted">Pemasukan riil dan pengeluaran bersih 6 bulan terakhir.</p>
+              <h2 className="text-base font-black tracking-tight text-text">Arus Kas 6 Bulan</h2>
             </div>
             <span className="rounded-lg border border-border bg-bg px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted">6 Bulan</span>
           </div>
@@ -406,14 +396,11 @@ export default function Dashboard() {
 
         <div className="flex flex-col gap-5">
           <BillTracker />
-          <div className="flex flex-1 flex-col rounded-2xl border border-border bg-surface p-5 transition-colors">
+          <div className="flex flex-1 flex-col rounded-[22px] border border-border bg-surface p-5 transition-colors">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-black tracking-tight text-text">Distribusi Pengeluaran Bersih</h2>
+              <h2 className="text-base font-black tracking-tight text-text">Komposisi Pengeluaran</h2>
               <span className="rounded-lg border border-border bg-bg px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted">Bln Ini</span>
             </div>
-            <p className="mb-3 text-xs font-medium leading-relaxed text-muted">
-              Donut ini sekarang disesuaikan ke pengeluaran bersih, jadi arus masuk non-pendapatan seperti pinjaman masuk akan mengurangi total kategori secara proporsional.
-            </p>
             <div className="rounded-[22px] border border-border/70 bg-bg/70 p-2">
               <InteractiveDonut data={txBlnOut} centerLabel="Peng. Bersih" netAdjustment={currentMonthSummary.excludedIn} />
             </div>
@@ -421,7 +408,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-surface p-5 transition-colors">
+      <div className="rounded-[22px] border border-border bg-surface p-5 transition-colors">
         <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-income-light text-income shadow-sm">
@@ -455,14 +442,14 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="rounded-2xl bg-bg p-4 text-sm font-medium text-muted">
-            Belum ada target. Buat target seperti dana darurat atau liburan agar progresnya tampil di sini.
+            Belum ada target finansial.
           </div>
         )}
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <SharedAccount />
-        <div className="rounded-2xl border border-border bg-surface p-5 transition-colors">
+        <div className="rounded-[22px] border border-border bg-surface p-5 transition-colors">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-pale text-text">
@@ -470,9 +457,6 @@ export default function Dashboard() {
               </div>
               <div>
                 <h2 className="text-base font-black tracking-tight text-text">Wrapped & Share</h2>
-                <p className="mt-0.5 text-xs font-medium text-muted">
-                  Dibuka saat dibutuhkan, jadi dashboard tetap ringan dibaca.
-                </p>
               </div>
             </div>
             <button onClick={() => setShowWrapped((prev) => !prev)} className="btn-secondary px-4 py-2 text-sm" aria-expanded={showWrapped}>

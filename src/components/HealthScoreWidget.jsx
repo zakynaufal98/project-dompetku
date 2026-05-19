@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useData } from '../context/DataContext'
 import { fmtShort, getCashflowMainCategory, isCashflowExpenseTx, summarizeFinancialTx } from '../lib/utils'
-import { ShieldCheck, Info, Wallet, BookOpen, Receipt, PieChart, Landmark } from 'lucide-react'
+import { ShieldCheck, Wallet, BookOpen, Receipt, PieChart, Landmark } from 'lucide-react'
 
 function calcScore(txData, billData, budgetData) {
   const now = new Date()
@@ -140,16 +140,13 @@ export default function HealthScoreWidget() {
       <div className={`bg-gradient-to-br ${theme.gradient} p-7 relative overflow-hidden`}>
         <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 blur-[60px] rounded-full pointer-events-none" />
         <div className="absolute -bottom-8 -left-8 w-40 h-40 bg-black/10 blur-[50px] rounded-full pointer-events-none" />
-        <div className="relative z-10 flex items-center justify-between mb-5">
-          <div className="flex items-center gap-2">
-            <ShieldCheck size={18} className="text-white" />
-            <h2 className="font-bold text-sm text-white">Skor Kesehatan Keuangan</h2>
-          </div>
-          <div className="relative group">
-            <Info size={14} className="text-white/60 cursor-help" />
-            <div className="absolute right-0 top-6 w-64 bg-text text-bg text-[11px] rounded-xl p-3 hidden group-hover:block z-20 shadow-xl leading-relaxed">
-              Skor ini membaca pemasukan riil, pengeluaran bersih, tagihan, dan kepatuhan anggaran. Transfer internal, pinjaman, dan pencairan investasi tidak dibaca sebagai pendapatan utama.
-            </div>
+        <div className="relative z-10 mb-5 flex items-start gap-2">
+          <ShieldCheck size={18} className="mt-0.5 shrink-0 text-white" />
+          <div>
+            <h2 className="text-sm font-bold text-white">Skor Keuangan</h2>
+            <p className="mt-1 max-w-sm text-[11px] font-medium leading-relaxed text-white/70">
+              Dari pemasukan, pengeluaran, tagihan, dan anggaran. Transfer antar dompet dipisahkan.
+            </p>
           </div>
         </div>
         <div className="relative z-10 flex justify-center">
@@ -162,7 +159,7 @@ export default function HealthScoreWidget() {
               <Landmark size={16} className="mt-0.5 shrink-0" />
               <div className="space-y-1 text-[11px] font-medium leading-relaxed">
                 {score.summary.investmentLiquidation > 0 && (
-                  <p>Pencairan investasi {fmtShort(score.summary.investmentLiquidation)} dicatat terpisah agar skor tidak bias.</p>
+                  <p>Pencairan investasi {fmtShort(score.summary.investmentLiquidation)} dipisahkan dari pemasukan rutin.</p>
                 )}
                 {score.summary.investmentProfit > 0 && (
                   <p>Profit investasi {fmtShort(score.summary.investmentProfit)} tetap terlihat sebagai hasil tambahan, bukan pendapatan utama.</p>
@@ -176,13 +173,13 @@ export default function HealthScoreWidget() {
       <div className="p-5 space-y-2.5 flex-1">
         <ScoreRow
           icon={<Wallet size={15} />}
-          label="Ruang dari pemasukan riil"
+          label="Sisa dari pemasukan"
           pct={Math.round((score.roomScore / 40) * 100)}
           color="#10B981"
           info={
             score.summary.realIncome > 0
-              ? `Pengeluaran bersih masih menyisakan ${score.roomPct}% atau ${fmtShort(score.roomAmount)} dari pemasukan riil bulan ini`
-              : 'Belum ada pemasukan riil bulan ini, jadi ruang finansial belum terbentuk'
+              ? `Pengeluaran masih menyisakan ${score.roomPct}% atau ${fmtShort(score.roomAmount)} dari pemasukan bulan ini`
+              : 'Belum ada pemasukan bulan ini'
           }
         />
         <ScoreRow
@@ -201,7 +198,7 @@ export default function HealthScoreWidget() {
         />
         <ScoreRow
           icon={<PieChart size={15} />}
-          label="Kepatuhan anggaran"
+          label="Batas anggaran"
           pct={Math.round((score.anggaranScore / 10) * 100)}
           color="#8B5CF6"
           info={!score.punyaAnggaran ? 'Belum ada anggaran, jadi faktor ini belum bisa dinilai penuh' : 'Dibandingkan dengan batas kategori yang sudah kamu tetapkan'}

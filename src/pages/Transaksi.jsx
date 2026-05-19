@@ -90,10 +90,6 @@ export default function Transaksi() {
 
   const openAndroidComposer = () => {
     setComposeStep(1)
-    if (!androidShell) {
-      setShowAddModal(true)
-      return
-    }
     const params = new URLSearchParams(location.search)
     params.set('compose', '1')
     navigate({ pathname: location.pathname, search: params.toString() }, { replace: false })
@@ -101,11 +97,11 @@ export default function Transaksi() {
 
   const closeAndroidComposer = () => {
     setComposeStep(1)
-    if (!androidShell) {
+    const params = new URLSearchParams(location.search)
+    if (params.get('compose') !== '1') {
       setShowAddModal(false)
       return
     }
-    const params = new URLSearchParams(location.search)
     params.delete('compose')
     const search = params.toString()
     navigate({ pathname: location.pathname, search }, { replace: true })
@@ -116,10 +112,25 @@ export default function Transaksi() {
   }, [walletData, walletId])
 
   useEffect(() => {
-    if (!androidShell) return
     const params = new URLSearchParams(location.search)
     setShowAddModal(params.get('compose') === '1')
-  }, [androidShell, location.search])
+  }, [location.search])
+
+  useEffect(() => {
+    if (!showAddModal) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') closeAndroidComposer()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [showAddModal])
 
   // ── Auto-categorization (add form) ──────────────────────
   const handleDescChange = (val) => {
@@ -247,7 +258,7 @@ export default function Transaksi() {
     else {
       setDesc(''); setAmount(''); setMainCat(''); setSubCat(''); setType('out')
       setComposeStep(1)
-      if (androidShell) closeAndroidComposer()
+      if (showAddModal) closeAndroidComposer()
     }
   }
 
@@ -445,19 +456,18 @@ export default function Transaksi() {
               </div>
 
               {quickTemplates.length > 0 && (
-                <div>
+                <div className="rounded-[20px] border border-border bg-bg/60 p-3">
                   <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted">Template cepat</p>
-                  <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                  <div className="flex flex-wrap gap-2">
                     {quickTemplates.map((item) => (
                       <button
                         key={`${item.desc}-${item.cat}-${item.subCat}`}
                         type="button"
                         onClick={() => applyQuickTemplate(item)}
-                        className="min-w-[180px] rounded-2xl border border-border bg-surface px-3 py-3 text-left transition-colors hover:bg-primary-pale"
+                        className="flex shrink-0 items-center gap-2 rounded-full border border-border bg-surface px-3 py-2 text-xs font-bold text-text transition-colors hover:bg-primary-pale"
                       >
-                        <p className="truncate text-sm font-bold text-text">{item.desc}</p>
-                        <p className="mt-1 text-[11px] font-semibold text-muted">{item.cat}{item.subCat ? ` • ${item.subCat}` : ''}</p>
-                        <p className="mt-2 text-xs font-black text-income">{fmtShort(item.amount)}</p>
+                        <span className="max-w-[110px] truncate">{item.desc}</span>
+                        <span className={type === 'in' ? 'text-income' : 'text-gold'}>{fmtShort(item.amount)}</span>
                       </button>
                     ))}
                   </div>
@@ -496,16 +506,6 @@ export default function Transaksi() {
                 </Field>
 
                 {err && <div className="text-xs text-expense bg-expense-light border border-expense/20 rounded-xl px-4 py-3 font-medium">{err}</div>}
-
-                <button
-                  type="button"
-                  onClick={() => setComposeStep(2)}
-                  disabled={!canProceedComposeStepOne}
-                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-text py-4 text-sm font-bold text-white transition-all disabled:opacity-40"
-                >
-                  Lanjut
-                  <ArrowRight size={18} />
-                </button>
               </div>
             </>
           )}
@@ -641,40 +641,11 @@ export default function Transaksi() {
               )}
 
               {err && <div className="text-xs text-expense bg-expense-light border border-expense/20 rounded-xl px-4 py-3 font-medium">{err}</div>}
-
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setComposeStep(1)}
-                  className="flex items-center justify-center gap-2 rounded-xl border border-border bg-bg py-4 text-sm font-bold text-text transition-colors hover:bg-border/70"
-                >
-                  <ArrowLeft size={18} />
-                  Kembali
-                </button>
-                <button onClick={handleAdd} disabled={busy || isAddBalanceInsufficient}
-                  className={`flex items-center justify-center gap-2 rounded-xl py-4 text-sm font-bold text-white transition-all disabled:opacity-50 ${
-                    type === 'in' ? 'bg-income hover:opacity-90' : 'bg-expense hover:opacity-90'
-                  }`}>
-                  {busy ? <Loader2 size={18} className="animate-spin" /> : <PlusCircle size={18} />}
-                  Simpan
-                </button>
-              </div>
             </div>
           )}
         </>
       ) : (
         <>
-          <div className="flex items-center gap-3 border-b border-border pb-4 mb-2">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, #2ead4b, #054d28)' }}>
-              <ReceiptText size={16} className="text-white" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-0.5">Form</p>
-              <h3 className="font-black text-text text-base tracking-tight">Tambah Transaksi</h3>
-            </div>
-          </div>
-
           <div className="grid grid-cols-2 gap-3 mb-2">
             <button onClick={() => handleTypeChange('in')}
               className={`flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-sm font-bold border transition-all cursor-pointer ${
@@ -695,17 +666,16 @@ export default function Transaksi() {
               {quickTemplates.length > 0 && (
                 <div>
                   <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted">Template cepat</p>
-                  <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                  <div className="flex flex-wrap gap-2">
                     {quickTemplates.map((item) => (
                       <button
                         key={`${item.desc}-${item.cat}-${item.subCat}`}
                         type="button"
                         onClick={() => applyQuickTemplate(item)}
-                        className="min-w-[180px] rounded-2xl border border-border bg-surface px-3 py-3 text-left transition-colors hover:bg-primary-pale"
+                        className="flex shrink-0 items-center gap-2 rounded-full border border-border bg-surface px-3 py-2 text-xs font-bold text-text transition-colors hover:bg-primary-pale"
                       >
-                        <p className="truncate text-sm font-bold text-text">{item.desc}</p>
-                        <p className="mt-1 text-[11px] font-semibold text-muted">{item.cat}{item.subCat ? ` • ${item.subCat}` : ''}</p>
-                        <p className="mt-2 text-xs font-black text-income">{fmtShort(item.amount)}</p>
+                        <span className="max-w-[110px] truncate">{item.desc}</span>
+                        <span className={type === 'in' ? 'text-income' : 'text-gold'}>{fmtShort(item.amount)}</span>
                       </button>
                     ))}
                   </div>
@@ -736,7 +706,7 @@ export default function Transaksi() {
         <Field label="Keterangan / Tempat">
           <DescInput value={desc} onChange={handleDescChange} txData={txData} onEnter={handleAdd} />
           <p className="text-[9px] text-income font-bold flex items-center mt-1.5 uppercase tracking-widest opacity-80">
-            <Sparkles size={10} className="mr-1" /> Auto-Kategori Aktif
+            <Sparkles size={10} className="mr-1" /> Kategori dari riwayat aktif
           </p>
         </Field>
 
@@ -879,59 +849,121 @@ export default function Transaksi() {
       )}
 
       {err && <div className="text-xs text-expense bg-expense-light border border-expense/20 rounded-xl px-4 py-3 font-medium">{err}</div>}
-
-      <button onClick={handleAdd} disabled={busy || isAddBalanceInsufficient}
-        className={`w-full py-4 rounded-xl text-sm font-bold text-white transition-all cursor-pointer flex items-center justify-center gap-2.5 active:scale-95 disabled:opacity-50 mt-2 ${
-          type === 'in' ? 'bg-income hover:opacity-90' : 'bg-expense hover:opacity-90'
-        }`}>
-        {busy ? <Loader2 size={18} className="animate-spin" /> : <PlusCircle size={18} />}
-        Simpan Transaksi
-      </button>
         </>
       )}
     </>
   )
 
+  const addModalActions = androidShell ? (
+    composeStep === 1 ? (
+      <button
+        type="button"
+        onClick={() => setComposeStep(2)}
+        disabled={!canProceedComposeStepOne}
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-text py-4 text-sm font-bold text-white transition-all disabled:opacity-40"
+      >
+        Lanjut
+        <ArrowRight size={18} />
+      </button>
+    ) : (
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={() => setComposeStep(1)}
+          className="flex items-center justify-center gap-2 rounded-xl border border-border bg-bg py-4 text-sm font-bold text-text transition-colors hover:bg-border/70"
+        >
+          <ArrowLeft size={18} />
+          Kembali
+        </button>
+        <button onClick={handleAdd} disabled={busy || isAddBalanceInsufficient}
+          className={`flex items-center justify-center gap-2 rounded-xl py-4 text-sm font-bold text-white transition-all disabled:opacity-50 ${
+            type === 'in' ? 'bg-income hover:opacity-90' : 'bg-expense hover:opacity-90'
+          }`}>
+          {busy ? <Loader2 size={18} className="animate-spin" /> : <PlusCircle size={18} />}
+          Simpan
+        </button>
+      </div>
+    )
+  ) : (
+    <button onClick={handleAdd} disabled={busy || isAddBalanceInsufficient}
+      className={`flex w-full items-center justify-center gap-2.5 rounded-xl py-4 text-sm font-bold text-white transition-all active:scale-95 disabled:opacity-50 ${
+        type === 'in' ? 'bg-income hover:opacity-90' : 'bg-expense hover:opacity-90'
+      }`}>
+      {busy ? <Loader2 size={18} className="animate-spin" /> : <PlusCircle size={18} />}
+      Simpan Transaksi
+    </button>
+  )
+
   return (
     <div className={`animate-fade-up max-w-7xl mx-auto pb-10 ${androidShell ? 'space-y-4' : 'space-y-6'}`}>
 
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1">Keuangan</p>
-          <h1 className="font-black text-2xl text-text tracking-tight">Transaksi</h1>
-          <p className="text-muted text-sm font-medium mt-1">Catat dan pantau arus kas harianmu.</p>
+      <header className="relative flex flex-col gap-5 rounded-[28px] bg-text p-7 text-white md:flex-row md:items-center md:justify-between md:p-9">
+        <div className="relative z-10 flex items-start gap-4">
+          <div className="hidden h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-white/15 md:flex">
+            <ReceiptText size={22} className="text-white" />
+          </div>
+          <div>
+            <div
+              className="mb-3 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest"
+              style={{ backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.15)' }}
+            >
+              <Sparkles size={10} /> Arus Kas
+            </div>
+            <h1 className="text-2xl font-black tracking-tight md:text-3xl">Transaksi</h1>
+            <p className="mt-1.5 max-w-md text-sm font-medium" style={{ color: 'rgba(255,255,255,0.6)' }}>
+              Catat pemasukan, pengeluaran, dan riwayat harian.
+            </p>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowDefinitions(true)}
-          className="inline-flex items-center gap-2 self-start rounded-full border border-border bg-surface px-4 py-2 text-xs font-bold text-text transition-colors hover:bg-bg"
-        >
-          <BookOpen size={14} />
-          Pusat definisi keuangan
-        </button>
-      </div>
 
-      {androidShell && (
-        <div className="rounded-[24px] border border-border bg-surface p-4">
+        <div className="relative z-10 flex flex-wrap items-center gap-2 lg:hidden">
           <button
             type="button"
-            onClick={openAndroidComposer}
-            className="flex w-full items-center justify-between gap-3 rounded-[20px] bg-text px-4 py-4 text-left text-white transition-colors hover:bg-text/90"
+            onClick={() => setShowDefinitions(true)}
+            className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-white/20"
           >
-            <div>
-              <p className="text-sm font-black tracking-tight">Tambah Transaksi</p>
-            </div>
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/12">
-              <PlusCircle size={20} />
-            </div>
+            <BookOpen size={14} />
+            Cara hitung
           </button>
+        </div>
+      </header>
+
+      {!androidShell && (
+        <div className="sticky top-4 z-30 hidden items-center justify-between gap-4 rounded-[22px] border border-border bg-surface/95 px-4 py-3 shadow-sm backdrop-blur lg:flex">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary-pale text-text">
+              <ReceiptText size={18} strokeWidth={2.5} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-black text-text">Transaksi</p>
+              <p className="text-xs font-semibold text-muted">{filtered.length} transaksi tercatat</p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowDefinitions(true)}
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-bg px-4 py-2.5 text-xs font-bold text-text transition-colors hover:bg-primary-pale"
+            >
+              <BookOpen size={14} />
+              Cara hitung
+            </button>
+            <button
+              type="button"
+              onClick={openAndroidComposer}
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-xs font-black text-text shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-primary/30"
+            >
+              <PlusCircle size={15} />
+              Tambah Transaksi
+            </button>
+          </div>
         </div>
       )}
 
       <div className={androidShell ? 'space-y-4' : 'grid grid-cols-1 lg:grid-cols-5 gap-6'}>
 
         {/* ── ADD FORM PANEL ───────────────────────────────── */}
-        <div className={`${androidShell ? 'hidden' : 'bg-surface border border-border rounded-[24px] lg:col-span-3 space-y-5 p-6 md:p-8'}`}>
+        <div className="hidden">
           <div className="flex items-center gap-3 border-b border-border pb-4 mb-2">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
               style={{ background: 'linear-gradient(135deg, #2ead4b, #054d28)' }}>
@@ -963,17 +995,16 @@ export default function Transaksi() {
               {quickTemplates.length > 0 && (
                 <div>
                   <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted">Template cepat</p>
-                  <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                  <div className="flex flex-wrap gap-2">
                     {quickTemplates.map((item) => (
                       <button
                         key={`${item.desc}-${item.cat}-${item.subCat}`}
                         type="button"
                         onClick={() => applyQuickTemplate(item)}
-                        className="min-w-[180px] rounded-2xl border border-border bg-surface px-3 py-3 text-left transition-colors hover:bg-primary-pale"
+                        className="flex shrink-0 items-center gap-2 rounded-full border border-border bg-surface px-3 py-2 text-xs font-bold text-text transition-colors hover:bg-primary-pale"
                       >
-                        <p className="truncate text-sm font-bold text-text">{item.desc}</p>
-                        <p className="mt-1 text-[11px] font-semibold text-muted">{item.cat}{item.subCat ? ` • ${item.subCat}` : ''}</p>
-                        <p className="mt-2 text-xs font-black text-income">{fmtShort(item.amount)}</p>
+                        <span className="max-w-[110px] truncate">{item.desc}</span>
+                        <span className={type === 'in' ? 'text-income' : 'text-gold'}>{fmtShort(item.amount)}</span>
                       </button>
                     ))}
                   </div>
@@ -1004,7 +1035,7 @@ export default function Transaksi() {
             <Field label="Keterangan / Tempat">
               <DescInput value={desc} onChange={handleDescChange} txData={txData} onEnter={handleAdd} />
               <p className="text-[9px] text-income font-bold flex items-center mt-1.5 uppercase tracking-widest opacity-80">
-                <Sparkles size={10} className="mr-1" /> Auto-Kategori Aktif
+                <Sparkles size={10} className="mr-1" /> Kategori dari riwayat aktif
               </p>
             </Field>
 
@@ -1158,7 +1189,7 @@ export default function Transaksi() {
         </div>
 
         {/* ── QUICK STATS ──────────────────────────────── */}
-        <div className="lg:col-span-2 flex flex-col gap-4">
+        <div className="lg:col-span-5 flex flex-col gap-4">
         <div className={`bg-surface border border-border rounded-[24px] shadow-sm flex flex-col ${androidShell ? 'p-4 md:p-6' : 'p-6 md:p-8'}`}>
           <PanelHeader title={selectedMonth ? "Ringkasan Bulan Ini" : "Ringkasan Semua Waktu"} sub="Statistik" />
 
@@ -1370,26 +1401,43 @@ export default function Transaksi() {
         <RecurringWidget />
       )}
 
-      {androidShell && showAddModal && createPortal(
+      {showAddModal && createPortal(
         <div
-          className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-end justify-center animate-fade-in"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/55 backdrop-blur-sm animate-fade-in sm:items-center sm:px-6"
           onClick={closeAndroidComposer}
         >
           <div
-            className="bg-surface w-full rounded-t-[32px] border border-border shadow-2xl flex flex-col max-h-[92dvh]"
+            className="flex max-h-[92dvh] w-full flex-col rounded-t-[32px] border border-border bg-surface shadow-2xl sm:max-h-[88vh] sm:max-w-4xl sm:rounded-[32px]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-              <div>
-                <h3 className="font-bold text-text text-base">Tambah Transaksi</h3>
+            <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border px-5 py-4 sm:px-6">
+              <div className="flex min-w-0 items-center gap-3">
+                <div
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-white"
+                  style={{ background: 'linear-gradient(135deg, #2ead4b, #054d28)' }}
+                >
+                  <ReceiptText size={17} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted">Form</p>
+                  <h3 className="truncate text-base font-black tracking-tight text-text">Tambah Transaksi</h3>
+                </div>
               </div>
-              <button onClick={closeAndroidComposer} className="w-8 h-8 flex items-center justify-center rounded-xl bg-bg text-muted2 hover:text-expense transition-colors">
+              <button
+                type="button"
+                onClick={closeAndroidComposer}
+                aria-label="Tutup form tambah transaksi"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-bg text-muted2 transition-colors hover:text-expense"
+              >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="p-5 space-y-5 overflow-y-auto custom-scrollbar flex-1">
+            <div className="flex-1 space-y-5 overflow-y-auto p-5 custom-scrollbar sm:p-6">
               {addFormBody}
+            </div>
+            <div className="shrink-0 border-t border-border bg-surface/95 px-5 py-4 backdrop-blur sm:px-6">
+              {addModalActions}
             </div>
           </div>
         </div>,

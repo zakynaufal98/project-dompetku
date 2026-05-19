@@ -230,9 +230,9 @@ export default function Tahunan({ quickFilter = 'semua' }) {
       {/* Donut + Tabel – stacked on mobile */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <div className="bg-surface border border-border rounded-2xl p-4 sm:p-6 shadow-sm lg:col-span-2 flex flex-col">
-          <PanelHeader title="Distribusi Pengeluaran Bersih" sub="Selain transfer internal" />
+          <PanelHeader title="Komposisi Pengeluaran Tahunan" sub="Tanpa transfer antar dompet" />
           <p className="mb-2 text-xs font-medium leading-relaxed text-muted">
-            Grafik ini disesuaikan ke pengeluaran bersih tahunan. Jika ada pinjaman masuk atau arus masuk non-pendapatan lain, total kategori akan ikut ditekan secara proporsional.
+            Menunjukkan kategori yang paling banyak memakai uang sepanjang tahun ini.
           </p>
           <InteractiveDonut data={txYearOut} centerLabel="Peng. Bersih" netAdjustment={yearSummary.excludedIn} />
         </div>
@@ -302,7 +302,7 @@ export default function Tahunan({ quickFilter = 'semua' }) {
       {/* BREAKDOWN KATEGORI DENGAN PROGRESS */}
       {catBreakdown.length > 0 && (
         <div className="bg-surface border border-border rounded-2xl p-4 sm:p-6 shadow-sm">
-          <PanelHeader title="Breakdown Pengeluaran per Kategori" />
+          <PanelHeader title="Peringkat Pengeluaran per Kategori" />
           <div className="space-y-4 mt-4 max-h-[350px] overflow-y-auto pr-1 custom-scrollbar">
             {catBreakdown.map(([cat, val], i) => {
               const pct = txYearOut.length > 0 ? (val / txYearOut.reduce((sum, tx) => sum + tx.amount, 0) * 100).toFixed(1) : 0

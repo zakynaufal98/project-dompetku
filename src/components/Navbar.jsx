@@ -1,8 +1,20 @@
 import { useState, useEffect, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Sun, Moon, LogOut, Settings, ChevronDown } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import NotificationMenu from './NotificationMenu'
 import ProfileModal from './ProfileModal'
+import CashFlowKuLogo from './CashFlowKuLogo'
+
+const MOBILE_PAGE_TITLES = [
+  { match: (path) => path === '/', title: 'Dashboard' },
+  { match: (path) => path.startsWith('/transaksi'), title: 'Transaksi' },
+  { match: (path) => path.startsWith('/investasi'), title: 'Investasi' },
+  { match: (path) => path.startsWith('/laporan'), title: 'Laporan' },
+  { match: (path) => path.startsWith('/insights'), title: 'Kondisi' },
+  { match: (path) => path.startsWith('/target'), title: 'Target' },
+  { match: (path) => path.startsWith('/hutang'), title: 'Hutang' },
+]
 
 const AVATAR_OPTIONS = [
   { id: 'cat', emoji: '🐱', bg: '#163300' },
@@ -25,13 +37,15 @@ const AVATAR_OPTIONS = [
   { id: 'alien', emoji: '👾', bg: '#38c8ff' },
 ]
 
-export default function Navbar({ platform = 'web' }) {
+export default function Navbar({ platform = 'web', sidebarCollapsed = false }) {
   const { user, logout } = useAuth()
+  const { pathname } = useLocation()
   const [isDark, setIsDark] = useState(false)
   const [dropOpen, setDropOpen] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const dropRef = useRef(null)
   const isAndroidApp = platform === 'android'
+  const mobilePageTitle = MOBILE_PAGE_TITLES.find((item) => item.match(pathname))?.title || 'CashFlowKu'
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme')
@@ -80,7 +94,7 @@ export default function Navbar({ platform = 'web' }) {
     <>
       <header
         className={`sticky top-0 z-40 border-b border-border backdrop-blur-xl ${
-          isAndroidApp ? 'bg-bg/98' : 'bg-bg/95'
+          isAndroidApp ? 'bg-surface/96 shadow-sm shadow-black/5' : 'bg-surface/95 shadow-sm shadow-black/5'
         }`}
         style={isAndroidApp ? { paddingTop: 'max(env(safe-area-inset-top), 0.35rem)' } : undefined}
       >
@@ -88,19 +102,45 @@ export default function Navbar({ platform = 'web' }) {
           isAndroidApp ? 'min-h-[64px] py-2' : 'h-[72px]'
         }`} aria-label="Navigasi Utama">
           {isAndroidApp ? (
-            <div className="min-w-0">
-              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted">CashFlowKu</p>
-              <p className="truncate text-sm font-black text-text">Ringkasan keuangan</p>
+            <div className="flex min-w-0 items-center gap-3">
+              <CashFlowKuLogo size={40} rounded={20} className="shrink-0 shadow-sm" />
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">CashFlowKu</p>
+                <p className="truncate text-base font-black leading-tight text-text">{mobilePageTitle}</p>
+              </div>
             </div>
           ) : (
-            <div className="hidden md:block" aria-hidden="true" />
+            <>
+              <div className="flex min-w-0 items-center gap-3 md:hidden">
+                <CashFlowKuLogo size={38} rounded={19} className="shrink-0 shadow-sm" />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">CashFlowKu</p>
+                  <p className="truncate text-base font-black leading-tight text-text">{mobilePageTitle}</p>
+                </div>
+              </div>
+
+              <div
+                className={`hidden min-w-0 items-center gap-3 transition-all duration-300 ease-out md:flex ${
+                  sidebarCollapsed
+                    ? 'translate-x-0 opacity-100'
+                    : '-translate-x-2 opacity-0 pointer-events-none'
+                }`}
+                aria-hidden={!sidebarCollapsed}
+              >
+                <CashFlowKuLogo size={40} rounded={20} className="shrink-0 shadow-sm" />
+                <div className="min-w-0">
+                  <p className="truncate text-base font-black leading-none text-text">CashFlowKu</p>
+                  <p className="mt-1 text-xs font-medium text-muted">Keuangan pribadi</p>
+                </div>
+              </div>
+            </>
           )}
 
           <div className="ml-auto flex items-center gap-2 md:gap-3">
             <button
               onClick={toggleTheme}
               className={`flex items-center justify-center rounded-full border border-border text-text transition-colors hover:bg-primary-pale ${
-                isAndroidApp ? 'h-10 w-10 bg-surface' : 'h-11 w-11 bg-bg'
+                isAndroidApp ? 'h-10 w-10 bg-bg shadow-sm' : 'h-11 w-11 bg-bg'
               }`}
               aria-label={isDark ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'}
             >
