@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { Trash2, Loader2, ReceiptText, BriefcaseBusiness, PieChart as PieChartIcon, ArrowLeft, ChevronDown, Pencil, Check, X } from 'lucide-react'
-import { fmt, fmtShort, CAT_ICONS, INV_TYPES, CHART_COLORS, getCashflowMainCategory, getExpenseDistributionCategory } from '../lib/utils'
+import { fmt, fmtShort, CAT_ICONS, INV_TYPES, CHART_COLORS, getCashflowMainCategory, getExpenseDistributionCategory, getDescEmoji } from '../lib/utils'
 
 export const BankLogo = ({ name = '', size = 'md' }) => {
   if (!name) return null;
@@ -44,15 +44,19 @@ export const TxItem = ({ t, onDelete, onEdit, isInv, walletName, inputterName })
   const [confirmDel, setConfirmDel] = useState(false)
   const isOut = isInv ? t.action === 'beli' : t.type === 'out';
   
+  const descEmoji = !isInv ? getDescEmoji(t.desc) : null
+
   let IconElement;
   if (isInv) {
-    IconElement = (INV_TYPES && t.invType && INV_TYPES[t.invType]) 
-      ? INV_TYPES[t.invType].icon 
+    IconElement = (INV_TYPES && t.invType && INV_TYPES[t.invType])
+      ? INV_TYPES[t.invType].icon
       : <BriefcaseBusiness size={18} strokeWidth={2.5} />;
+  } else if (descEmoji) {
+    IconElement = <span className="text-xl leading-none">{descEmoji}</span>;
   } else {
     const mainCatIcon = getCashflowMainCategory(t);
-    IconElement = (CAT_ICONS && CAT_ICONS[mainCatIcon]) 
-      ? CAT_ICONS[mainCatIcon] 
+    IconElement = (CAT_ICONS && CAT_ICONS[mainCatIcon])
+      ? CAT_ICONS[mainCatIcon]
       : <ReceiptText size={18} strokeWidth={2.5} />;
   }
 

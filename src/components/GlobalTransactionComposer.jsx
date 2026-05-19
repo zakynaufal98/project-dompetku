@@ -8,7 +8,6 @@ import {
   Banknote,
   Calendar,
   Check,
-  ChevronDown,
   Loader2,
   PlusCircle,
   ReceiptText,
@@ -22,6 +21,7 @@ import { fmt, fmtShort, today } from '../lib/utils'
 import { Field } from './UI'
 import DescInput from './DescInput'
 import CategoryManager from './CategoryManager'
+import FancySelect from './FancySelect'
 
 export const OPEN_GLOBAL_TRANSACTION_COMPOSER = 'cashflowku:open-transaction-composer'
 
@@ -80,6 +80,14 @@ export default function GlobalTransactionComposer() {
   const availableMainCats = Object.keys(effectiveCategoryTree?.[type] || {})
   const availableSubCats = mainCat && effectiveCategoryTree?.[type]?.[mainCat] ? effectiveCategoryTree[type][mainCat] : []
   const activeWallet = totals?.walletBalances?.find(w => w.id === walletId)
+  const mainCatOptions = availableMainCats.map((cat) => ({ value: cat, label: cat }))
+  const subCatOptions = availableSubCats.map((cat) => ({ value: cat, label: cat }))
+  const walletOptions = (totals?.walletBalances || []).map((wallet) => ({
+    value: wallet.id,
+    label: wallet.name,
+    description: `${wallet.calculatedBalance < 0 ? '-' : ''}Rp ${Math.abs(wallet.calculatedBalance).toLocaleString('id-ID')}`,
+    swatch: wallet.color || '#94a3b8',
+  }))
   const projectedBalance = getProjectedWalletBalance({
     wallet_id: walletId,
     type,
@@ -222,11 +230,11 @@ export default function GlobalTransactionComposer() {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-900/55 backdrop-blur-sm animate-fade-in sm:items-center sm:px-6"
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-900/55 backdrop-blur-sm animate-modal-backdrop sm:items-center sm:px-6"
       onClick={() => setOpen(false)}
     >
       <div
-        className="flex max-h-[92dvh] w-full flex-col rounded-t-[32px] border border-border bg-surface shadow-2xl sm:max-h-[88vh] sm:max-w-3xl sm:rounded-[32px]"
+        className="flex max-h-[92dvh] w-full flex-col rounded-t-[32px] border border-border bg-surface shadow-2xl animate-sheet-up sm:max-h-[88vh] sm:max-w-3xl sm:rounded-[32px] sm:animate-modal-pop"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border px-5 py-4 sm:px-6">
@@ -246,7 +254,7 @@ export default function GlobalTransactionComposer() {
             type="button"
             onClick={() => setOpen(false)}
             aria-label="Tutup form tambah transaksi"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-bg text-muted2 transition-colors hover:text-expense"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-bg text-muted2 transition-all hover:-translate-y-0.5 hover:text-expense active:scale-95"
           >
             <X size={18} />
           </button>
@@ -267,16 +275,16 @@ export default function GlobalTransactionComposer() {
           </div>
 
           {step === 1 && (
-            <div className="space-y-4">
+            <div key="global-step-one" className="space-y-4 animate-soft-pop">
               <div className="grid grid-cols-2 gap-3">
                 <button onClick={() => handleTypeChange('in')}
-                  className={`flex items-center justify-center gap-2.5 rounded-2xl border py-3.5 text-sm font-bold transition-all ${
+                  className={`flex items-center justify-center gap-2.5 rounded-2xl border py-3.5 text-sm font-bold transition-all active:scale-[0.98] ${
                     type === 'in' ? 'bg-income-light text-income border-income/30' : 'bg-bg text-muted border-transparent hover:border-border2'
                   }`}>
                   <ArrowDownLeft size={18} strokeWidth={2.5} /> Pemasukan
                 </button>
                 <button onClick={() => handleTypeChange('out')}
-                  className={`flex items-center justify-center gap-2.5 rounded-2xl border py-3.5 text-sm font-bold transition-all ${
+                  className={`flex items-center justify-center gap-2.5 rounded-2xl border py-3.5 text-sm font-bold transition-all active:scale-[0.98] ${
                     type === 'out' ? 'bg-gold-light text-gold border-gold/30' : 'bg-bg text-muted border-transparent hover:border-border2'
                   }`}>
                   <ArrowUpRight size={18} strokeWidth={2.5} /> Pengeluaran
@@ -292,7 +300,7 @@ export default function GlobalTransactionComposer() {
                         key={`${item.desc}-${item.cat}-${item.subCat}`}
                         type="button"
                         onClick={() => applyQuickTemplate(item)}
-                        className="flex shrink-0 items-center gap-2 rounded-full border border-border bg-surface px-3 py-2 text-xs font-bold text-text transition-colors hover:bg-primary-pale"
+                        className="flex shrink-0 items-center gap-2 rounded-full border border-border bg-surface px-3 py-2 text-xs font-bold text-text transition-all hover:-translate-y-0.5 hover:bg-primary-pale active:scale-95"
                       >
                         <span className="max-w-[110px] truncate">{item.desc}</span>
                         <span className={type === 'in' ? 'text-income' : 'text-gold'}>{fmtShort(item.amount)}</span>
@@ -329,7 +337,7 @@ export default function GlobalTransactionComposer() {
           )}
 
           {step === 2 && (
-            <div className="space-y-4">
+            <div key="global-step-two" className="space-y-4 animate-soft-pop">
               {favoriteCategories.length > 0 && (
                 <div>
                   <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted">Kategori favorit</p>
@@ -339,7 +347,7 @@ export default function GlobalTransactionComposer() {
                         key={`${item.cat}-${item.subCat}`}
                         type="button"
                         onClick={() => applyFavoriteCategory(item)}
-                        className="rounded-full border border-border bg-surface px-3 py-2 text-xs font-bold text-text transition-colors hover:bg-primary-pale"
+                        className="rounded-full border border-border bg-surface px-3 py-2 text-xs font-bold text-text transition-all hover:-translate-y-0.5 hover:bg-primary-pale active:scale-95"
                       >
                         {item.cat}{item.subCat ? ` - ${item.subCat}` : ''}
                       </button>
@@ -349,36 +357,36 @@ export default function GlobalTransactionComposer() {
               )}
 
               <div className="space-y-1.5">
-                <div className="ml-1 flex items-center justify-between">
-                  <label className="text-xs font-bold text-muted">Kategori Induk</label>
-                  <button
-                    type="button"
-                    onClick={() => setShowCatManager(true)}
-                    className="flex items-center gap-1 text-[10px] font-bold text-teal-500 transition-colors hover:text-teal-400"
-                  >
-                    <SlidersHorizontal size={11} /> Kelola
-                  </button>
-                </div>
-                <div className="relative">
-                  <select
-                    className="form-input w-full cursor-pointer appearance-none py-3 pl-4 pr-10 text-sm font-semibold text-text-2"
-                    value={mainCat}
-                    onChange={e => {
-                      if (e.target.value === '__add__') { setShowAddCatForm(true); return }
-                      setMainCat(e.target.value)
-                      setSubCat('')
-                      setShowAddCatForm(false)
-                    }}
-                  >
-                    <option value="" disabled>Pilih Kategori...</option>
-                    {availableMainCats.map(c => <option key={c} value={c}>{c}</option>)}
-                    <option disabled>--------------</option>
-                    <option value="__add__">+ Tambah Kategori Baru</option>
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                    <ChevronDown size={18} strokeWidth={2.5} />
+                <div className="ml-1 flex min-h-[28px] items-center justify-between">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">Kategori Induk</label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddCatForm(true)}
+                      className="flex items-center gap-1 rounded-full bg-primary-pale px-2.5 py-1 text-[10px] font-bold text-text transition-all hover:-translate-y-0.5 active:scale-95"
+                    >
+                      <PlusCircle size={11} /> Tambah
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowCatManager(true)}
+                      className="flex items-center gap-1 text-[10px] font-bold text-teal-500 transition-colors hover:text-teal-400"
+                    >
+                      <SlidersHorizontal size={11} /> Kelola
+                    </button>
                   </div>
                 </div>
+                <FancySelect
+                  value={mainCat}
+                  onChange={(nextValue) => {
+                    setMainCat(nextValue)
+                    setSubCat('')
+                    setShowAddCatForm(false)
+                  }}
+                  options={mainCatOptions}
+                  placeholder="Pilih Kategori..."
+                  emptyLabel="Belum ada kategori"
+                />
                 {showAddCatForm && (
                   <div className="flex gap-2 animate-fade-in">
                     <input
@@ -401,48 +409,30 @@ export default function GlobalTransactionComposer() {
                 )}
               </div>
 
-              <Field label="Sub Kategori">
-                <div className="relative">
-                  <select
-                    className="form-input w-full cursor-pointer appearance-none py-3 pl-4 pr-10 text-sm font-semibold text-text-2 disabled:opacity-50"
-                    value={subCat}
-                    onChange={e => setSubCat(e.target.value)}
-                    disabled={!mainCat || availableSubCats.length === 0}
-                  >
-                    <option value="" disabled>Pilih Detail...</option>
-                    {availableSubCats.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                    <ChevronDown size={18} strokeWidth={2.5} />
-                  </div>
+              <div className="space-y-1.5">
+                <div className="ml-1 flex min-h-[28px] items-center">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">Sub Kategori</label>
                 </div>
-              </Field>
+                <FancySelect
+                  value={subCat}
+                  onChange={setSubCat}
+                  options={subCatOptions}
+                  placeholder="Pilih Detail..."
+                  emptyLabel={mainCat ? 'Tidak ada sub kategori' : 'Pilih kategori dulu'}
+                  disabled={!mainCat || availableSubCats.length === 0}
+                />
+              </div>
 
               <Field label="Pilih Dompet / Rekening">
                 {totals?.walletBalances?.length > 0 ? (
-                  <div className="relative">
-                    <div
-                      className="absolute left-2 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-xl text-white pointer-events-none"
-                      style={{ backgroundColor: activeWallet?.color || '#94a3b8' }}
-                    >
-                      <Wallet size={16} strokeWidth={2.5} />
-                    </div>
-                    <select
-                      className="form-input w-full cursor-pointer appearance-none py-3 pl-14 pr-10 font-semibold text-text-2"
-                      value={walletId}
-                      onChange={e => setWalletId(e.target.value)}
-                    >
-                      <option value="" disabled>Pilih Sumber Dana...</option>
-                      {totals.walletBalances.map(w => (
-                        <option key={w.id} value={w.id}>
-                          {w.name} - {w.calculatedBalance < 0 ? '-' : ''}Rp {Math.abs(w.calculatedBalance).toLocaleString('id-ID')}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                      <ChevronDown size={18} strokeWidth={2.5} />
-                    </div>
-                  </div>
+                  <FancySelect
+                    value={walletId}
+                    onChange={setWalletId}
+                    options={walletOptions}
+                    placeholder="Pilih Sumber Dana..."
+                    emptyLabel="Belum ada dompet"
+                    icon={<Wallet size={16} strokeWidth={2.5} />}
+                  />
                 ) : (
                   <div className="flex items-center gap-2 rounded-xl border border-border bg-bg px-4 py-3 text-sm text-muted">
                     <Wallet size={16} className="text-slate-400" /> Belum ada dompet. Buat di Dashboard!
@@ -461,7 +451,7 @@ export default function GlobalTransactionComposer() {
                     <Calendar size={16} strokeWidth={2.5} />
                   </div>
                   <input
-                    className="form-input relative z-0 cursor-pointer py-3 pl-14 text-sm"
+                    className="form-input relative z-0 min-h-[52px] cursor-pointer py-3 pl-14 text-sm"
                     type="date"
                     value={date}
                     onChange={e => setDate(e.target.value)}
@@ -484,7 +474,7 @@ export default function GlobalTransactionComposer() {
               type="button"
               onClick={() => setStep(2)}
               disabled={!canProceedStepOne}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-text py-4 text-sm font-bold text-white transition-all disabled:opacity-40"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-text py-4 text-sm font-bold text-white transition-all hover:-translate-y-0.5 active:scale-[0.98] disabled:translate-y-0 disabled:opacity-40"
             >
               Lanjut
               <ArrowRight size={18} />
@@ -494,7 +484,7 @@ export default function GlobalTransactionComposer() {
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="flex items-center justify-center gap-2 rounded-xl border border-border bg-bg py-4 text-sm font-bold text-text transition-colors hover:bg-border/70"
+                className="flex items-center justify-center gap-2 rounded-xl border border-border bg-bg py-4 text-sm font-bold text-text transition-all hover:-translate-y-0.5 hover:bg-border/70 active:scale-[0.98]"
               >
                 <ArrowLeft size={18} />
                 Kembali
@@ -502,7 +492,7 @@ export default function GlobalTransactionComposer() {
               <button
                 onClick={handleAdd}
                 disabled={busy || isBalanceInsufficient}
-                className={`flex items-center justify-center gap-2 rounded-xl py-4 text-sm font-bold text-white transition-all disabled:opacity-50 ${
+                className={`flex items-center justify-center gap-2 rounded-xl py-4 text-sm font-bold text-white transition-all hover:-translate-y-0.5 active:scale-[0.98] disabled:translate-y-0 disabled:opacity-50 ${
                   type === 'in' ? 'bg-income hover:opacity-90' : 'bg-expense hover:opacity-90'
                 }`}
               >

@@ -16,6 +16,7 @@ import {
   Briefcase,
   Laptop
 } from 'lucide-react'
+import { EMOJI_RULES } from './emojiRules'
 
 // Fungsi untuk format Rupiah penuh
 export const fmt = (n) => {
@@ -233,6 +234,12 @@ export const CAT_ICONS = {
   'Investasi':             <TrendingUp size={16} className="inline-block mr-1.5 text-blue-500 dark:text-blue-400" />, 
   'Lainnya':               <Sparkles size={16} className="inline-block mr-1.5 text-slate-400 dark:text-slate-300" />, 
   'Elektronik & Gadget': <Laptop size={16} />
+}
+
+export function getDescEmoji(desc = '') {
+  if (!desc) return null
+  const rule = EMOJI_RULES.find(r => r.pattern.test(desc))
+  return rule ? rule.emoji : null
 }
 
 export const INV_TYPES = {

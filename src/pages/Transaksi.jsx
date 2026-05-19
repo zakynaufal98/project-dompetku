@@ -8,6 +8,7 @@ import DescInput from '../components/DescInput'
 import RecurringWidget from '../components/RecurringWidget'
 import CategoryManager from '../components/CategoryManager'
 import FinancialDefinitionsModal from '../components/FinancialDefinitionsModal'
+import FancySelect from '../components/FancySelect'
 import { isAndroidShell } from '../lib/platform'
 import {
   ArrowDownLeft, ArrowUpRight, Banknote,
@@ -371,6 +372,16 @@ export default function Transaksi() {
   const activeWallet     = totals?.walletBalances?.find(w => w.id === walletId)
   const editActiveWallet = totals?.walletBalances?.find(w => w.id === editWalletId)
   const editedTx = txData.find(t => t.id === editId)
+  const mainCatOptions = availableMainCats.map((cat) => ({ value: cat, label: cat }))
+  const subCatOptions = availableSubCats.map((cat) => ({ value: cat, label: cat }))
+  const editMainCatOptions = editAvailableMainCats.map((cat) => ({ value: cat, label: cat }))
+  const editSubCatOptions = editAvailableSubCats.map((cat) => ({ value: cat, label: cat }))
+  const walletOptions = (totals?.walletBalances || []).map((wallet) => ({
+    value: wallet.id,
+    label: wallet.name,
+    description: `${wallet.calculatedBalance < 0 ? '-' : ''}Rp ${Math.abs(wallet.calculatedBalance).toLocaleString('id-ID')}`,
+    swatch: wallet.color || '#94a3b8',
+  }))
 
   const addProjectedBalance = getProjectedWalletBalance({
     wallet_id: walletId,
@@ -531,30 +542,34 @@ export default function Transaksi() {
               )}
 
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between ml-1">
-                  <label className="text-xs font-bold text-muted">Kategori Induk</label>
-                  <button
-                    type="button"
-                    onClick={() => { setCatManagerType(type); setShowCatManager(true) }}
-                    className="flex items-center gap-1 text-[10px] font-bold text-teal-500 hover:text-teal-400 transition-colors"
-                  >
-                    <SlidersHorizontal size={11} /> Kelola
-                  </button>
+                <div className="ml-1 flex min-h-[28px] items-center justify-between">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">Kategori Induk</label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddCatForm(true)}
+                      className="flex items-center gap-1 rounded-full bg-primary-pale px-2.5 py-1 text-[10px] font-bold text-text transition-all hover:-translate-y-0.5 active:scale-95"
+                    >
+                      <PlusCircle size={11} /> Tambah
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setCatManagerType(type); setShowCatManager(true) }}
+                      className="flex items-center gap-1 text-[10px] font-bold text-teal-500 hover:text-teal-400 transition-colors"
+                    >
+                      <SlidersHorizontal size={11} /> Kelola
+                    </button>
+                  </div>
                 </div>
-                <div className="relative">
-                  <select className="form-input py-3 pl-4 pr-10 cursor-pointer appearance-none font-semibold text-text-2 text-sm w-full"
-                    value={mainCat}
-                    onChange={e => {
-                      if (e.target.value === '__add__') { setShowAddCatForm(true); return }
-                      setMainCat(e.target.value); setSubCat(''); setShowAddCatForm(false)
-                    }}>
-                    <option value="" disabled>Pilih Kategori...</option>
-                    {availableMainCats.map(c => <option key={c} value={c}>{c}</option>)}
-                    <option disabled>──────────────</option>
-                    <option value="__add__">+ Tambah Kategori Baru</option>
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><ChevronDown size={18} strokeWidth={2.5} /></div>
-                </div>
+                <FancySelect
+                  value={mainCat}
+                  onChange={(nextValue) => {
+                    setMainCat(nextValue); setSubCat(''); setShowAddCatForm(false)
+                  }}
+                  options={mainCatOptions}
+                  placeholder="Pilih Kategori..."
+                  emptyLabel="Belum ada kategori"
+                />
                 {showAddCatForm && (
                   <div className="flex gap-2 animate-fade-in">
                     <input
@@ -577,21 +592,33 @@ export default function Transaksi() {
                 )}
               </div>
 
-              <Field label="Sub Kategori">
-                <div className="relative">
-                  <select className="form-input py-3 pl-4 pr-10 cursor-pointer appearance-none font-semibold text-text-2 text-sm w-full disabled:opacity-50"
-                    value={subCat} onChange={e => setSubCat(e.target.value)}
-                    disabled={!mainCat || availableSubCats.length === 0}>
-                    <option value="" disabled>Pilih Detail...</option>
-                    {availableSubCats.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><ChevronDown size={18} strokeWidth={2.5} /></div>
+              <div className="space-y-1.5">
+                <div className="ml-1 flex min-h-[28px] items-center">
+                  <label className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">Sub Kategori</label>
                 </div>
-              </Field>
+                <FancySelect
+                  value={subCat}
+                  onChange={setSubCat}
+                  options={subCatOptions}
+                  placeholder="Pilih Detail..."
+                  emptyLabel={mainCat ? 'Tidak ada sub kategori' : 'Pilih kategori dulu'}
+                  disabled={!mainCat || availableSubCats.length === 0}
+                />
+              </div>
 
               <Field label="Pilih Dompet / Rekening">
                 {totals?.walletBalances?.length > 0 ? (
-                  <div className="relative">
+                  <>
+                  <FancySelect
+                    value={walletId}
+                    onChange={setWalletId}
+                    options={walletOptions}
+                    placeholder="Pilih Sumber Dana..."
+                    emptyLabel="Belum ada dompet"
+                    icon={<Wallet size={16} strokeWidth={2.5} />}
+                    menuPlacement="top"
+                  />
+                  <div className="hidden">
                     <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl flex items-center justify-center pointer-events-none z-10 text-white"
                       style={{ backgroundColor: activeWallet?.color || '#94a3b8' }}>
                       <Wallet size={16} strokeWidth={2.5} />
@@ -607,6 +634,7 @@ export default function Transaksi() {
                     </select>
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><ChevronDown size={18} strokeWidth={2.5} /></div>
                   </div>
+                  </>
                 ) : (
                   <div className="bg-bg border border-border rounded-xl px-4 py-3 text-sm text-muted flex items-center gap-2">
                     <Wallet size={16} className="text-slate-400" /> Belum ada dompet. Buat di Dashboard!
@@ -738,30 +766,34 @@ export default function Transaksi() {
         </Field>
 
         <div className="space-y-1.5">
-          <div className="flex items-center justify-between ml-1">
-            <label className="text-xs font-bold text-muted">Kategori Induk</label>
-            <button
-              type="button"
-              onClick={() => { setCatManagerType(type); setShowCatManager(true) }}
-              className="flex items-center gap-1 text-[10px] font-bold text-teal-500 hover:text-teal-400 transition-colors"
-            >
-              <SlidersHorizontal size={11} /> Kelola
-            </button>
+          <div className="ml-1 flex min-h-[28px] items-center justify-between">
+            <label className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">Kategori Induk</label>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowAddCatForm(true)}
+                className="flex items-center gap-1 rounded-full bg-primary-pale px-2.5 py-1 text-[10px] font-bold text-text transition-all hover:-translate-y-0.5 active:scale-95"
+              >
+                <PlusCircle size={11} /> Tambah
+              </button>
+              <button
+                type="button"
+                onClick={() => { setCatManagerType(type); setShowCatManager(true) }}
+                className="flex items-center gap-1 text-[10px] font-bold text-teal-500 hover:text-teal-400 transition-colors"
+              >
+                <SlidersHorizontal size={11} /> Kelola
+              </button>
+            </div>
           </div>
-          <div className="relative">
-            <select className="form-input py-3 pl-4 pr-10 cursor-pointer appearance-none font-semibold text-text-2 text-sm w-full"
-              value={mainCat}
-              onChange={e => {
-                if (e.target.value === '__add__') { setShowAddCatForm(true); return }
-                setMainCat(e.target.value); setSubCat(''); setShowAddCatForm(false)
-              }}>
-              <option value="" disabled>Pilih Kategori...</option>
-              {availableMainCats.map(c => <option key={c} value={c}>{c}</option>)}
-              <option disabled>──────────────</option>
-              <option value="__add__">+ Tambah Kategori Baru</option>
-            </select>
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><ChevronDown size={18} strokeWidth={2.5} /></div>
-          </div>
+          <FancySelect
+            value={mainCat}
+            onChange={(nextValue) => {
+              setMainCat(nextValue); setSubCat(''); setShowAddCatForm(false)
+            }}
+            options={mainCatOptions}
+            placeholder="Pilih Kategori..."
+            emptyLabel="Belum ada kategori"
+          />
           {showAddCatForm && (
             <div className="flex gap-2 animate-fade-in">
               <input
@@ -784,21 +816,32 @@ export default function Transaksi() {
           )}
         </div>
 
-        <Field label="Sub Kategori">
-          <div className="relative">
-            <select className="form-input py-3 pl-4 pr-10 cursor-pointer appearance-none font-semibold text-text-2 text-sm w-full disabled:opacity-50"
-              value={subCat} onChange={e => setSubCat(e.target.value)}
-              disabled={!mainCat || availableSubCats.length === 0}>
-              <option value="" disabled>Pilih Detail...</option>
-              {availableSubCats.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><ChevronDown size={18} strokeWidth={2.5} /></div>
+        <div className="space-y-1.5">
+          <div className="ml-1 flex min-h-[28px] items-center">
+            <label className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">Sub Kategori</label>
           </div>
-        </Field>
+          <FancySelect
+            value={subCat}
+            onChange={setSubCat}
+            options={subCatOptions}
+            placeholder="Pilih Detail..."
+            emptyLabel={mainCat ? 'Tidak ada sub kategori' : 'Pilih kategori dulu'}
+            disabled={!mainCat || availableSubCats.length === 0}
+          />
+        </div>
 
         <Field label="Pilih Dompet / Rekening">
           {totals?.walletBalances?.length > 0 ? (
-            <div className="relative">
+            <>
+            <FancySelect
+              value={walletId}
+              onChange={setWalletId}
+              options={walletOptions}
+              placeholder="Pilih Sumber Dana..."
+              emptyLabel="Belum ada dompet"
+              icon={<Wallet size={16} strokeWidth={2.5} />}
+            />
+            <div className="hidden">
               <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl flex items-center justify-center pointer-events-none z-10 text-white"
                 style={{ backgroundColor: activeWallet?.color || '#94a3b8' }}>
                 <Wallet size={16} strokeWidth={2.5} />
@@ -814,6 +857,7 @@ export default function Transaksi() {
               </select>
               <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><ChevronDown size={18} strokeWidth={2.5} /></div>
             </div>
+            </>
           ) : (
             <div className="bg-bg border border-border rounded-xl px-4 py-3 text-sm text-muted flex items-center gap-2">
               <Wallet size={16} className="text-slate-400" /> Belum ada dompet. Buat di Dashboard!
@@ -826,15 +870,16 @@ export default function Transaksi() {
           )}
         </Field>
 
-        <Field label="Tanggal">
-          <div className="relative">
+        <div className="flex flex-col gap-1.5">
+          <label className="ml-1 block text-[11px] font-bold uppercase tracking-[0.16em] text-muted">Tanggal</label>
+          <div className="relative flex-1">
             <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-bg text-muted rounded-xl flex items-center justify-center pointer-events-none z-10">
               <Calendar size={16} strokeWidth={2.5} />
             </div>
-            <input className="form-input pl-14 py-3 cursor-pointer text-sm relative z-0"
+            <input className="form-input h-full pl-14 py-3 cursor-pointer text-sm relative z-0"
               type="date" value={date} onChange={e => setDate(e.target.value)} />
           </div>
-        </Field>
+        </div>
       </div>
 
       {formWarnings.length > 0 && (
@@ -1067,30 +1112,34 @@ export default function Transaksi() {
             </Field>
 
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between ml-1">
-                <label className="text-xs font-bold text-muted">Kategori Induk</label>
-                <button
-                  type="button"
-                  onClick={() => { setCatManagerType(type); setShowCatManager(true) }}
-                  className="flex items-center gap-1 text-[10px] font-bold text-teal-500 hover:text-teal-400 transition-colors"
-                >
-                  <SlidersHorizontal size={11} /> Kelola
-                </button>
+              <div className="ml-1 flex min-h-[28px] items-center justify-between">
+                <label className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">Kategori Induk</label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddCatForm(true)}
+                    className="flex items-center gap-1 rounded-full bg-primary-pale px-2.5 py-1 text-[10px] font-bold text-text transition-all hover:-translate-y-0.5 active:scale-95"
+                  >
+                    <PlusCircle size={11} /> Tambah
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setCatManagerType(type); setShowCatManager(true) }}
+                    className="flex items-center gap-1 text-[10px] font-bold text-teal-500 hover:text-teal-400 transition-colors"
+                  >
+                    <SlidersHorizontal size={11} /> Kelola
+                  </button>
+                </div>
               </div>
-              <div className="relative">
-                <select className="form-input py-3 pl-4 pr-10 cursor-pointer appearance-none font-semibold text-text-2 text-sm w-full"
-                  value={mainCat}
-                  onChange={e => {
-                    if (e.target.value === '__add__') { setShowAddCatForm(true); return }
-                    setMainCat(e.target.value); setSubCat(''); setShowAddCatForm(false)
-                  }}>
-                  <option value="" disabled>Pilih Kategori...</option>
-                  {availableMainCats.map(c => <option key={c} value={c}>{c}</option>)}
-                  <option disabled>──────────────</option>
-                  <option value="__add__">+ Tambah Kategori Baru</option>
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><ChevronDown size={18} strokeWidth={2.5} /></div>
-              </div>
+              <FancySelect
+                value={mainCat}
+                onChange={(nextValue) => {
+                  setMainCat(nextValue); setSubCat(''); setShowAddCatForm(false)
+                }}
+                options={mainCatOptions}
+                placeholder="Pilih Kategori..."
+                emptyLabel="Belum ada kategori"
+              />
               {showAddCatForm && (
                 <div className="flex gap-2 animate-fade-in">
                   <input
@@ -1113,21 +1162,32 @@ export default function Transaksi() {
               )}
             </div>
 
-            <Field label="Sub Kategori">
-              <div className="relative">
-                <select className="form-input py-3 pl-4 pr-10 cursor-pointer appearance-none font-semibold text-text-2 text-sm w-full disabled:opacity-50"
-                  value={subCat} onChange={e => setSubCat(e.target.value)}
-                  disabled={!mainCat || availableSubCats.length === 0}>
-                  <option value="" disabled>Pilih Detail...</option>
-                  {availableSubCats.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><ChevronDown size={18} strokeWidth={2.5} /></div>
+            <div className="space-y-1.5">
+              <div className="ml-1 flex min-h-[28px] items-center">
+                <label className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">Sub Kategori</label>
               </div>
-            </Field>
+              <FancySelect
+                value={subCat}
+                onChange={setSubCat}
+                options={subCatOptions}
+                placeholder="Pilih Detail..."
+                emptyLabel={mainCat ? 'Tidak ada sub kategori' : 'Pilih kategori dulu'}
+                disabled={!mainCat || availableSubCats.length === 0}
+              />
+            </div>
 
             <Field label="Pilih Dompet / Rekening">
               {totals?.walletBalances?.length > 0 ? (
-                <div className="relative">
+                <>
+                <FancySelect
+                  value={walletId}
+                  onChange={setWalletId}
+                  options={walletOptions}
+                  placeholder="Pilih Sumber Dana..."
+                  emptyLabel="Belum ada dompet"
+                  icon={<Wallet size={16} strokeWidth={2.5} />}
+                />
+                <div className="hidden">
                   <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl flex items-center justify-center pointer-events-none z-10 text-white"
                     style={{ backgroundColor: activeWallet?.color || '#94a3b8' }}>
                     <Wallet size={16} strokeWidth={2.5} />
@@ -1143,6 +1203,7 @@ export default function Transaksi() {
                   </select>
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><ChevronDown size={18} strokeWidth={2.5} /></div>
                 </div>
+                </>
               ) : (
                 <div className="bg-bg border border-border rounded-xl px-4 py-3 text-sm text-muted flex items-center gap-2">
                   <Wallet size={16} className="text-slate-400" /> Belum ada dompet. Buat di Dashboard!
@@ -1155,15 +1216,16 @@ export default function Transaksi() {
               )}
             </Field>
 
-            <Field label="Tanggal">
-              <div className="relative">
+            <div className="flex flex-col gap-1.5">
+              <label className="ml-1 block text-[11px] font-bold uppercase tracking-[0.16em] text-muted">Tanggal</label>
+              <div className="relative flex-1">
                 <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-bg text-muted rounded-xl flex items-center justify-center pointer-events-none z-10">
                   <Calendar size={16} strokeWidth={2.5} />
                 </div>
-                <input className="form-input pl-14 py-3 cursor-pointer text-sm relative z-0"
+                <input className="form-input h-full pl-14 py-3 cursor-pointer text-sm relative z-0"
                   type="date" value={date} onChange={e => setDate(e.target.value)} />
               </div>
-            </Field>
+            </div>
           </div>
 
           {formWarnings.length > 0 && (
@@ -1403,11 +1465,11 @@ export default function Transaksi() {
 
       {showAddModal && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/55 backdrop-blur-sm animate-fade-in sm:items-center sm:px-6"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/55 backdrop-blur-sm animate-modal-backdrop sm:items-center sm:px-6"
           onClick={closeAndroidComposer}
         >
           <div
-            className="flex max-h-[92dvh] w-full flex-col rounded-t-[32px] border border-border bg-surface shadow-2xl sm:max-h-[88vh] sm:max-w-4xl sm:rounded-[32px]"
+            className="flex max-h-[92dvh] w-full flex-col rounded-t-[32px] border border-border bg-surface shadow-2xl animate-sheet-up sm:max-h-[88vh] sm:max-w-4xl sm:rounded-[32px] sm:animate-modal-pop"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border px-5 py-4 sm:px-6">
@@ -1427,7 +1489,7 @@ export default function Transaksi() {
                 type="button"
                 onClick={closeAndroidComposer}
                 aria-label="Tutup form tambah transaksi"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-bg text-muted2 transition-colors hover:text-expense"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-bg text-muted2 transition-all hover:-translate-y-0.5 hover:text-expense active:scale-95"
               >
                 <X size={18} />
               </button>
@@ -1455,11 +1517,11 @@ export default function Transaksi() {
       {/* ── EDIT MODAL (portal) ───────────────────────────── */}
       {editId && createPortal(
         <div
-          className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center animate-fade-in"
+          className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-end sm:items-center justify-center animate-modal-backdrop"
           onClick={handleCloseEdit}
         >
           <div
-            className="bg-surface w-full sm:max-w-lg rounded-t-[32px] sm:rounded-[32px] border border-border shadow-2xl flex flex-col max-h-[92dvh] sm:max-h-[85vh]"
+            className="bg-surface w-full sm:max-w-lg rounded-t-[32px] sm:rounded-[32px] border border-border shadow-2xl flex flex-col max-h-[92dvh] sm:max-h-[85vh] animate-sheet-up sm:animate-modal-pop"
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
@@ -1468,7 +1530,7 @@ export default function Transaksi() {
                 <h3 className="font-bold text-text text-base">Edit Transaksi</h3>
                 <p className="text-xs text-muted mt-0.5">Ubah detail lalu simpan</p>
               </div>
-              <button onClick={handleCloseEdit} className="w-8 h-8 flex items-center justify-center rounded-xl bg-bg text-muted2 hover:text-expense transition-colors">
+              <button onClick={handleCloseEdit} className="w-8 h-8 flex items-center justify-center rounded-xl bg-bg text-muted2 hover:text-expense transition-all hover:-translate-y-0.5 active:scale-95">
                 <X size={18} />
               </button>
             </div>
@@ -1517,21 +1579,25 @@ export default function Transaksi() {
               {/* Kategori + Sub */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-muted ml-1 block mb-1">Kategori Induk</label>
-                  <div className="relative">
-                    <select className="form-input py-2.5 pl-3 pr-8 cursor-pointer appearance-none font-semibold text-text-2 text-sm w-full"
-                      value={editMainCat}
-                      onChange={e => {
-                        if (e.target.value === '__add__') { setShowEditAddCatForm(true); return }
-                        setEditMainCat(e.target.value); setEditSubCat(''); setShowEditAddCatForm(false)
-                      }}>
-                      <option value="" disabled>Pilih...</option>
-                      {editAvailableMainCats.map(c => <option key={c} value={c}>{c}</option>)}
-                      <option disabled>──────────</option>
-                      <option value="__add__">+ Tambah Baru</option>
-                    </select>
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><ChevronDown size={15} /></div>
+                  <div className="mb-1 ml-1 flex min-h-[28px] items-center justify-between gap-2">
+                    <label className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">Kategori Induk</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowEditAddCatForm(true)}
+                      className="flex items-center gap-1 rounded-full bg-primary-pale px-2 py-0.5 text-[10px] font-bold text-text transition-all hover:-translate-y-0.5 active:scale-95"
+                    >
+                      <PlusCircle size={10} /> Tambah
+                    </button>
                   </div>
+                  <FancySelect
+                    value={editMainCat}
+                    onChange={(nextValue) => {
+                      setEditMainCat(nextValue); setEditSubCat(''); setShowEditAddCatForm(false)
+                    }}
+                    options={editMainCatOptions}
+                    placeholder="Pilih..."
+                    emptyLabel="Belum ada kategori"
+                  />
                   {showEditAddCatForm && (
                     <div className="flex gap-1.5 mt-2 animate-fade-in col-span-2">
                       <input
@@ -1554,16 +1620,17 @@ export default function Transaksi() {
                   )}
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-muted ml-1 block mb-1">Sub Kategori</label>
-                  <div className="relative">
-                    <select className="form-input py-2.5 pl-3 pr-8 cursor-pointer appearance-none font-semibold text-text-2 text-sm w-full disabled:opacity-50"
-                      value={editSubCat} onChange={e => setEditSubCat(e.target.value)}
-                      disabled={!editMainCat || editAvailableSubCats.length === 0}>
-                      <option value="" disabled>Pilih...</option>
-                      {editAvailableSubCats.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><ChevronDown size={15} /></div>
+                  <div className="mb-1 ml-1 flex min-h-[28px] items-center">
+                    <label className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">Sub Kategori</label>
                   </div>
+                  <FancySelect
+                    value={editSubCat}
+                    onChange={setEditSubCat}
+                    options={editSubCatOptions}
+                    placeholder="Pilih..."
+                    emptyLabel={editMainCat ? 'Tidak ada sub kategori' : 'Pilih kategori dulu'}
+                    disabled={!editMainCat || editAvailableSubCats.length === 0}
+                  />
                 </div>
               </div>
 
@@ -1571,7 +1638,16 @@ export default function Transaksi() {
               {totals?.walletBalances?.length > 0 && (
                 <div>
                   <label className="text-xs font-bold text-muted ml-1 block mb-1">Dompet / Rekening</label>
-                  <div className="relative">
+                  <FancySelect
+                    value={editWalletId}
+                    onChange={setEditWalletId}
+                    options={walletOptions}
+                    placeholder="Pilih Sumber Dana..."
+                    emptyLabel="Belum ada dompet"
+                    icon={<Wallet size={16} strokeWidth={2.5} />}
+                    menuPlacement="top"
+                  />
+                  <div className="hidden">
                     <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl flex items-center justify-center pointer-events-none z-10 text-white"
                       style={{ backgroundColor: editActiveWallet?.color || '#94a3b8' }}>
                       <Wallet size={16} strokeWidth={2.5} />
