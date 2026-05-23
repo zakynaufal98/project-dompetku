@@ -81,6 +81,7 @@ export default function Transaksi() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedMonth, setSelectedMonth] = useState(today().substring(0, 7))
   const [sortBy, setSortBy] = useState('terbaru')
+  const [selectedWalletFilter, setSelectedWalletFilter] = useState('semua')
   const [showCalcDetails, setShowCalcDetails] = useState(false)
   const [quickFilter, setQuickFilter] = useState('semua')
   const [showDefinitions, setShowDefinitions] = useState(false)
@@ -297,14 +298,37 @@ export default function Transaksi() {
   }
 
   // ── Filter / sort / group ──────────────────────────────
+  const walletFilterItems = useMemo(() => {
+    const map = new Map()
+    ;(walletData || []).forEach((wallet) => {
+      if (wallet?.id) map.set(wallet.id, wallet)
+    })
+    ;(totals?.walletBalances || []).forEach((wallet) => {
+      if (wallet?.id && !map.has(wallet.id)) map.set(wallet.id, wallet)
+    })
+    return Array.from(map.values())
+  }, [walletData, totals?.walletBalances])
+
+  const walletLookup = useMemo(() => {
+    const lookup = {}
+    walletFilterItems.forEach((wallet) => {
+      lookup[wallet.id] = wallet
+    })
+    return lookup
+  }, [walletFilterItems])
+
   const filtered = txData
     .filter(t => {
       const matchTab = filter === 'semua' || t.type === filter
       const matchMonth = isDateQuickFilterPreset(quickFilter) ? true : (selectedMonth ? t.date.startsWith(selectedMonth) : true)
       const matchQuickFilter = matchesQuickFilterPreset(t, quickFilter, new Date())
-      const q = searchQuery.toLowerCase()
-      const matchSearch = (t.desc?.toLowerCase().includes(q)) || (t.cat?.toLowerCase().includes(q))
-      return matchTab && matchMonth && matchQuickFilter && matchSearch
+      const matchWallet = selectedWalletFilter === 'semua' || t.wallet_id === selectedWalletFilter
+      const walletName = walletLookup[t.wallet_id]?.name || ''
+      const q = searchQuery.trim().toLowerCase()
+      const matchSearch = !q || [t.desc, t.cat, t.sub_cat, walletName].some((value) =>
+        value?.toLowerCase().includes(q)
+      )
+      return matchTab && matchMonth && matchQuickFilter && matchWallet && matchSearch
     })
     .sort((a, b) => {
       switch (sortBy) {
@@ -1409,12 +1433,47 @@ export default function Transaksi() {
           </div>
         </div>
 
-        <div className="relative mb-6">
+        <div className="relative mb-3">
           <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted2 z-10"><Search size={18} /></div>
-          <input type="text" placeholder="Cari transaksi berdasarkan nama atau kategori..."
+          <input type="text" placeholder="Cari nama, kategori, sub kategori, atau dompet..."
             value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
             className="w-full bg-field border border-border2 text-text placeholder:text-muted2 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:border-text focus:bg-surface outline-none transition-all" />
         </div>
+
+        {walletFilterItems.length > 0 && (
+          <div className="mb-6 flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+            <button
+              type="button"
+              onClick={() => setSelectedWalletFilter('semua')}
+              className={`shrink-0 rounded-full px-3 py-2 text-xs font-bold transition-all ${
+                selectedWalletFilter === 'semua'
+                  ? 'bg-text text-white'
+                  : 'border border-border bg-surface text-text hover:bg-bg'
+              }`}
+            >
+              Semua dompet
+            </button>
+            {walletFilterItems.map((wallet) => (
+              <button
+                key={wallet.id}
+                type="button"
+                onClick={() => setSelectedWalletFilter(wallet.id)}
+                className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-xs font-bold transition-all ${
+                  selectedWalletFilter === wallet.id
+                    ? 'bg-primary-pale text-text shadow-sm'
+                    : 'border border-border bg-surface text-text hover:bg-bg'
+                }`}
+              >
+                <span
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ backgroundColor: wallet.color || '#94a3b8' }}
+                  aria-hidden="true"
+                />
+                {wallet.name}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="lg:max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
           {Object.keys(groupedTx).length > 0 ? (
