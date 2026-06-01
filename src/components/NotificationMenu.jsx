@@ -33,8 +33,19 @@ export default function NotificationMenu() {
     
     const now = new Date()
     const todayTime = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+    const seenBillKeys = new Set()
+    const getBillIdentity = (bill) => {
+      const name = (bill?.nama_tagihan || '').trim().toLowerCase()
+      const value = Number(bill?.amount || 0)
+      const due = (bill?.jatuh_tempo || '').split('T')[0]
+      return `${name}|${value}|${due}`
+    }
 
     billData.filter(b => !b.is_lunas).forEach(b => {
+      const billKey = getBillIdentity(b)
+      if (seenBillKeys.has(billKey)) return
+      seenBillKeys.add(billKey)
+
       const dateOnly = b.jatuh_tempo.split('T')[0]
       const [y, m, d] = dateOnly.split('-')
       const dueTime = new Date(Number(y), Number(m) - 1, Number(d)).getTime()

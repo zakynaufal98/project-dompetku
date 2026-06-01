@@ -399,8 +399,19 @@ export function DataProvider({ children }) {
     return error;
   }
 
+  const getBillIdentity = (bill) => {
+    const name = (bill?.nama_tagihan || '').trim().toLowerCase()
+    const value = Number(bill?.amount || 0)
+    const due = (bill?.jatuh_tempo || '').split('T')[0]
+    return `${name}|${value}|${due}`
+  }
+
   const insertBillRecord = async ({ nama_tagihan, amount, jatuh_tempo, source_bill_id = null }) => {
     if (!canWriteActiveAccount) return { data: null, error: readonlyError }
+    const normalizedBill = { nama_tagihan, amount: Number(amount), jatuh_tempo }
+    const duplicate = billData.find((bill) => !bill.is_lunas && getBillIdentity(bill) === getBillIdentity(normalizedBill))
+    if (duplicate) return { data: duplicate, error: null, reused: true }
+
     let payload = { user_id: effectiveUserId, nama_tagihan, amount, jatuh_tempo }
     if (source_bill_id) payload.source_bill_id = source_bill_id
 
@@ -408,7 +419,7 @@ export function DataProvider({ children }) {
       const { data, error } = await supabase.from('tagihan').insert(payload).select().single()
       if (!error) {
         setBillData(prev => [...prev, data].sort((a, b) => new Date(a.jatuh_tempo) - new Date(b.jatuh_tempo)))
-        return { data, error: null }
+        return { data, error: null, reused: false }
       }
       if (payload.source_bill_id && isMissingColumn(error, 'source_bill_id')) {
         payload = withoutField(payload, 'source_bill_id')
@@ -773,7 +784,7 @@ export function DataProvider({ children }) {
 
     const dateObj = new Date(bill.jatuh_tempo)
     dateObj.setMonth(dateObj.getMonth() + 1)
-    const { data: nextBill, error: nextBillError } = await insertBillRecord({
+    const { data: nextBill, error: nextBillError, reused: reusedNextBill } = await insertBillRecord({
       nama_tagihan: bill.nama_tagihan,
       amount: Number(bill.amount),
       jatuh_tempo: dateObj.toISOString().split('T')[0],
@@ -786,7 +797,7 @@ export function DataProvider({ children }) {
 
     const { error } = await supabase.from('tagihan').update({ is_lunas: true }).eq('id', id).eq('user_id', effectiveUserId)
     if (error) {
-      if (nextBill?.id) await deleteBillRecord(nextBill.id)
+      if (nextBill?.id && !reusedNextBill) await deleteBillRecord(nextBill.id)
       await deleteTxRecord(paymentTx.id)
       return error
     }

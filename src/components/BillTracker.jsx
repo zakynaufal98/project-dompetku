@@ -68,13 +68,22 @@ export default function BillTracker() {
     setShowPayModal(null)
   }
 
+  const getBillIdentity = (bill) => {
+    const name = (bill?.nama_tagihan || '').trim().toLowerCase()
+    const value = Number(bill?.amount || 0)
+    const due = (bill?.jatuh_tempo || '').split('T')[0]
+    return `${name}|${value}|${due}`
+  }
+
   const pendingBills = billData.filter(b => {
     if (b.is_lunas) return false;
     const billDate = new Date(b.jatuh_tempo);
     const now = new Date();
     return (billDate.getFullYear() < now.getFullYear()) || 
            (billDate.getFullYear() === now.getFullYear() && billDate.getMonth() <= now.getMonth());
-  })
+  }).filter((bill, index, list) => (
+    index === list.findIndex((item) => getBillIdentity(item) === getBillIdentity(bill))
+  ))
 
   const totalPending = pendingBills.reduce((sum, b) => sum + Number(b.amount), 0)
 
