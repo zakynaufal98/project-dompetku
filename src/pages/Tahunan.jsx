@@ -167,7 +167,7 @@ export default function Tahunan({ quickFilter = 'semua' }) {
           <p className="text-muted text-[10px] font-bold uppercase tracking-wider mb-1">Profit Investasi</p>
           <p className="tabular-nums font-bold text-base sm:text-lg text-income tracking-tight truncate">{fmtShort(yearSummary.investmentProfit)}</p>
         </div>
-        <div className="bg-[#0e0f0c] rounded-2xl p-4 shadow-sm">
+        <div className="bg-[#0e0f0c] dark:bg-primary-pale dark:border dark:border-primary/20 rounded-2xl p-4 shadow-sm">
           <p className="text-primary/60 text-[10px] font-bold uppercase tracking-wider mb-1">Savings Rate</p>
           <p className="tabular-nums font-black text-2xl tracking-tight text-primary">{savingsRate}%</p>
           <p className="text-[9px] text-primary/40 font-medium mt-1">diamankan</p>

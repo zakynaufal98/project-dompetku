@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useData } from '../context/DataContext'
 import { fmtShort, fmt } from '../lib/utils'
 import { BankLogo } from './UI'
-import { BellRing, Plus, Calendar, CheckCircle2, Trash2, X, Save, Wallet, AlertTriangle, CreditCard, ChevronDown } from 'lucide-react'
+import { BellRing, Plus, Calendar, CheckCircle2, Trash2, X, Save, Wallet, AlertTriangle, CreditCard } from 'lucide-react'
 import { isAndroidShell } from '../lib/platform'
 
 export default function BillTracker() {

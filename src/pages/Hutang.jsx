@@ -242,7 +242,7 @@ export default function Hutang() {
   // ─── RENDER ──────────────────────────────────────────────
   return (
     <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
-      <header className="relative flex flex-col gap-5 rounded-[28px] bg-text p-7 text-white md:flex-row md:items-center md:justify-between md:p-9">
+      <header className="relative flex flex-col gap-5 rounded-[28px] bg-text dark:bg-surface dark:border dark:border-border p-7 text-white md:flex-row md:items-center md:justify-between md:p-9">
         <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[28px]" aria-hidden="true">
           <div className="absolute right-0 top-0 h-72 w-72 rounded-full blur-3xl" style={{ background: 'rgba(208,50,56,0.35)' }} />
           <div className="absolute bottom-0 left-0 h-48 w-48 rounded-full blur-3xl" style={{ background: 'rgba(255,209,26,0.2)' }} />

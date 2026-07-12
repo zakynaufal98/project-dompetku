@@ -10,7 +10,7 @@ export default function Insights() {
 
   return (
     <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
-      <header className="relative bg-text rounded-[28px] p-7 md:p-9 text-white overflow-hidden">
+      <header className="relative bg-text dark:bg-surface dark:border dark:border-border rounded-[28px] p-7 md:p-9 text-white overflow-hidden">
         <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
           <div className="absolute top-0 right-0 w-72 h-72 rounded-full blur-3xl" style={{ background: 'rgba(168,85,247,0.35)' }} />
           <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full blur-3xl" style={{ background: 'rgba(6,182,212,0.2)' }} />

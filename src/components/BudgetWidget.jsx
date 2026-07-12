@@ -1,8 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useData } from '../context/DataContext'
-import { CATEGORY_TREE, fmtShort, CAT_ICONS, CHART_COLORS, isCashflowExpenseTx } from '../lib/utils'
+import { CATEGORY_TREE, fmtShort, CAT_ICONS, isCashflowExpenseTx } from '../lib/utils'
 import { Plus, Trash2, Edit2, Target, AlertTriangle, Check, X } from 'lucide-react'
-import { ProgressBar } from './UI'
 
 export default function BudgetWidget() {
   const { txData, budgetData, saveBudget, deleteBudget } = useData()

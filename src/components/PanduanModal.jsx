@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import {
   X, LayoutDashboard, ArrowRightLeft, BarChart3, Sparkles,
   TrendingUp, Target, CreditCard, ChevronRight, Lightbulb,
-  Plus, Search, Download, Wallet, ShieldCheck, Zap
+  Search, Download, Wallet, ShieldCheck, Zap
 } from 'lucide-react'
 
 const SECTIONS = [

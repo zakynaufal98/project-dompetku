@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { X, Lock, CheckCircle2, AlertCircle, Loader2, Eye, EyeOff, Check } from 'lucide-react'
+import { X, CheckCircle2, AlertCircle, Loader2, Eye, EyeOff, Check } from 'lucide-react'
 
 // 20 pilihan avatar emoji + warna tema
 const AVATAR_OPTIONS = [

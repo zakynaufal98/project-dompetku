@@ -328,7 +328,7 @@ export default function ShareReport() {
             <button
               key={slide.key}
               onClick={() => setActiveSlide(index)}
-              className={`rounded-full px-3 py-2 text-sm font-bold transition-colors ${activeSlide === index ? 'bg-text text-white' : 'bg-surface text-muted hover:text-text'}`}
+              className={`rounded-full px-3 py-2 text-sm font-bold transition-colors ${activeSlide === index ? 'bg-text text-bg' : 'bg-surface text-muted hover:text-text'}`}
             >
               {slide.label}
             </button>

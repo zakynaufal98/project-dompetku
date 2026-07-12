@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { useData } from '../context/DataContext'
 import { useAuth } from '../context/AuthContext'
 import { fmt, fmtShort, MONTHS, isCashflowIncomeTx, isCashflowExpenseTx, isInternalTransferTx, summarizeFinancialTx } from '../lib/utils'
@@ -17,6 +17,8 @@ import {
   CalendarDays,
   ChevronDown,
   Share2,
+  Activity,
+  BarChart3,
 } from 'lucide-react'
 import BillTracker from '../components/BillTracker'
 import WalletWidget from '../components/WalletWidget'
@@ -60,6 +62,7 @@ export default function Dashboard() {
   const now = new Date()
   const [showWrapped, setShowWrapped] = useState(false)
   const [showCalcDetails, setShowCalcDetails] = useState(false)
+  const [chartType, setChartType] = useState('area')
 
   const openingBalance = useMemo(
     () => (totals?.walletBalances || []).reduce((sum, wallet) => sum + (Number(wallet.balance) || 0), 0),
@@ -267,73 +270,65 @@ export default function Dashboard() {
       )}
 
       <div className={androidShell ? 'custom-scrollbar flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory' : 'grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4'}>
-        <div className={`flex flex-col gap-4 rounded-[22px] border border-border bg-surface p-5 transition-colors duration-200 hover:-translate-y-0.5 hover:shadow-card-md ${androidShell ? 'min-w-[248px] shrink-0 snap-start' : ''}`}>
-          <div className="flex items-center justify-between">
+        <div className={`flex flex-col gap-4 rounded-[22px] border border-border bg-surface p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-md ${androidShell ? 'min-w-[248px] shrink-0 snap-start' : ''}`}>
+          <div className="flex items-start justify-between">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-pale text-text">
               <Wallet size={18} />
             </div>
+            {renderTrendBadge(trends.saldo)}
           </div>
           <div>
             <p className="mb-1 text-xs font-semibold text-muted">Saldo Saat Ini</p>
             <p className="text-[22px] font-black leading-none tracking-tight text-text tabular-nums">{fmt(totals.saldo)}</p>
-            <div className="mt-2.5 flex items-center gap-2">
-              {renderTrendBadge(trends.saldo)}
-              <span className="text-xs font-medium text-muted">vs bln lalu</span>
-            </div>
+            <p className="mt-2.5 text-[11px] font-medium text-muted">vs bulan lalu</p>
           </div>
         </div>
 
-        <div className={`relative overflow-hidden rounded-[22px] border border-border bg-primary-pale p-5 text-text transition-transform duration-200 hover:-translate-y-0.5 ${androidShell ? 'min-w-[248px] shrink-0 snap-start' : ''}`}>
-          <div className="flex items-center justify-between">
+        <div className={`relative flex flex-col gap-4 overflow-hidden rounded-[22px] border border-border bg-primary-pale p-5 text-text transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-md ${androidShell ? 'min-w-[248px] shrink-0 snap-start' : ''}`}>
+          <div className="flex items-start justify-between">
             <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface">
               <CalendarDays size={18} className="text-text" />
             </div>
+            {renderTrendBadge(yesterdayOut === 0 ? (todayOut > 0 ? 100 : 0) : ((todayOut - yesterdayOut) / yesterdayOut) * 100, true)}
           </div>
-          <div className="mt-4">
+          <div>
             <p className="mb-1 text-xs font-semibold text-text-2">Keluar Hari Ini</p>
             <p className="text-[22px] font-black leading-none tracking-tight text-text tabular-nums">
               {todayOut > 0 ? `-${fmt(todayOut)}` : 'Rp 0'}
             </p>
-            <div className="mt-2.5 flex items-center gap-2">
-              {renderTrendBadge(yesterdayOut === 0 ? (todayOut > 0 ? 100 : 0) : ((todayOut - yesterdayOut) / yesterdayOut) * 100, true)}
-              <span className="text-xs font-medium text-text-2">vs kemarin</span>
-            </div>
+            <p className="mt-2.5 text-[11px] font-medium text-text-2">vs kemarin</p>
           </div>
         </div>
 
-        <div className={`flex flex-col gap-4 rounded-[22px] border border-border bg-surface p-5 transition-colors duration-200 hover:-translate-y-0.5 hover:shadow-card-md ${androidShell ? 'min-w-[248px] shrink-0 snap-start' : ''}`}>
-          <div className="flex items-center justify-between">
+        <div className={`flex flex-col gap-4 rounded-[22px] border border-border bg-surface p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-md ${androidShell ? 'min-w-[248px] shrink-0 snap-start' : ''}`}>
+          <div className="flex items-start justify-between">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-expense-light text-expense">
               <ArrowDownCircle size={18} />
             </div>
+            {renderTrendBadge(trends.keluar, true)}
           </div>
           <div>
             <p className="mb-1 text-xs font-semibold text-muted">Pengeluaran Bersih</p>
             <p className="text-[22px] font-black leading-none tracking-tight text-expense tabular-nums">
               {currOut > 0 ? `-${fmt(currOut)}` : fmt(currOut)}
             </p>
-            <div className="mt-2.5 flex items-center gap-2">
-              {renderTrendBadge(trends.keluar, true)}
-              <span className="text-xs font-medium text-muted">vs bln lalu</span>
-            </div>
+            <p className="mt-2.5 text-[11px] font-medium text-muted">vs bulan lalu</p>
           </div>
         </div>
 
-        <div className={`flex flex-col gap-4 rounded-[22px] border border-border bg-surface p-5 transition-colors duration-200 hover:-translate-y-0.5 hover:shadow-card-md ${androidShell ? 'min-w-[248px] shrink-0 snap-start' : ''}`}>
-          <div className="flex items-center justify-between">
+        <div className={`flex flex-col gap-4 rounded-[22px] border border-border bg-surface p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-md ${androidShell ? 'min-w-[248px] shrink-0 snap-start' : ''}`}>
+          <div className="flex items-start justify-between">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-income-light text-income">
               <ArrowUpCircle size={18} />
             </div>
+            {renderTrendBadge(trends.masuk)}
           </div>
           <div>
             <p className="mb-1 text-xs font-semibold text-muted">Pemasukan Riil</p>
             <p className="text-[22px] font-black leading-none tracking-tight text-income tabular-nums">
               {currIn > 0 ? `+${fmt(currIn)}` : fmt(currIn)}
             </p>
-            <div className="mt-2.5 flex items-center gap-2">
-              {renderTrendBadge(trends.masuk)}
-              <span className="text-xs font-medium text-muted">vs bln lalu</span>
-            </div>
+            <p className="mt-2.5 text-[11px] font-medium text-muted">vs bulan lalu</p>
           </div>
         </div>
       </div>
@@ -346,28 +341,67 @@ export default function Dashboard() {
             <div>
               <h2 className="text-base font-black tracking-tight text-text">Arus Kas 6 Bulan</h2>
             </div>
-            <span className="rounded-lg border border-border bg-bg px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted">6 Bulan</span>
+            <div className="flex items-center gap-1 rounded-full border border-border bg-bg p-1">
+              {[
+                { value: 'area', label: 'Area', Icon: Activity },
+                { value: 'bar', label: 'Batang', Icon: BarChart3 },
+              ].map(({ value, label, Icon }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setChartType(value)}
+                  aria-pressed={chartType === value}
+                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold transition-colors ${
+                    chartType === value ? 'bg-text text-bg' : 'text-muted hover:text-text'
+                  }`}
+                >
+                  <Icon size={13} />
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="min-h-[220px] w-full flex-1 rounded-[22px] border border-border/70 bg-bg/70 p-2 sm:min-h-[232px] sm:p-3">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={tren6} margin={{ top: 10, right: 8, left: -6, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorIn" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#2ead4b" stopOpacity={0.24} />
-                    <stop offset="95%" stopColor="#2ead4b" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="colorOut" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#d03238" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#d03238" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#d9ddd6" />
-                <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#7c847c' }} axisLine={false} tickLine={false} dy={8} minTickGap={24} />
-                <YAxis width={64} tickFormatter={fmtShort} tick={{ fontSize: 10, fill: '#7c847c' }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} wrapperStyle={{ zIndex: 40, pointerEvents: 'none' }} />
-                <Area type="monotone" dataKey="Pemasukan" stroke="#2ead4b" strokeWidth={2.75} fillOpacity={1} fill="url(#colorIn)" activeDot={{ r: 5, strokeWidth: 0 }} />
-                <Area type="monotone" dataKey="Pengeluaran" stroke="#d03238" strokeWidth={2.75} fillOpacity={1} fill="url(#colorOut)" activeDot={{ r: 5, strokeWidth: 0 }} />
-              </AreaChart>
+              {chartType === 'area' ? (
+                <AreaChart data={tren6} margin={{ top: 10, right: 8, left: -6, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorIn" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="rgb(var(--color-income))" stopOpacity={0.24} />
+                      <stop offset="95%" stopColor="rgb(var(--color-income))" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="colorOut" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="rgb(var(--color-expense))" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="rgb(var(--color-expense))" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--chart-tick)' }} axisLine={false} tickLine={false} dy={8} minTickGap={24} />
+                  <YAxis width={64} tickFormatter={fmtShort} tick={{ fontSize: 10, fill: 'var(--chart-tick)' }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<CustomTooltip />} wrapperStyle={{ zIndex: 40, pointerEvents: 'none' }} />
+                  <Area type="monotone" dataKey="Pemasukan" stroke="rgb(var(--color-income))" strokeWidth={2.75} fillOpacity={1} fill="url(#colorIn)" activeDot={{ r: 5, strokeWidth: 0 }} />
+                  <Area type="monotone" dataKey="Pengeluaran" stroke="rgb(var(--color-expense))" strokeWidth={2.75} fillOpacity={1} fill="url(#colorOut)" activeDot={{ r: 5, strokeWidth: 0 }} />
+                </AreaChart>
+              ) : (
+                <BarChart data={tren6} margin={{ top: 10, right: 8, left: -6, bottom: 0 }} barGap={4} barCategoryGap="28%">
+                  <defs>
+                    <linearGradient id="barIn" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="rgb(var(--color-income))" stopOpacity={0.95} />
+                      <stop offset="100%" stopColor="rgb(var(--color-income))" stopOpacity={0.55} />
+                    </linearGradient>
+                    <linearGradient id="barOut" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="rgb(var(--color-expense))" stopOpacity={0.95} />
+                      <stop offset="100%" stopColor="rgb(var(--color-expense))" stopOpacity={0.55} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--chart-tick)' }} axisLine={false} tickLine={false} dy={8} minTickGap={24} />
+                  <YAxis width={64} tickFormatter={fmtShort} tick={{ fontSize: 10, fill: 'var(--chart-tick)' }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--chart-grid)', fillOpacity: 0.35 }} wrapperStyle={{ zIndex: 40, pointerEvents: 'none' }} />
+                  <Bar dataKey="Pemasukan" fill="url(#barIn)" radius={[6, 6, 0, 0]} maxBarSize={26} />
+                  <Bar dataKey="Pengeluaran" fill="url(#barOut)" radius={[6, 6, 0, 0]} maxBarSize={26} />
+                </BarChart>
+              )}
             </ResponsiveContainer>
           </div>
           <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -375,7 +409,7 @@ export default function Dashboard() {
               <div className="flex items-center gap-2.5">
                 <div className="relative w-7">
                   <span className="absolute left-0 top-1/2 h-[3px] w-7 -translate-y-1/2 rounded-full bg-income" />
-                  <span className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-income" />
+                  <span className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-surface bg-income" />
                 </div>
                 <span className="text-xs font-bold text-text">Pemasukan</span>
               </div>
@@ -385,7 +419,7 @@ export default function Dashboard() {
               <div className="flex items-center gap-2.5">
                 <div className="relative w-7">
                   <span className="absolute left-0 top-1/2 h-[3px] w-7 -translate-y-1/2 rounded-full bg-expense" />
-                  <span className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-expense" />
+                  <span className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-surface bg-expense" />
                 </div>
                 <span className="text-xs font-bold text-text">Pengeluaran</span>
               </div>

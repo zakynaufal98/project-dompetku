@@ -856,7 +856,6 @@ export default function Transaksi() {
 
         <Field label="Pilih Dompet / Rekening">
           {totals?.walletBalances?.length > 0 ? (
-            <>
             <FancySelect
               value={walletId}
               onChange={setWalletId}
@@ -865,23 +864,6 @@ export default function Transaksi() {
               emptyLabel="Belum ada dompet"
               icon={<Wallet size={16} strokeWidth={2.5} />}
             />
-            <div className="hidden">
-              <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl flex items-center justify-center pointer-events-none z-10 text-white"
-                style={{ backgroundColor: activeWallet?.color || '#94a3b8' }}>
-                <Wallet size={16} strokeWidth={2.5} />
-              </div>
-              <select className="form-input pl-14 pr-10 py-3 cursor-pointer appearance-none font-semibold text-text-2 w-full"
-                value={walletId} onChange={e => setWalletId(e.target.value)}>
-                <option value="" disabled>Pilih Sumber Dana...</option>
-                {totals.walletBalances.map(w => (
-                  <option key={w.id} value={w.id}>
-                    {w.name} — {w.calculatedBalance < 0 ? '-' : ''}Rp {Math.abs(w.calculatedBalance).toLocaleString('id-ID')}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><ChevronDown size={18} strokeWidth={2.5} /></div>
-            </div>
-            </>
           ) : (
             <div className="bg-bg border border-border rounded-xl px-4 py-3 text-sm text-muted flex items-center gap-2">
               <Wallet size={16} className="text-slate-400" /> Belum ada dompet. Buat di Dashboard!
@@ -929,7 +911,7 @@ export default function Transaksi() {
         type="button"
         onClick={() => setComposeStep(2)}
         disabled={!canProceedComposeStepOne}
-        className="flex w-full items-center justify-center gap-2 rounded-xl bg-text py-4 text-sm font-bold text-white transition-all disabled:opacity-40"
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-text py-4 text-sm font-bold text-bg transition-all disabled:opacity-40"
       >
         Lanjut
         <ArrowRight size={18} />
@@ -966,7 +948,7 @@ export default function Transaksi() {
   return (
     <div className={`animate-fade-up max-w-7xl mx-auto pb-10 ${androidShell ? 'space-y-4' : 'space-y-6'}`}>
 
-      <header className="relative flex flex-col gap-5 rounded-[28px] bg-text p-7 text-white md:flex-row md:items-center md:justify-between md:p-9">
+      <header className="relative flex flex-col gap-5 rounded-[28px] bg-text dark:bg-surface dark:border dark:border-border p-7 text-white md:flex-row md:items-center md:justify-between md:p-9">
         <div className="relative z-10 flex items-start gap-4">
           <div className="hidden h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-white/15 md:flex">
             <ReceiptText size={22} className="text-white" />
@@ -1030,249 +1012,6 @@ export default function Transaksi() {
       )}
 
       <div className={androidShell ? 'space-y-4' : 'grid grid-cols-1 lg:grid-cols-5 gap-6'}>
-
-        {/* ── ADD FORM PANEL ───────────────────────────────── */}
-        <div className="hidden">
-          <div className="flex items-center gap-3 border-b border-border pb-4 mb-2">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, #2ead4b, #054d28)' }}>
-              <ReceiptText size={16} className="text-white" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-0.5">Form</p>
-              <h3 className="font-black text-text text-base tracking-tight">Tambah Transaksi</h3>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 mb-2">
-            <button onClick={() => handleTypeChange('in')}
-              className={`flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-sm font-bold border transition-all cursor-pointer ${
-                type === 'in' ? 'bg-income-light text-income border-income/30' : 'bg-bg text-muted border-transparent hover:border-border2'
-              }`}>
-              <ArrowDownLeft size={18} strokeWidth={2.5} /> Pemasukan
-            </button>
-            <button onClick={() => handleTypeChange('out')}
-              className={`flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-sm font-bold border transition-all cursor-pointer ${
-                type === 'out' ? 'bg-gold-light text-gold border-gold/30' : 'bg-bg text-muted border-transparent hover:border-border2'
-              }`}>
-              <ArrowUpRight size={18} strokeWidth={2.5} /> Pengeluaran
-            </button>
-          </div>
-
-          {(quickTemplates.length > 0 || favoriteCategories.length > 0) && (
-            <div className="space-y-3 rounded-[20px] border border-border bg-bg/60 p-4">
-              {quickTemplates.length > 0 && (
-                <div>
-                  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted">Template cepat</p>
-                  <div className="flex flex-wrap gap-2">
-                    {quickTemplates.map((item) => (
-                      <button
-                        key={`${item.desc}-${item.cat}-${item.subCat}`}
-                        type="button"
-                        onClick={() => applyQuickTemplate(item)}
-                        className="flex shrink-0 items-center gap-2 rounded-full border border-border bg-surface px-3 py-2 text-xs font-bold text-text transition-colors hover:bg-primary-pale"
-                      >
-                        <span className="max-w-[110px] truncate">{item.desc}</span>
-                        <span className={type === 'in' ? 'text-income' : 'text-gold'}>{fmtShort(item.amount)}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {favoriteCategories.length > 0 && (
-                <div>
-                  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted">Kategori favorit</p>
-                  <div className="flex flex-wrap gap-2">
-                    {favoriteCategories.map((item) => (
-                      <button
-                        key={`${item.cat}-${item.subCat}`}
-                        type="button"
-                        onClick={() => applyFavoriteCategory(item)}
-                        className="rounded-full border border-border bg-surface px-3 py-2 text-xs font-bold text-text transition-colors hover:bg-primary-pale"
-                      >
-                        {item.cat}{item.subCat ? ` • ${item.subCat}` : ''}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="Keterangan / Tempat">
-              <DescInput value={desc} onChange={handleDescChange} txData={txData} onEnter={handleAdd} />
-              <p className="text-[9px] text-income font-bold flex items-center mt-1.5 uppercase tracking-widest opacity-80">
-                <Sparkles size={10} className="mr-1" /> Kategori dari riwayat aktif
-              </p>
-            </Field>
-
-            <Field label="Jumlah (Rp)">
-              <div className="relative">
-                <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-bg text-muted rounded-xl flex items-center justify-center pointer-events-none z-10">
-                  <Banknote size={16} strokeWidth={2.5} />
-                </div>
-                <input
-                  className="form-input pl-14 py-3 relative z-0"
-                  type="text" inputMode="numeric"
-                  value={amount ? Number(amount).toLocaleString('id-ID') : ''}
-                  onChange={e => setAmount(e.target.value.replace(/\D/g, ''))}
-                  placeholder="0"
-                  onKeyDown={e => e.key === 'Enter' && handleAdd()}
-                />
-              </div>
-              {suggestedAmounts.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2.5 animate-fade-in">
-                  <span className="text-[10px] font-bold text-muted2 uppercase tracking-wider flex items-center mr-1">Terakhir:</span>
-                  {suggestedAmounts.map((nominal, idx) => (
-                    <button key={idx} type="button" onClick={() => setAmount(nominal.toString())}
-                      className="px-2.5 py-1 bg-income-light text-income text-xs font-bold rounded-lg border border-income/20 hover:opacity-80 transition-opacity cursor-pointer shadow-sm active:scale-95">
-                      {nominal.toLocaleString('id-ID')}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </Field>
-
-            <div className="space-y-1.5">
-              <div className="ml-1 flex min-h-[28px] items-center justify-between">
-                <label className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">Kategori Induk</label>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddCatForm(true)}
-                    className="flex items-center gap-1 rounded-full bg-primary-pale px-2.5 py-1 text-[10px] font-bold text-text transition-all hover:-translate-y-0.5 active:scale-95"
-                  >
-                    <PlusCircle size={11} /> Tambah
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setCatManagerType(type); setShowCatManager(true) }}
-                    className="flex items-center gap-1 text-[10px] font-bold text-teal-500 hover:text-teal-400 transition-colors"
-                  >
-                    <SlidersHorizontal size={11} /> Kelola
-                  </button>
-                </div>
-              </div>
-              <FancySelect
-                value={mainCat}
-                onChange={(nextValue) => {
-                  setMainCat(nextValue); setSubCat(''); setShowAddCatForm(false)
-                }}
-                options={mainCatOptions}
-                placeholder="Pilih Kategori..."
-                emptyLabel="Belum ada kategori"
-              />
-              {showAddCatForm && (
-                <div className="flex gap-2 animate-fade-in">
-                  <input
-                    className="form-input py-2 flex-1 text-sm"
-                    placeholder="Nama kategori baru..."
-                    value={newCatInput}
-                    onChange={e => setNewCatInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') handleSaveNewCat(); if (e.key === 'Escape') { setShowAddCatForm(false); setNewCatInput('') } }}
-                    autoFocus
-                  />
-                  <button onClick={handleSaveNewCat} disabled={newCatBusy}
-                    className="px-3 rounded-xl bg-teal-500 text-white hover:bg-teal-600 disabled:opacity-50 transition-colors">
-                    {newCatBusy ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                  </button>
-                  <button onClick={() => { setShowAddCatForm(false); setNewCatInput('') }}
-                    className="px-3 rounded-xl bg-bg text-muted hover:text-text transition-colors">
-                    <X size={14} />
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-1.5">
-              <div className="ml-1 flex min-h-[28px] items-center">
-                <label className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">Sub Kategori</label>
-              </div>
-              <FancySelect
-                value={subCat}
-                onChange={setSubCat}
-                options={subCatOptions}
-                placeholder="Pilih Detail..."
-                emptyLabel={mainCat ? 'Tidak ada sub kategori' : 'Pilih kategori dulu'}
-                disabled={!mainCat || availableSubCats.length === 0}
-              />
-            </div>
-
-            <Field label="Pilih Dompet / Rekening">
-              {totals?.walletBalances?.length > 0 ? (
-                <>
-                <FancySelect
-                  value={walletId}
-                  onChange={setWalletId}
-                  options={walletOptions}
-                  placeholder="Pilih Sumber Dana..."
-                  emptyLabel="Belum ada dompet"
-                  icon={<Wallet size={16} strokeWidth={2.5} />}
-                />
-                <div className="hidden">
-                  <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl flex items-center justify-center pointer-events-none z-10 text-white"
-                    style={{ backgroundColor: activeWallet?.color || '#94a3b8' }}>
-                    <Wallet size={16} strokeWidth={2.5} />
-                  </div>
-                  <select className="form-input pl-14 pr-10 py-3 cursor-pointer appearance-none font-semibold text-text-2 w-full"
-                    value={walletId} onChange={e => setWalletId(e.target.value)}>
-                    <option value="" disabled>Pilih Sumber Dana...</option>
-                    {totals.walletBalances.map(w => (
-                      <option key={w.id} value={w.id}>
-                        {w.name} — {w.calculatedBalance < 0 ? '-' : ''}Rp {Math.abs(w.calculatedBalance).toLocaleString('id-ID')}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><ChevronDown size={18} strokeWidth={2.5} /></div>
-                </div>
-                </>
-              ) : (
-                <div className="bg-bg border border-border rounded-xl px-4 py-3 text-sm text-muted flex items-center gap-2">
-                  <Wallet size={16} className="text-slate-400" /> Belum ada dompet. Buat di Dashboard!
-                </div>
-              )}
-              {isAddBalanceInsufficient && (
-                <p className="mt-2 text-[11px] font-bold text-expense">
-                  Saldo kurang. Maksimal pengeluaran dari dompet ini {fmt(activeWallet?.calculatedBalance || 0)}.
-                </p>
-              )}
-            </Field>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="ml-1 block text-[11px] font-bold uppercase tracking-[0.16em] text-muted">Tanggal</label>
-              <div className="relative flex-1">
-                <div className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-bg text-muted rounded-xl flex items-center justify-center pointer-events-none z-10">
-                  <Calendar size={16} strokeWidth={2.5} />
-                </div>
-                <input className="form-input h-full pl-14 py-3 cursor-pointer text-sm relative z-0"
-                  type="date" value={date} onChange={e => setDate(e.target.value)} />
-              </div>
-            </div>
-          </div>
-
-          {formWarnings.length > 0 && (
-            <div className="rounded-[20px] border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
-              <p className="mb-2 text-[10px] font-bold uppercase tracking-widest">Perlu dicek</p>
-              <div className="space-y-1.5">
-                {formWarnings.map((warning) => (
-                  <p key={warning} className="text-xs font-medium leading-relaxed">{warning}</p>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {err && <div className="text-xs text-expense bg-expense-light border border-expense/20 rounded-xl px-4 py-3 font-medium">{err}</div>}
-
-          <button onClick={handleAdd} disabled={busy || isAddBalanceInsufficient}
-            className={`w-full py-4 rounded-xl text-sm font-bold text-white transition-all cursor-pointer flex items-center justify-center gap-2.5 active:scale-95 disabled:opacity-50 mt-2 ${
-              type === 'in' ? 'bg-income hover:opacity-90' : 'bg-expense hover:opacity-90'
-            }`}>
-            {busy ? <Loader2 size={18} className="animate-spin" /> : <PlusCircle size={18} />}
-            Simpan Transaksi
-          </button>
-        </div>
 
         {/* ── QUICK STATS ──────────────────────────────── */}
         <div className="lg:col-span-5 flex flex-col gap-4">
@@ -1371,7 +1110,7 @@ export default function Transaksi() {
                   onClick={() => setActiveDateKey(dateKey)}
                   className={`shrink-0 rounded-full px-3 py-2 text-xs font-bold transition-colors ${
                     activeDateKey === dateKey
-                      ? 'bg-text text-white'
+                      ? 'bg-text text-bg'
                       : 'border border-border bg-surface text-text hover:bg-bg'
                   }`}
                 >
@@ -1391,7 +1130,7 @@ export default function Transaksi() {
               onClick={() => setQuickFilter(item.value)}
               className={`rounded-full px-4 py-2 text-xs font-bold whitespace-nowrap transition-colors ${
                 quickFilter === item.value
-                  ? 'bg-text text-white'
+                  ? 'bg-text text-bg'
                   : 'border border-border bg-surface text-text hover:bg-bg'
               }`}
             >
@@ -1447,7 +1186,7 @@ export default function Transaksi() {
               onClick={() => setSelectedWalletFilter('semua')}
               className={`shrink-0 rounded-full px-3 py-2 text-xs font-bold transition-all ${
                 selectedWalletFilter === 'semua'
-                  ? 'bg-text text-white'
+                  ? 'bg-text text-bg'
                   : 'border border-border bg-surface text-text hover:bg-bg'
               }`}
             >

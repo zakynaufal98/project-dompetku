@@ -474,7 +474,7 @@ export default function GlobalTransactionComposer() {
               type="button"
               onClick={() => setStep(2)}
               disabled={!canProceedStepOne}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-text py-4 text-sm font-bold text-white transition-all hover:-translate-y-0.5 active:scale-[0.98] disabled:translate-y-0 disabled:opacity-40"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-text py-4 text-sm font-bold text-bg transition-all hover:-translate-y-0.5 active:scale-[0.98] disabled:translate-y-0 disabled:opacity-40"
             >
               Lanjut
               <ArrowRight size={18} />

@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom' 
 import { useData } from '../context/DataContext'
 import { fmt } from '../lib/utils'
-import { BankLogo } from './UI' 
 import { Plus, Trash2, ArrowRightLeft, X } from 'lucide-react'
 import { isAndroidShell } from '../lib/platform'
 

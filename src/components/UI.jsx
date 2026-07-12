@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
-import { Trash2, Loader2, ReceiptText, BriefcaseBusiness, PieChart as PieChartIcon, ArrowLeft, ChevronDown, Pencil, Check, X } from 'lucide-react'
+import { Trash2, Loader2, ReceiptText, BriefcaseBusiness, PieChart as PieChartIcon, ArrowLeft, Pencil, Check, X } from 'lucide-react'
 import { fmt, fmtShort, CAT_ICONS, INV_TYPES, CHART_COLORS, getCashflowMainCategory, getExpenseDistributionCategory, getDescEmoji } from '../lib/utils'
 
 export const BankLogo = ({ name = '', size = 'md' }) => {

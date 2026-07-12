@@ -28,7 +28,7 @@ export default function Laporan() {
 
   return (
     <div className="space-y-6 animate-fade-in max-w-7xl mx-auto pb-10">
-      <header className="relative flex flex-col gap-5 rounded-[28px] bg-text p-7 text-white md:flex-row md:items-center md:justify-between md:p-9">
+      <header className="relative flex flex-col gap-5 rounded-[28px] bg-text dark:bg-surface dark:border dark:border-border p-7 text-white md:flex-row md:items-center md:justify-between md:p-9">
         <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[28px]" aria-hidden="true">
           <div className="absolute right-0 top-0 h-72 w-72 rounded-full blur-3xl" style={{ background: 'rgba(99,102,241,0.35)' }} />
           <div className="absolute bottom-0 left-0 h-48 w-48 rounded-full blur-3xl" style={{ background: 'rgba(168,85,247,0.2)' }} />
@@ -66,7 +66,7 @@ export default function Laporan() {
               onClick={() => setQuickFilter(item.value)}
               className={`rounded-full px-4 py-2 text-xs font-bold whitespace-nowrap transition-colors ${
                 quickFilter === item.value
-                  ? 'bg-text text-white'
+                  ? 'bg-text text-bg'
                   : 'border border-border bg-surface text-text hover:bg-bg'
               }`}
             >
@@ -93,7 +93,7 @@ export default function Laporan() {
             className={({ isActive }) =>
               `inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all focus:outline-none ${
                 isActive
-                  ? 'bg-text text-white shadow-sm'
+                  ? 'bg-text text-bg shadow-sm'
                   : 'bg-surface border border-border text-muted hover:text-text hover:bg-bg'
               }`
             }

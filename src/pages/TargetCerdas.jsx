@@ -5,11 +5,11 @@ import {
   CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import {
-  BadgeCheck, BrainCircuit, CalendarClock, Check,
+  BadgeCheck, CalendarClock, Check,
   Gauge, PiggyBank, Plus, Sparkles, Target, Trash2, TrendingUp, X,
 } from 'lucide-react'
 import { useData } from '../context/DataContext'
-import { fmt, fmtShort, MONTHS, isCashflowIncomeTx, isCashflowExpenseTx } from '../lib/utils'
+import { fmtShort, MONTHS, isCashflowIncomeTx, isCashflowExpenseTx } from '../lib/utils'
 import { ProgressBar, MetricCard, Insight } from '../components/UI'
 
 const monthKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
@@ -253,7 +253,7 @@ export default function TargetCerdas() {
   return (
     <div className="animate-fade-up space-y-6 max-w-7xl mx-auto pb-10">
 
-      <header className="relative flex flex-col gap-5 rounded-[28px] bg-text p-7 text-white md:flex-row md:items-center md:justify-between md:p-9">
+      <header className="relative flex flex-col gap-5 rounded-[28px] bg-text dark:bg-surface dark:border dark:border-border p-7 text-white md:flex-row md:items-center md:justify-between md:p-9">
         <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[28px]" aria-hidden="true">
           <div className="absolute right-0 top-0 h-72 w-72 rounded-full blur-3xl" style={{ background: 'rgba(59,130,246,0.35)' }} />
           <div className="absolute bottom-0 left-0 h-48 w-48 rounded-full blur-3xl" style={{ background: 'rgba(159,232,112,0.25)' }} />
